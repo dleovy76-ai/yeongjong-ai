@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from core.database import get_db
-from models import Business, BusinessProfile, BusinessStatus, Menu, User, UserRole
+from models import Business, BusinessCategory, BusinessProfile, BusinessStatus, Menu, User, UserRole
 from routers.auth import get_current_user
 from schemas.businesses import (
     BusinessCreateRequest,
@@ -53,7 +53,9 @@ def create_business(
 
 
 @router.get("", response_model=list[BusinessResponse])
-def list_businesses(category: str | None = None, db: Session = Depends(get_db)) -> list[BusinessResponse]:
+def list_businesses(
+    category: BusinessCategory | None = None, db: Session = Depends(get_db)
+) -> list[BusinessResponse]:
     query = db.query(Business).filter(Business.status == BusinessStatus.ACTIVE)
     if category:
         query = query.filter(Business.category == category)

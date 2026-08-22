@@ -96,6 +96,11 @@ def test_list_businesses_only_returns_active(client):
     assert business["id"] in [b["id"] for b in after]
 
 
+def test_list_businesses_rejects_invalid_category(client):
+    response = client.get("/api/v1/businesses?category=NOT_A_REAL_CATEGORY")
+    assert response.status_code == 422
+
+
 def test_menu_crud(client):
     headers = _register(client, "owner7@example.com")
     business = _create_business(client, headers)
