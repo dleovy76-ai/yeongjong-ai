@@ -67,7 +67,7 @@ export const CATEGORY_LABELS: Record<BusinessCategory, string> = {
 
 export interface Business {
   id: string;
-  owner_user_id: string;
+  owner_user_id: string | null;
   name_ko: string;
   name_en: string | null;
   name_zh: string | null;
@@ -75,6 +75,7 @@ export interface Business {
   address: string;
   phone: string | null;
   status: BusinessStatus;
+  data_source: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -159,6 +160,12 @@ export const api = {
 
   updateBusiness: (token: string, id: string, body: Partial<Business>) =>
     request<Business>(`/api/v1/businesses/${id}`, { method: "PATCH", body, token }),
+
+  listUnclaimedBusinesses: (query: string) =>
+    request<Business[]>(`/api/v1/businesses/unclaimed?query=${encodeURIComponent(query)}`),
+
+  claimBusiness: (token: string, id: string) =>
+    request<Business>(`/api/v1/businesses/${id}/claim`, { method: "POST", token }),
 
   getProfile: (id: string) => request<BusinessProfile>(`/api/v1/businesses/${id}/profile`),
 

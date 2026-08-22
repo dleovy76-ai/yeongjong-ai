@@ -72,12 +72,19 @@ class User(Base):
 class Business(Base):
     """Core business identity (master plan §7 Step 1). AI-facing context fields
     live in BusinessProfile (§8 BusinessContext) — kept separate so onboarding
-    Step 1 (identity) and Step 3 (AI info) can be filled independently."""
+    Step 1 (identity) and Step 3 (AI info) can be filled independently.
+
+    owner_user_id is nullable to support pre-seeded "unclaimed" listings
+    imported from a real external directory (e.g. 공공데이터포털 상가업소정보) -
+    a real business owner later claims one via POST .../claim rather than
+    re-entering identity info from scratch. data_source/external_id record
+    provenance and prevent duplicate imports; both are None for businesses
+    created directly by an owner through the normal onboarding flow."""
 
     __tablename__ = "businesses"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    owner_user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
+    owner_user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"), nullable=True)
 
     name_ko: Mapped[str] = mapped_column(String(200), nullable=False)
     name_en: Mapped[str | None] = mapped_column(String(200), nullable=True)
@@ -92,12 +99,15 @@ class Business(Base):
         Enum(BusinessStatus, name="business_status"), nullable=False, default=BusinessStatus.DRAFT
     )
 
+    data_source: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    external_id: Mapped[str | None] = mapped_column(String(100), unique=True, nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
         server_default=func.now(), onupdate=func.now(), nullable=False
     )
 
-    owner: Mapped["User"] = relationship(back_populates="businesses")
+    owner: Mapped["User | None"] = relationship(back_populates="businesses")
     profile: Mapped["BusinessProfile | None"] = relationship(
         back_populates="business", uselist=False, cascade="all, delete-orphan"
     )

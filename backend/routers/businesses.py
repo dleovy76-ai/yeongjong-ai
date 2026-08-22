@@ -62,6 +62,39 @@ def list_my_businesses(
     return [BusinessResponse.model_validate(b) for b in query.order_by(Business.created_at.desc()).all()]
 
 
+@router.get("/unclaimed", response_model=list[BusinessResponse])
+def list_unclaimed_businesses(query: str | None = None, db: Session = Depends(get_db)) -> list[BusinessResponse]:
+    """Pre-seeded listings (e.g. imported from 공공데이터포털 상가업소정보) with no
+    owner yet - lets a real business owner find and claim their own business
+    instead of re-entering identity info that's already on record."""
+    q = db.query(Business).filter(Business.owner_user_id.is_(None))
+    if query:
+        like = f"%{query}%"
+        q = q.filter((Business.name_ko.ilike(like)) | (Business.address.ilike(like)))
+    return [BusinessResponse.model_validate(b) for b in q.order_by(Business.name_ko).limit(50).all()]
+
+
+@router.post("/{business_id}/claim", response_model=BusinessResponse)
+def claim_business(
+    business_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> BusinessResponse:
+    if current_user.role != UserRole.BUSINESS_OWNER:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "사장님 계정만 업체를 소유할 수 있습니다.")
+
+    business = _get_business_or_404(db, business_id)
+    if business.owner_user_id is not None:
+        raise HTTPException(status.HTTP_409_CONFLICT, "이미 다른 사장님이 등록한 업체입니다.")
+
+    business.owner_user_id = current_user.id
+    if business.profile is None:
+        db.add(BusinessProfile(business_id=business.id))
+    db.commit()
+    db.refresh(business)
+    return BusinessResponse.model_validate(business)
+
+
 @router.get("/{business_id}", response_model=BusinessResponse)
 def get_business(business_id: UUID, db: Session = Depends(get_db)) -> BusinessResponse:
     return BusinessResponse.model_validate(_get_business_or_404(db, business_id))

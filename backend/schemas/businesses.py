@@ -28,7 +28,7 @@ class BusinessUpdateRequest(BaseModel):
 
 class BusinessResponse(BaseModel):
     id: UUID
-    owner_user_id: UUID
+    owner_user_id: UUID | None
     name_ko: str
     name_en: str | None
     name_zh: str | None
@@ -36,6 +36,7 @@ class BusinessResponse(BaseModel):
     address: str
     phone: str | None
     status: BusinessStatus
+    data_source: str | None
     created_at: datetime
     updated_at: datetime
 

@@ -51,9 +51,14 @@ export default function DashboardPage() {
     <main className="mx-auto max-w-2xl px-6 py-12">
       <div className="mb-8 flex items-center justify-between">
         <h1 className="text-2xl font-bold">내 업체</h1>
-        <Link href="/businesses/new" className="rounded-md bg-black px-4 py-2 text-sm text-white">
-          + 새 업체 등록
-        </Link>
+        <div className="flex gap-2">
+          <Link href="/businesses/claim" className="rounded-md border border-black px-4 py-2 text-sm">
+            우리 가게 찾기
+          </Link>
+          <Link href="/businesses/new" className="rounded-md bg-black px-4 py-2 text-sm text-white">
+            + 새 업체 등록
+          </Link>
+        </div>
       </div>
 
       {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
