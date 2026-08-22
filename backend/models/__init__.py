@@ -1,2 +1,10 @@
-# SQLAlchemy models land here starting STEP 2 (Database).
-# alembic/env.py imports this package so models register on Base.metadata.
+# alembic/env.py does `from models import *` so importing everything here
+# registers all model classes on Base.metadata.
+from .models import (  # noqa: F401
+    Business,
+    BusinessCategory,
+    BusinessProfile,
+    BusinessStatus,
+    User,
+    UserRole,
+)
