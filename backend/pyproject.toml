@@ -1,0 +1,35 @@
+[project]
+name = "yeongjong-ai-backend"
+version = "0.1.0"
+description = "YEONGJONG AI backend — regional AI platform for Yeongjong Island"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "sqlalchemy>=2.0",
+    "alembic>=1.13",
+    "psycopg[binary]>=3.2",
+    "pydantic-settings>=2.5",
+    "pyjwt>=2.9",
+    "bcrypt>=4.2",
+    "redis>=5.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "httpx>=0.27",
+    "ruff>=0.7",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[tool.setuptools]
+packages = ["core", "models", "schemas", "routers", "services"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
