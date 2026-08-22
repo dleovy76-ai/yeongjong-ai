@@ -10,14 +10,22 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 
 from models import (
+    AiInteraction,
     Business,
     BusinessRelationship,
     BusinessStatus,
     Coupon,
+    CouponIssue,
+    CouponIssueStatus,
     CouponStatus,
     Menu,
     PartnerRelationshipStatus,
 )
+
+
+def current_month_start() -> datetime:
+    now = datetime.now(timezone.utc)
+    return now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
 
 def distance_meters(lon1: float | None, lat1: float | None, lon2: float | None, lat2: float | None) -> float | None:
@@ -211,3 +219,93 @@ class PartnerSearchTool:
             .all()
         )
         return {row[0] for row in rows}
+
+
+class PerformanceSummaryTool:
+    """§19 - the same real, countable-this-month signals the Performance
+    Dashboard endpoint shows, factored out so Manager AI (and the dashboard
+    endpoint itself) share one definition instead of two copies of the same
+    queries drifting apart."""
+
+    def __init__(self, db: Session) -> None:
+        self.db = db
+
+    def get_summary(self, business_id: UUID) -> dict:
+        month_start = current_month_start()
+
+        ai_response_count = (
+            self.db.query(AiInteraction)
+            .filter(AiInteraction.business_id == business_id, AiInteraction.created_at >= month_start)
+            .count()
+        )
+        coupons_issued = (
+            self.db.query(CouponIssue)
+            .join(Coupon)
+            .filter(Coupon.business_id == business_id, CouponIssue.issued_at >= month_start)
+            .count()
+        )
+        coupons_redeemed = (
+            self.db.query(CouponIssue)
+            .join(Coupon)
+            .filter(
+                Coupon.business_id == business_id,
+                CouponIssue.status == CouponIssueStatus.REDEEMED,
+                CouponIssue.redeemed_at >= month_start,
+            )
+            .count()
+        )
+
+        return {
+            "period": month_start.strftime("%Y-%m"),
+            "ai_response_count": ai_response_count,
+            "coupons_issued": coupons_issued,
+            "coupons_redeemed": coupons_redeemed,
+        }
+
+
+class ManagerDashboardTool:
+    """Master plan §9 Manager AI - Manager doesn't have its own facts, it reads
+    everything through the *other* agents'/features' own tools (performance,
+    coupons, expansion) and hands the owner one conversational surface instead
+    of several separate pages. Every number here is grounded in the exact same
+    queries the dedicated pages use - Manager AI never computes its own version
+    of a stat (§29 - one source of truth, not two that could disagree)."""
+
+    def __init__(self, db: Session) -> None:
+        self.db = db
+
+    def get_dashboard(self, business_id: UUID) -> dict | None:
+        business = self.db.get(Business, business_id)
+        if business is None:
+            return None
+
+        performance = PerformanceSummaryTool(self.db).get_summary(business_id)
+
+        coupons = self.db.query(Coupon).filter(Coupon.business_id == business_id).all()
+        coupon_summary = [
+            {"title": c.title, "status": c.status.value, "discount_type": c.discount_type.value,
+             "discount_value": str(c.discount_value)}
+            for c in coupons
+        ]
+
+        pending_suggestions = (
+            self.db.query(BusinessRelationship)
+            .filter(
+                BusinessRelationship.business_a_id == business_id,
+                BusinessRelationship.status == PartnerRelationshipStatus.SUGGESTED,
+            )
+            .order_by(BusinessRelationship.score.desc())
+            .limit(3)
+            .all()
+        )
+
+        return {
+            "business_name": business.name_ko,
+            "category": business.category.value,
+            "status": business.status.value,
+            "this_month_performance": performance,
+            "coupons": coupon_summary,
+            "pending_partner_suggestions": [
+                {"name": r.business_b.name_ko, "score": r.score} for r in pending_suggestions
+            ],
+        }

@@ -87,6 +87,9 @@ export default function DashboardPage() {
                 </button>
               </div>
               <div className="mt-3 flex gap-4 text-sm">
+                <Link href={`/businesses/${business.id}/manager`} className="font-semibold underline">
+                  AI 직원에게 물어보기
+                </Link>
                 <Link href={`/businesses/${business.id}/menus`} className="underline">
                   메뉴 관리
                 </Link>

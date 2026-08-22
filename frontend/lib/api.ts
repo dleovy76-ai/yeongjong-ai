@@ -245,6 +245,13 @@ export const api = {
       method: "POST",
       token,
     }),
+
+  managerChat: (token: string, businessId: string, message: string) =>
+    request<ChatResponse>(`/api/v1/businesses/${businessId}/manager/chat`, {
+      method: "POST",
+      body: { message },
+      token,
+    }),
 };
 
 export interface ChatResponse {
