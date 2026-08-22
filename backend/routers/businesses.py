@@ -5,6 +5,8 @@ from sqlalchemy.orm import Session
 
 from core.database import get_db
 from models import Business, BusinessCategory, BusinessProfile, BusinessStatus, Menu, User, UserRole
+from routers._business_common import get_business_or_404 as _get_business_or_404
+from routers._business_common import require_owner as _require_owner
 from routers.auth import get_current_user
 from schemas.businesses import (
     BusinessCreateRequest,
@@ -18,18 +20,6 @@ from schemas.businesses import (
 )
 
 router = APIRouter(prefix="/api/v1/businesses", tags=["businesses"])
-
-
-def _get_business_or_404(db: Session, business_id: UUID) -> Business:
-    business = db.get(Business, business_id)
-    if business is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "업체를 찾을 수 없습니다.")
-    return business
-
-
-def _require_owner(business: Business, current_user: User) -> None:
-    if business.owner_user_id != current_user.id and current_user.role != UserRole.ADMIN:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "이 업체에 대한 권한이 없습니다.")
 
 
 @router.post("", response_model=BusinessResponse, status_code=status.HTTP_201_CREATED)

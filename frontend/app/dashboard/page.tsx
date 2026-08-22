@@ -88,6 +88,9 @@ export default function DashboardPage() {
                 <Link href={`/businesses/${business.id}/profile`} className="underline">
                   AI 정보 입력
                 </Link>
+                <Link href={`/businesses/${business.id}/coupons`} className="underline">
+                  쿠폰 관리
+                </Link>
                 <Link href={`/businesses/${business.id}`} className="underline">
                   AI 미리보기(테스트)
                 </Link>

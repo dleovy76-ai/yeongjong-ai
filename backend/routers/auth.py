@@ -32,6 +32,22 @@ def get_current_user(
     return user
 
 
+def get_current_user_optional(
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer_scheme),
+    db: Session = Depends(get_db),
+) -> User | None:
+    """Like get_current_user, but returns None instead of 401 when there's no
+    (or an invalid) token - for endpoints that behave differently for the owner
+    vs. the public without requiring login (e.g. coupon listing)."""
+    if credentials is None:
+        return None
+    try:
+        payload = decode_jwt_token(credentials.credentials)
+    except jwt.PyJWTError:
+        return None
+    return db.get(User, UUID(payload["sub"]))
+
+
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
 def register(body: RegisterRequest, db: Session = Depends(get_db)) -> TokenResponse:
     if body.role not in SELF_REGISTERABLE_ROLES:

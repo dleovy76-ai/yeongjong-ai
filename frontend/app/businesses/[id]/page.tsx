@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { ChatWidget } from "@/components/ChatWidget";
-import { api, CATEGORY_LABELS, type Business, type BusinessProfile, type Menu } from "@/lib/api";
+import { api, ApiError, CATEGORY_LABELS, type Business, type BusinessProfile, type Coupon, type Menu } from "@/lib/api";
 
 function textOf(value: Record<string, unknown> | null): string | null {
   if (!value) return null;
@@ -16,6 +16,9 @@ export default function BusinessDetailPage() {
   const [business, setBusiness] = useState<Business | null>(null);
   const [profile, setProfile] = useState<BusinessProfile | null>(null);
   const [menus, setMenus] = useState<Menu[]>([]);
+  const [coupons, setCoupons] = useState<Coupon[]>([]);
+  const [claimedCodes, setClaimedCodes] = useState<Record<string, string>>({});
+  const [claimErrors, setClaimErrors] = useState<Record<string, string>>({});
   const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
@@ -26,7 +29,20 @@ export default function BusinessDetailPage() {
       })
       .catch(() => setNotFound(true));
     api.getProfile(id).then(setProfile).catch(() => setProfile(null));
+    api.listCoupons(id).then(setCoupons).catch(() => setCoupons([]));
   }, [id]);
+
+  const claimCoupon = async (couponId: string) => {
+    try {
+      const claim = await api.issueCoupon(id, couponId);
+      setClaimedCodes((prev) => ({ ...prev, [couponId]: claim.code }));
+    } catch (err) {
+      setClaimErrors((prev) => ({
+        ...prev,
+        [couponId]: err instanceof ApiError ? err.message : "쿠폰을 받지 못했습니다.",
+      }));
+    }
+  };
 
   if (notFound) {
     return (
@@ -73,6 +89,35 @@ export default function BusinessDetailPage() {
           </>
         )}
       </dl>
+
+      {coupons.length > 0 && (
+        <div className="mb-8">
+          <h2 className="mb-2 font-semibold">쿠폰</h2>
+          <ul className="flex flex-col gap-3">
+            {coupons.map((coupon) => (
+              <li key={coupon.id} className="rounded-md border border-gray-200 p-3 text-sm">
+                <p className="font-semibold">{coupon.title}</p>
+                {coupon.description && <p className="text-gray-500">{coupon.description}</p>}
+                {claimedCodes[coupon.id] ? (
+                  <p className="mt-2 rounded bg-gray-100 px-3 py-2 font-mono text-base">
+                    코드: {claimedCodes[coupon.id]} (매장에서 보여주세요)
+                  </p>
+                ) : (
+                  <button
+                    onClick={() => claimCoupon(coupon.id)}
+                    className="mt-2 rounded-md border border-black px-3 py-1.5"
+                  >
+                    쿠폰 받기
+                  </button>
+                )}
+                {claimErrors[coupon.id] && (
+                  <p className="mt-1 text-red-600">{claimErrors[coupon.id]}</p>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {menus.length > 0 && (
         <div className="mb-8">

@@ -105,6 +105,33 @@ export interface Menu {
   options: Record<string, unknown> | null;
 }
 
+export type CouponDiscountType = "PERCENTAGE" | "FIXED_AMOUNT";
+export type CouponStatus = "DRAFT" | "ACTIVE" | "EXPIRED" | "DISABLED";
+export type CouponIssueStatus = "ISSUED" | "REDEEMED";
+
+export interface Coupon {
+  id: string;
+  business_id: string;
+  title: string;
+  description: string | null;
+  discount_type: CouponDiscountType;
+  discount_value: string;
+  start_at: string | null;
+  end_at: string | null;
+  conditions: string | null;
+  usage_limit: number | null;
+  status: CouponStatus;
+}
+
+export interface CouponIssue {
+  id: string;
+  coupon_id: string;
+  code: string;
+  status: CouponIssueStatus;
+  issued_at: string;
+  redeemed_at: string | null;
+}
+
 export const api = {
   register: (body: { email: string; password: string; name: string; role: UserRole }) =>
     request<TokenResponse>("/api/v1/auth/register", { method: "POST", body }),
@@ -154,6 +181,39 @@ export const api = {
 
   recommend: (query: string) =>
     request<ChatResponse>("/api/v1/recommendations", { method: "POST", body: { query } }),
+
+  listCoupons: (businessId: string, token?: string | null) =>
+    request<Coupon[]>(`/api/v1/businesses/${businessId}/coupons`, { token }),
+
+  createCoupon: (
+    token: string,
+    businessId: string,
+    body: {
+      title: string;
+      description?: string;
+      discount_type: CouponDiscountType;
+      discount_value: string;
+      conditions?: string;
+      usage_limit?: number;
+    }
+  ) => request<Coupon>(`/api/v1/businesses/${businessId}/coupons`, { method: "POST", body, token }),
+
+  updateCoupon: (token: string, businessId: string, couponId: string, body: Partial<Coupon>) =>
+    request<Coupon>(`/api/v1/businesses/${businessId}/coupons/${couponId}`, {
+      method: "PATCH",
+      body,
+      token,
+    }),
+
+  issueCoupon: (businessId: string, couponId: string) =>
+    request<CouponIssue>(`/api/v1/businesses/${businessId}/coupons/${couponId}/issue`, { method: "POST" }),
+
+  redeemCoupon: (token: string, businessId: string, code: string) =>
+    request<CouponIssue>(`/api/v1/businesses/${businessId}/coupons/redeem`, {
+      method: "POST",
+      body: { code },
+      token,
+    }),
 };
 
 export interface ChatResponse {

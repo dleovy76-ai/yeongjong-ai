@@ -1,7 +1,7 @@
 import json
 
 from services.agents.base import BaseAgent
-from services.tools import BusinessSearchTool, MenuSearchTool
+from services.tools import BusinessSearchTool, CouponSearchTool, MenuSearchTool
 
 _NOT_FOUND_MESSAGE = "죄송합니다, 해당 업체 정보를 찾을 수 없습니다."
 
@@ -13,6 +13,8 @@ _SYSTEM_PROMPT_TEMPLATE = """당신은 '{name}'의 Customer AI입니다. 고객�
 지어내지 마세요.
 - 물어본 내용이 [승인된 정보]에 없으면 반드시 "확인되지 않은 정보입니다. 매장에 직접 문의해 \
 주세요."라고 답하세요.
+- [승인된 정보]의 coupons 목록에 지금 받을 수 있는 쿠폰이 있다면, 대화 흐름에 자연스러울 때 \
+먼저 알려주세요. coupons 목록에 없는 할인/이벤트는 있다고 말하지 마세요.
 - 친절하고 간결하게, 한국어로 답변하세요.
 
 [승인된 정보]
@@ -32,6 +34,7 @@ class CustomerAgent(BaseAgent):
     def retrieve(self, context: dict, understood: dict) -> dict:
         business_tool = BusinessSearchTool(self.db)
         menu_tool = MenuSearchTool(self.db)
+        coupon_tool = CouponSearchTool(self.db)
 
         business_id = context["business_id"]
         business_context = business_tool.get_context(business_id)
@@ -39,6 +42,7 @@ class CustomerAgent(BaseAgent):
             return {"business_context": None}
 
         business_context["menus"] = menu_tool.list_menus(business_id)
+        business_context["coupons"] = coupon_tool.list_claimable(business_id)
         return {"business_context": business_context}
 
     def execute(self, context: dict, understood: dict, decided: dict) -> str:

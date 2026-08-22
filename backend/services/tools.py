@@ -3,11 +3,29 @@ so what data an agent *can* see is defined in one place, not scattered across
 prompts. Each tool returns plain dicts (already JSON-safe) ready to drop into an
 LLM prompt."""
 
+from datetime import datetime, timezone
 from uuid import UUID
 
 from sqlalchemy.orm import Session
 
-from models import Business, BusinessStatus, Menu
+from models import Business, BusinessStatus, Coupon, CouponStatus, Menu
+
+
+def is_coupon_currently_claimable(coupon: Coupon) -> bool:
+    """Shared by CouponSearchTool (what the AI may mention) and the coupon
+    router's /issue endpoint (what a visitor may actually claim) - one
+    definition of "live" so an agent can never advertise a coupon that issuing
+    would then reject."""
+    if coupon.status != CouponStatus.ACTIVE:
+        return False
+    now = datetime.now(timezone.utc)
+    if coupon.start_at is not None and coupon.start_at.replace(tzinfo=timezone.utc) > now:
+        return False
+    if coupon.end_at is not None and coupon.end_at.replace(tzinfo=timezone.utc) < now:
+        return False
+    if coupon.usage_limit is not None and len(coupon.issues) >= coupon.usage_limit:
+        return False
+    return True
 
 
 class BusinessSearchTool:
@@ -88,4 +106,28 @@ class MenuSearchTool:
                 "allergy_info": m.allergy_info,
             }
             for m in menus
+        ]
+
+
+class CouponSearchTool:
+    """Master plan §15/§18 - lets Customer/Info AI mention a real, currently
+    claimable coupon (never a DRAFT/EXPIRED/exhausted one) so a chat can turn
+    into the DIRECT-attribution path: AI 추천 -> 쿠폰 -> 결제."""
+
+    def __init__(self, db: Session) -> None:
+        self.db = db
+
+    def list_claimable(self, business_id: UUID) -> list[dict]:
+        coupons = self.db.query(Coupon).filter(Coupon.business_id == business_id).all()
+        return [
+            {
+                "id": str(c.id),
+                "title": c.title,
+                "description": c.description,
+                "discount_type": c.discount_type.value,
+                "discount_value": str(c.discount_value),
+                "conditions": c.conditions,
+            }
+            for c in coupons
+            if is_coupon_currently_claimable(c)
         ]

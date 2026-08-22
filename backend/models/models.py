@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import Enum, ForeignKey, Numeric, String, func
+from sqlalchemy import Enum, ForeignKey, Integer, Numeric, String, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -28,6 +28,23 @@ class BusinessCategory(str, enum.Enum):
     CAFE = "CAFE"
     LODGING = "LODGING"
     EXPERIENCE = "EXPERIENCE"
+
+
+class CouponStatus(str, enum.Enum):
+    DRAFT = "DRAFT"
+    ACTIVE = "ACTIVE"
+    EXPIRED = "EXPIRED"
+    DISABLED = "DISABLED"
+
+
+class CouponDiscountType(str, enum.Enum):
+    PERCENTAGE = "PERCENTAGE"
+    FIXED_AMOUNT = "FIXED_AMOUNT"
+
+
+class CouponIssueStatus(str, enum.Enum):
+    ISSUED = "ISSUED"
+    REDEEMED = "REDEEMED"
 
 
 def _uuid_pk() -> Mapped[uuid.UUID]:
@@ -85,6 +102,7 @@ class Business(Base):
         back_populates="business", uselist=False, cascade="all, delete-orphan"
     )
     menus: Mapped[list["Menu"]] = relationship(back_populates="business", cascade="all, delete-orphan")
+    coupons: Mapped[list["Coupon"]] = relationship(back_populates="business", cascade="all, delete-orphan")
 
 
 class BusinessProfile(Base):
@@ -141,3 +159,59 @@ class Menu(Base):
     )
 
     business: Mapped["Business"] = relationship(back_populates="menus")
+
+
+class Coupon(Base):
+    """Master plan §15 - the first mechanism that turns an AI recommendation into
+    a checkable real-world action. §18 attribution's DIRECT case starts here:
+    AI 추천 -> 쿠폰 -> 결제. usage_limit=None means unlimited."""
+
+    __tablename__ = "coupons"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    business_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("businesses.id"), nullable=False, index=True)
+
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    discount_type: Mapped[CouponDiscountType] = mapped_column(
+        Enum(CouponDiscountType, name="coupon_discount_type"), nullable=False
+    )
+    discount_value: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    start_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    end_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    conditions: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    usage_limit: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    status: Mapped[CouponStatus] = mapped_column(
+        Enum(CouponStatus, name="coupon_status"), nullable=False, default=CouponStatus.DRAFT
+    )
+
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+    business: Mapped["Business"] = relationship(back_populates="coupons")
+    issues: Mapped[list["CouponIssue"]] = relationship(back_populates="coupon", cascade="all, delete-orphan")
+
+
+class CouponIssue(Base):
+    """One visitor's claim of a coupon, identified by a short redemption `code`
+    (shown to staff at the business, no visitor account needed). issued_at ~
+    COUPON_ISSUED and redeemed_at ~ COUPON_REDEEMED (§17) - a full generic event
+    log is STEP14 (Performance Engine); this is the minimum real signal until
+    then."""
+
+    __tablename__ = "coupon_issues"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    coupon_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("coupons.id"), nullable=False, index=True)
+    code: Mapped[str] = mapped_column(String(12), unique=True, index=True, nullable=False)
+    status: Mapped[CouponIssueStatus] = mapped_column(
+        Enum(CouponIssueStatus, name="coupon_issue_status"),
+        nullable=False,
+        default=CouponIssueStatus.ISSUED,
+    )
+    issued_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
+    redeemed_at: Mapped[datetime | None] = mapped_column(nullable=True)
+
+    coupon: Mapped["Coupon"] = relationship(back_populates="issues")

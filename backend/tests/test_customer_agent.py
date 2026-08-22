@@ -1,6 +1,16 @@
 import uuid
 
-from models import Business, BusinessCategory, BusinessProfile, Menu, User, UserRole
+from models import (
+    Business,
+    BusinessCategory,
+    BusinessProfile,
+    Coupon,
+    CouponDiscountType,
+    CouponStatus,
+    Menu,
+    User,
+    UserRole,
+)
 from services.agents.customer import CustomerAgent, _NOT_FOUND_MESSAGE
 from services.llm.fake_provider import FakeLLMProvider
 
@@ -71,3 +81,34 @@ def test_customer_agent_returns_not_found_without_calling_llm_when_business_miss
 
     assert reply == _NOT_FOUND_MESSAGE
     assert llm.calls == []
+
+
+def test_customer_agent_includes_only_currently_claimable_coupons(db_session):
+    business = _make_business(db_session)
+    db_session.add(
+        Coupon(
+            business_id=business.id,
+            title="활성 20% 할인",
+            discount_type=CouponDiscountType.PERCENTAGE,
+            discount_value="20",
+            status=CouponStatus.ACTIVE,
+        )
+    )
+    db_session.add(
+        Coupon(
+            business_id=business.id,
+            title="초안 쿠폰",
+            discount_type=CouponDiscountType.PERCENTAGE,
+            discount_value="50",
+            status=CouponStatus.DRAFT,
+        )
+    )
+    db_session.flush()
+
+    llm = FakeLLMProvider()
+    agent = CustomerAgent(db=db_session, llm=llm)
+    agent.respond({"business_id": business.id}, "할인 쿠폰 있어요?")
+
+    system_prompt = llm.calls[0]["system_prompt"]
+    assert "활성 20% 할인" in system_prompt
+    assert "초안 쿠폰" not in system_prompt
