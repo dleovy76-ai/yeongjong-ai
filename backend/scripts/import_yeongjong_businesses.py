@@ -135,6 +135,8 @@ def main() -> None:
                     address=store.address,
                     data_source=DATA_SOURCE,
                     external_id=store.external_id,
+                    lon=store.lon,
+                    lat=store.lat,
                 )
             )
         db.commit()

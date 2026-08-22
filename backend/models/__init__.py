@@ -5,6 +5,7 @@ from .models import (  # noqa: F401
     Business,
     BusinessCategory,
     BusinessProfile,
+    BusinessRelationship,
     BusinessStatus,
     Coupon,
     CouponDiscountType,
@@ -12,6 +13,7 @@ from .models import (  # noqa: F401
     CouponIssueStatus,
     CouponStatus,
     Menu,
+    PartnerRelationshipStatus,
     User,
     UserRole,
 )

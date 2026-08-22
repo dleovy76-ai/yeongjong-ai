@@ -7,6 +7,7 @@ from routers.ai import router as ai_router
 from routers.auth import router as auth_router
 from routers.businesses import router as businesses_router
 from routers.coupons import router as coupons_router
+from routers.expansion import router as expansion_router
 from routers.performance import router as performance_router
 from routers.recommendations import router as recommendations_router
 
@@ -25,6 +26,7 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(businesses_router)
 app.include_router(coupons_router)
+app.include_router(expansion_router)
 app.include_router(performance_router)
 app.include_router(ai_router)
 app.include_router(recommendations_router)

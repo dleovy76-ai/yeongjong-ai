@@ -224,6 +224,21 @@ export const api = {
 
   getPerformance: (token: string, businessId: string) =>
     request<Performance>(`/api/v1/businesses/${businessId}/performance`, { token }),
+
+  analyzeExpansion: (token: string, businessId: string) =>
+    request<PartnerSuggestion[]>(`/api/v1/businesses/${businessId}/expansion/analyze`, {
+      method: "POST",
+      token,
+    }),
+
+  listExpansion: (token: string, businessId: string) =>
+    request<PartnerSuggestion[]>(`/api/v1/businesses/${businessId}/expansion`, { token }),
+
+  inviteExpansionPartner: (token: string, businessId: string, partnerBusinessId: string) =>
+    request<PartnerSuggestion>(`/api/v1/businesses/${businessId}/expansion/${partnerBusinessId}/invite`, {
+      method: "POST",
+      token,
+    }),
 };
 
 export interface ChatResponse {
@@ -238,4 +253,16 @@ export interface Performance {
   coupons_redeemed: number;
   estimated_time_saved_minutes: number;
   estimated_time_saved_note: string;
+}
+
+export type PartnerRelationshipStatus = "SUGGESTED" | "INVITED" | "ACCEPTED" | "REJECTED";
+
+export interface PartnerSuggestion {
+  business_b_id: string;
+  name_ko: string;
+  category: BusinessCategory;
+  is_claimed: boolean;
+  score: number;
+  reason: string;
+  status: PartnerRelationshipStatus;
 }

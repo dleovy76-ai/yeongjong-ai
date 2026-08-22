@@ -21,7 +21,7 @@ class GeminiProvider(LLMProvider):
         if not self.api_key:
             raise GeminiConfigurationError("GEMINI_API_KEY가 설정되지 않았습니다.")
 
-    def generate(self, *, system_prompt: str, user_message: str) -> str:
+    def generate(self, *, system_prompt: str, user_message: str, max_output_tokens: int = 1024) -> str:
         # Key goes in a header, not the ?key= query string - httpx (and any proxy/log
         # in between) logs the request URL at INFO level, which would otherwise leak
         # the key into logs (confirmed live: it showed up in this app's own dev log).
@@ -29,7 +29,7 @@ class GeminiProvider(LLMProvider):
         payload = {
             "contents": [{"parts": [{"text": user_message}]}],
             "systemInstruction": {"parts": [{"text": system_prompt}]},
-            "generationConfig": {"temperature": 0.3, "maxOutputTokens": 1024},
+            "generationConfig": {"temperature": 0.3, "maxOutputTokens": max_output_tokens},
         }
 
         with httpx.Client(timeout=_TIMEOUT_SECONDS) as client:

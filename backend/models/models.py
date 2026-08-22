@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import Enum, ForeignKey, Integer, Numeric, String, func
+from sqlalchemy import Enum, ForeignKey, Integer, Numeric, String, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -45,6 +45,13 @@ class CouponDiscountType(str, enum.Enum):
 class CouponIssueStatus(str, enum.Enum):
     ISSUED = "ISSUED"
     REDEEMED = "REDEEMED"
+
+
+class PartnerRelationshipStatus(str, enum.Enum):
+    SUGGESTED = "SUGGESTED"
+    INVITED = "INVITED"
+    ACCEPTED = "ACCEPTED"
+    REJECTED = "REJECTED"
 
 
 def _uuid_pk() -> Mapped[uuid.UUID]:
@@ -101,6 +108,8 @@ class Business(Base):
 
     data_source: Mapped[str | None] = mapped_column(String(100), nullable=True)
     external_id: Mapped[str | None] = mapped_column(String(100), unique=True, nullable=True)
+    lon: Mapped[float | None] = mapped_column(nullable=True)
+    lat: Mapped[float | None] = mapped_column(nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
@@ -243,3 +252,31 @@ class AiInteraction(Base):
     )
     agent_type: Mapped[str] = mapped_column(String(50), nullable=False)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False, index=True)
+
+
+class BusinessRelationship(Base):
+    """Master plan §21 Partner Graph / §20-23 Expansion AI - a suggested (or
+    later, invited/accepted/rejected) connection from one business to another
+    complementary one. `score` and `reason` are Expansion AI's output, always
+    grounded in real businesses already in the DB (registered or still-
+    unclaimed import rows) - never an invented business (§29). One directed
+    edge per (business_a, business_b): business_a is the business that would
+    be doing the inviting."""
+
+    __tablename__ = "business_relationships"
+    __table_args__ = (UniqueConstraint("business_a_id", "business_b_id", name="uq_business_relationship_pair"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    business_a_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("businesses.id"), nullable=False, index=True)
+    business_b_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("businesses.id"), nullable=False, index=True)
+    score: Mapped[int] = mapped_column(Integer, nullable=False)
+    reason: Mapped[str] = mapped_column(String(500), nullable=False)
+    status: Mapped[PartnerRelationshipStatus] = mapped_column(
+        Enum(PartnerRelationshipStatus, name="partner_relationship_status"),
+        nullable=False,
+        default=PartnerRelationshipStatus.SUGGESTED,
+    )
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
+
+    business_a: Mapped["Business"] = relationship(foreign_keys=[business_a_id])
+    business_b: Mapped["Business"] = relationship(foreign_keys=[business_b_id])
