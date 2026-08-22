@@ -62,6 +62,16 @@ def list_businesses(
     return [BusinessResponse.model_validate(b) for b in query.order_by(Business.created_at.desc()).all()]
 
 
+@router.get("/me", response_model=list[BusinessResponse])
+def list_my_businesses(
+    current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
+) -> list[BusinessResponse]:
+    """All businesses the current user owns, regardless of status - unlike the public
+    list endpoint (ACTIVE only), owners need to see their own DRAFT businesses too."""
+    query = db.query(Business).filter(Business.owner_user_id == current_user.id)
+    return [BusinessResponse.model_validate(b) for b in query.order_by(Business.created_at.desc()).all()]
+
+
 @router.get("/{business_id}", response_model=BusinessResponse)
 def get_business(business_id: UUID, db: Session = Depends(get_db)) -> BusinessResponse:
     return BusinessResponse.model_validate(_get_business_or_404(db, business_id))

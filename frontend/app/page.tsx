@@ -1,6 +1,8 @@
+import Link from "next/link";
+
 export default function Home() {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center gap-6 px-6 text-center">
+    <main className="flex min-h-[80vh] flex-col items-center justify-center gap-6 px-6 text-center">
       <h1 className="text-3xl font-bold sm:text-4xl">
         사장님은 장사하세요.
         <br />
@@ -11,11 +13,11 @@ export default function Home() {
         성과까지 알려드립니다.
       </p>
       <div className="flex flex-col gap-3 sm:flex-row">
-        <button className="rounded-md bg-black px-6 py-3 text-white">
+        <Link href="/register" className="rounded-md bg-black px-6 py-3 text-white">
           우리 가게 AI 무료로 만들기
-        </button>
-        <button className="rounded-md border border-black px-6 py-3">
-          영종도에서 뭐 할까?
+        </Link>
+        <button className="rounded-md border border-black px-6 py-3" disabled>
+          영종도에서 뭐 할까? (준비 중)
         </button>
       </div>
     </main>

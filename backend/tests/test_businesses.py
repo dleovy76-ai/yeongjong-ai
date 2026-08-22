@@ -101,6 +101,26 @@ def test_list_businesses_rejects_invalid_category(client):
     assert response.status_code == 422
 
 
+def test_list_my_businesses_includes_draft_and_excludes_others(client):
+    headers = _register(client, "owner-mine@example.com")
+    mine = _create_business(client, headers, name_ko="내 가게")
+
+    other_headers = _register(client, "owner-other@example.com")
+    _create_business(client, other_headers, name_ko="남의 가게")
+
+    response = client.get("/api/v1/businesses/me", headers=headers)
+    assert response.status_code == 200
+    body = response.json()
+    assert [b["name_ko"] for b in body] == ["내 가게"]
+    assert body[0]["status"] == "DRAFT"
+    assert mine["id"] == body[0]["id"]
+
+
+def test_list_my_businesses_requires_auth(client):
+    response = client.get("/api/v1/businesses/me")
+    assert response.status_code == 401
+
+
 def test_menu_crud(client):
     headers = _register(client, "owner7@example.com")
     business = _create_business(client, headers)
