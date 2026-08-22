@@ -28,6 +28,8 @@ class Settings(BaseSettings):
     gemini_model: str = "gemini-flash-latest"
     anthropic_api_key: str = ""
 
+    data_go_kr_api_key: str = ""
+
     frontend_origin: str = "http://localhost:3000"
 
     @property
