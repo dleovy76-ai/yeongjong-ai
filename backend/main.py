@@ -11,6 +11,7 @@ from routers.expansion import router as expansion_router
 from routers.manager import router as manager_router
 from routers.performance import router as performance_router
 from routers.recommendations import router as recommendations_router
+from routers.reservations import router as reservations_router
 
 configure_logging()
 
@@ -32,6 +33,7 @@ app.include_router(manager_router)
 app.include_router(performance_router)
 app.include_router(ai_router)
 app.include_router(recommendations_router)
+app.include_router(reservations_router)
 
 
 @app.get("/health")

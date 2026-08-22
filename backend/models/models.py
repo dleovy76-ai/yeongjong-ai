@@ -47,6 +47,14 @@ class CouponIssueStatus(str, enum.Enum):
     REDEEMED = "REDEEMED"
 
 
+class ReservationStatus(str, enum.Enum):
+    REQUESTED = "REQUESTED"
+    CONFIRMED = "CONFIRMED"
+    CANCELLED = "CANCELLED"
+    COMPLETED = "COMPLETED"
+    NO_SHOW = "NO_SHOW"
+
+
 class PartnerRelationshipStatus(str, enum.Enum):
     SUGGESTED = "SUGGESTED"
     INVITED = "INVITED"
@@ -122,6 +130,9 @@ class Business(Base):
     )
     menus: Mapped[list["Menu"]] = relationship(back_populates="business", cascade="all, delete-orphan")
     coupons: Mapped[list["Coupon"]] = relationship(back_populates="business", cascade="all, delete-orphan")
+    reservations: Mapped[list["Reservation"]] = relationship(
+        back_populates="business", cascade="all, delete-orphan"
+    )
 
 
 class BusinessProfile(Base):
@@ -234,6 +245,38 @@ class CouponIssue(Base):
     redeemed_at: Mapped[datetime | None] = mapped_column(nullable=True)
 
     coupon: Mapped["Coupon"] = relationship(back_populates="issues")
+
+
+class Reservation(Base):
+    """Master plan §16 - starts as an internal request/confirm flow (no visitor
+    account needed, same as coupons - just contact info to reach them),
+    external reservation-service integration is future Provider-abstraction
+    work, not built here. customer_name/phone are required because, unlike a
+    coupon code, a reservation is useless to the owner without a way to reach
+    the person to confirm it."""
+
+    __tablename__ = "reservations"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    business_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("businesses.id"), nullable=False, index=True)
+
+    customer_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    customer_phone: Mapped[str] = mapped_column(String(30), nullable=False)
+    reservation_time: Mapped[datetime] = mapped_column(nullable=False)
+    party_size: Mapped[int] = mapped_column(Integer, nullable=False)
+    notes: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    status: Mapped[ReservationStatus] = mapped_column(
+        Enum(ReservationStatus, name="reservation_status"),
+        nullable=False,
+        default=ReservationStatus.REQUESTED,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+    business: Mapped["Business"] = relationship(back_populates="reservations")
 
 
 class AiInteraction(Base):

@@ -14,6 +14,8 @@ from .models import (  # noqa: F401
     CouponStatus,
     Menu,
     PartnerRelationshipStatus,
+    Reservation,
+    ReservationStatus,
     User,
     UserRole,
 )

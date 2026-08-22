@@ -133,6 +133,20 @@ export interface CouponIssue {
   redeemed_at: string | null;
 }
 
+export type ReservationStatus = "REQUESTED" | "CONFIRMED" | "CANCELLED" | "COMPLETED" | "NO_SHOW";
+
+export interface Reservation {
+  id: string;
+  business_id: string;
+  customer_name: string;
+  customer_phone: string;
+  reservation_time: string;
+  party_size: number;
+  notes: string | null;
+  status: ReservationStatus;
+  created_at: string;
+}
+
 export const api = {
   register: (body: { email: string; password: string; name: string; role: UserRole }) =>
     request<TokenResponse>("/api/v1/auth/register", { method: "POST", body }),
@@ -219,6 +233,27 @@ export const api = {
     request<CouponIssue>(`/api/v1/businesses/${businessId}/coupons/redeem`, {
       method: "POST",
       body: { code },
+      token,
+    }),
+
+  createReservation: (
+    businessId: string,
+    body: {
+      customer_name: string;
+      customer_phone: string;
+      reservation_time: string;
+      party_size: number;
+      notes?: string;
+    }
+  ) => request<Reservation>(`/api/v1/businesses/${businessId}/reservations`, { method: "POST", body }),
+
+  listReservations: (token: string, businessId: string) =>
+    request<Reservation[]>(`/api/v1/businesses/${businessId}/reservations`, { token }),
+
+  updateReservationStatus: (token: string, businessId: string, reservationId: string, status: ReservationStatus) =>
+    request<Reservation>(`/api/v1/businesses/${businessId}/reservations/${reservationId}`, {
+      method: "PATCH",
+      body: { status },
       token,
     }),
 

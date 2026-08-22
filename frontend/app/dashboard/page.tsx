@@ -99,6 +99,9 @@ export default function DashboardPage() {
                 <Link href={`/businesses/${business.id}/coupons`} className="underline">
                   쿠폰 관리
                 </Link>
+                <Link href={`/businesses/${business.id}/reservations`} className="underline">
+                  예약 관리
+                </Link>
                 <Link href={`/businesses/${business.id}/performance`} className="underline">
                   성과 보기
                 </Link>

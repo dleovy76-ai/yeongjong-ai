@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useParams } from "next/navigation";
 import { ChatWidget } from "@/components/ChatWidget";
 import { api, ApiError, CATEGORY_LABELS, type Business, type BusinessProfile, type Coupon, type Menu } from "@/lib/api";
@@ -20,6 +20,15 @@ export default function BusinessDetailPage() {
   const [claimedCodes, setClaimedCodes] = useState<Record<string, string>>({});
   const [claimErrors, setClaimErrors] = useState<Record<string, string>>({});
   const [notFound, setNotFound] = useState(false);
+
+  const [resvName, setResvName] = useState("");
+  const [resvPhone, setResvPhone] = useState("");
+  const [resvTime, setResvTime] = useState("");
+  const [resvPartySize, setResvPartySize] = useState("2");
+  const [resvNotes, setResvNotes] = useState("");
+  const [resvSubmitting, setResvSubmitting] = useState(false);
+  const [resvError, setResvError] = useState<string | null>(null);
+  const [resvDone, setResvDone] = useState(false);
 
   useEffect(() => {
     Promise.all([api.getBusiness(id), api.listMenus(id)])
@@ -41,6 +50,32 @@ export default function BusinessDetailPage() {
         ...prev,
         [couponId]: err instanceof ApiError ? err.message : "쿠폰을 받지 못했습니다.",
       }));
+    }
+  };
+
+  const onReserve = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!resvTime) return;
+    setResvError(null);
+    setResvSubmitting(true);
+    try {
+      await api.createReservation(id, {
+        customer_name: resvName,
+        customer_phone: resvPhone,
+        reservation_time: new Date(resvTime).toISOString(),
+        party_size: Number(resvPartySize),
+        notes: resvNotes || undefined,
+      });
+      setResvDone(true);
+      setResvName("");
+      setResvPhone("");
+      setResvTime("");
+      setResvPartySize("2");
+      setResvNotes("");
+    } catch (err) {
+      setResvError(err instanceof ApiError ? err.message : "예약 요청 중 오류가 발생했습니다.");
+    } finally {
+      setResvSubmitting(false);
     }
   };
 
@@ -135,6 +170,77 @@ export default function BusinessDetailPage() {
           </ul>
         </div>
       )}
+
+      <div className="mb-8">
+        <h2 className="mb-2 font-semibold">예약 요청</h2>
+        {resvDone ? (
+          <p className="rounded-md border border-gray-200 p-3 text-sm text-green-700">
+            예약 요청이 접수되었어요. 업체에서 확인 후 확정 연락을 드려요.
+          </p>
+        ) : (
+          <form onSubmit={onReserve} className="flex flex-col gap-3 text-sm">
+            <label className="flex flex-col gap-1">
+              이름 *
+              <input
+                className="rounded-md border border-gray-300 px-3 py-2"
+                value={resvName}
+                onChange={(e) => setResvName(e.target.value)}
+                required
+              />
+            </label>
+            <label className="flex flex-col gap-1">
+              연락처 *
+              <input
+                className="rounded-md border border-gray-300 px-3 py-2"
+                placeholder="010-1234-5678"
+                value={resvPhone}
+                onChange={(e) => setResvPhone(e.target.value)}
+                required
+              />
+            </label>
+            <div className="flex gap-2">
+              <label className="flex flex-1 flex-col gap-1">
+                날짜 및 시간 *
+                <input
+                  type="datetime-local"
+                  className="rounded-md border border-gray-300 px-3 py-2"
+                  value={resvTime}
+                  onChange={(e) => setResvTime(e.target.value)}
+                  required
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                인원 *
+                <input
+                  type="number"
+                  min="1"
+                  className="w-20 rounded-md border border-gray-300 px-3 py-2"
+                  value={resvPartySize}
+                  onChange={(e) => setResvPartySize(e.target.value)}
+                  required
+                />
+              </label>
+            </div>
+            <label className="flex flex-col gap-1">
+              요청사항 (선택)
+              <input
+                className="rounded-md border border-gray-300 px-3 py-2"
+                placeholder="예: 창가 자리 부탁드려요"
+                value={resvNotes}
+                onChange={(e) => setResvNotes(e.target.value)}
+              />
+            </label>
+            {resvError && <p className="text-red-600">{resvError}</p>}
+            <button
+              type="submit"
+              disabled={resvSubmitting}
+              className="rounded-md bg-black px-4 py-2 text-white disabled:opacity-50"
+            >
+              {resvSubmitting ? "요청 중..." : "예약 요청하기"}
+            </button>
+          </form>
+        )}
+      </div>
 
       <h2 className="mb-2 font-semibold">AI에게 물어보세요</h2>
       <ChatWidget
