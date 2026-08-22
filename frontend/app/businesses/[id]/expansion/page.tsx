@@ -21,6 +21,8 @@ export default function ExpansionPage() {
   const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [invitingId, setInvitingId] = useState<string | null>(null);
+  const [messagingId, setMessagingId] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && !token) router.push("/login");
@@ -33,6 +35,10 @@ export default function ExpansionPage() {
       .then(setSuggestions)
       .catch(() => setSuggestions([]));
   }, [id, token]);
+
+  const updateSuggestion = (updated: PartnerSuggestion) => {
+    setSuggestions((prev) => prev?.map((s) => (s.business_b_id === updated.business_b_id ? updated : s)) ?? null);
+  };
 
   const onAnalyze = async () => {
     if (!token) return;
@@ -51,12 +57,33 @@ export default function ExpansionPage() {
     if (!token) return;
     setInvitingId(partnerId);
     try {
-      const updated = await api.inviteExpansionPartner(token, id, partnerId);
-      setSuggestions((prev) => prev?.map((s) => (s.business_b_id === partnerId ? updated : s)) ?? null);
+      updateSuggestion(await api.inviteExpansionPartner(token, id, partnerId));
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "제휴 제안 처리 중 오류가 발생했습니다.");
     } finally {
       setInvitingId(null);
+    }
+  };
+
+  const onGenerateMessage = async (partnerId: string) => {
+    if (!token) return;
+    setMessagingId(partnerId);
+    try {
+      updateSuggestion(await api.generateExpansionMessage(token, id, partnerId));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "메시지 생성 중 오류가 발생했습니다.");
+    } finally {
+      setMessagingId(null);
+    }
+  };
+
+  const onCopy = async (partnerId: string, message: string) => {
+    try {
+      await navigator.clipboard.writeText(message);
+      setCopiedId(partnerId);
+      setTimeout(() => setCopiedId((prev) => (prev === partnerId ? null : prev)), 2000);
+    } catch {
+      // clipboard API unavailable - the text is still visible to select/copy manually
     }
   };
 
@@ -111,6 +138,35 @@ export default function ExpansionPage() {
                   </button>
                 )}
               </div>
+
+              {s.invite_message ? (
+                <div className="mt-3 rounded-md bg-gray-50 p-3">
+                  <p className="whitespace-pre-wrap text-gray-700">{s.invite_message}</p>
+                  <div className="mt-2 flex gap-3">
+                    <button
+                      onClick={() => onCopy(s.business_b_id, s.invite_message!)}
+                      className="text-xs underline"
+                    >
+                      {copiedId === s.business_b_id ? "복사됨!" : "복사하기"}
+                    </button>
+                    <button
+                      onClick={() => onGenerateMessage(s.business_b_id)}
+                      disabled={messagingId === s.business_b_id}
+                      className="text-xs underline disabled:opacity-50"
+                    >
+                      다시 만들기
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => onGenerateMessage(s.business_b_id)}
+                  disabled={messagingId === s.business_b_id}
+                  className="mt-3 text-xs underline disabled:opacity-50"
+                >
+                  {messagingId === s.business_b_id ? "메시지 만드는 중..." : "제안 메시지 만들기"}
+                </button>
+              )}
             </li>
           ))}
         </ul>

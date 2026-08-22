@@ -109,3 +109,56 @@ def test_analyze_handles_malformed_llm_json_gracefully(client, monkeypatch):
     response = client.post(f"/api/v1/businesses/{target['id']}/expansion/analyze", headers=headers)
     assert response.status_code == 200
     assert response.json() == []
+
+
+def test_generate_message_requires_existing_suggestion(client, monkeypatch):
+    headers = _register(client, "expansion-owner7@example.com")
+    target = _create_business(client, headers, "영종식당", "RESTAURANT")
+    cafe = _create_business(client, headers, "영종카페", "CAFE")
+
+    monkeypatch.setattr(ai_common_module, "get_llm_provider", lambda: FakeLLMProvider(response="메시지"))
+    response = client.post(
+        f"/api/v1/businesses/{target['id']}/expansion/{cafe['id']}/message", headers=headers
+    )
+    assert response.status_code == 404
+
+
+def test_generate_message_persists_and_returns_text(client, monkeypatch):
+    headers = _register(client, "expansion-owner8@example.com")
+    target = _create_business(client, headers, "영종식당", "RESTAURANT")
+    cafe = _create_business(client, headers, "영종카페", "CAFE")
+
+    reply = json.dumps([{"business_id": cafe["id"], "score": 70, "reason": "테스트"}])
+    monkeypatch.setattr(ai_common_module, "get_llm_provider", lambda: FakeLLMProvider(response=reply))
+    client.post(f"/api/v1/businesses/{target['id']}/expansion/analyze", headers=headers)
+
+    monkeypatch.setattr(
+        ai_common_module,
+        "get_llm_provider",
+        lambda: FakeLLMProvider(response="영종카페 사장님 안녕하세요, 영종식당입니다."),
+    )
+    response = client.post(
+        f"/api/v1/businesses/{target['id']}/expansion/{cafe['id']}/message", headers=headers
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["invite_message"] == "영종카페 사장님 안녕하세요, 영종식당입니다."
+
+    listed = client.get(f"/api/v1/businesses/{target['id']}/expansion", headers=headers)
+    assert listed.json()[0]["invite_message"] == "영종카페 사장님 안녕하세요, 영종식당입니다."
+
+
+def test_generate_message_requires_owner(client, monkeypatch):
+    headers = _register(client, "expansion-owner9@example.com")
+    target = _create_business(client, headers, "영종식당", "RESTAURANT")
+    cafe = _create_business(client, headers, "영종카페", "CAFE")
+
+    reply = json.dumps([{"business_id": cafe["id"], "score": 70, "reason": "테스트"}])
+    monkeypatch.setattr(ai_common_module, "get_llm_provider", lambda: FakeLLMProvider(response=reply))
+    client.post(f"/api/v1/businesses/{target['id']}/expansion/analyze", headers=headers)
+
+    other_headers = _register(client, "expansion-owner10@example.com")
+    response = client.post(
+        f"/api/v1/businesses/{target['id']}/expansion/{cafe['id']}/message", headers=other_headers
+    )
+    assert response.status_code == 403

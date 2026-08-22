@@ -13,6 +13,7 @@ from routers._business_common import get_business_or_404, require_owner
 from routers.auth import get_current_user
 from schemas.expansion import PartnerSuggestionResponse
 from services.agents.expansion import ExpansionAgent
+from services.agents.referral_message import ReferralMessageAgent
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +47,7 @@ def _to_response(relationship: BusinessRelationship, business_b: Business) -> Pa
         score=relationship.score,
         reason=relationship.reason,
         status=relationship.status,
+        invite_message=relationship.invite_message,
     )
 
 
@@ -131,8 +133,9 @@ def mark_invited(
     db: Session = Depends(get_db),
 ) -> PartnerSuggestionResponse:
     """§22 Step 8 (사장님 승인). Marking INVITED here only records the owner's
-    decision - actually sending an invitation message (§25) is future work,
-    not built yet; this is intentionally just the approval step."""
+    decision - actually delivering the message (email/SMS/etc.) is out of
+    scope; the owner sends the generated message (see /message below)
+    themselves through whatever channel they actually have for that business."""
     business = get_business_or_404(db, business_id)
     require_owner(business, current_user)
 
@@ -148,6 +151,43 @@ def mark_invited(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "추천 내역을 찾을 수 없습니다.")
 
     relationship.status = PartnerRelationshipStatus.INVITED
+    db.commit()
+    db.refresh(relationship)
+    return _to_response(relationship, relationship.business_b)
+
+
+@router.post("/{relationship_business_id}/message", response_model=PartnerSuggestionResponse)
+def generate_invite_message(
+    business_id: UUID,
+    relationship_business_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> PartnerSuggestionResponse:
+    """§25 Referral Message Generator - drafts a message the owner can copy and
+    send themselves (no auto-send: §25 explicitly says the owner approves
+    before anything goes out, and there's no delivery channel built here at
+    all). Requires an existing suggestion (from /analyze) for this pair."""
+    business = get_business_or_404(db, business_id)
+    require_owner(business, current_user)
+
+    relationship = (
+        db.query(BusinessRelationship)
+        .filter(
+            BusinessRelationship.business_a_id == business_id,
+            BusinessRelationship.business_b_id == relationship_business_id,
+        )
+        .first()
+    )
+    if relationship is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "추천 내역을 찾을 수 없습니다.")
+
+    llm = resolve_llm_provider()
+    agent = ReferralMessageAgent(db=db, llm=llm)
+    message = run_agent(
+        agent, {"business_a_id": business_id, "business_b_id": relationship_business_id}, "메시지 작성"
+    )
+
+    relationship.invite_message = message[:1000]
     db.commit()
     db.refresh(relationship)
     return _to_response(relationship, relationship.business_b)

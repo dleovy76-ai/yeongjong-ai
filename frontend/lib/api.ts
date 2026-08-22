@@ -239,6 +239,12 @@ export const api = {
       method: "POST",
       token,
     }),
+
+  generateExpansionMessage: (token: string, businessId: string, partnerBusinessId: string) =>
+    request<PartnerSuggestion>(`/api/v1/businesses/${businessId}/expansion/${partnerBusinessId}/message`, {
+      method: "POST",
+      token,
+    }),
 };
 
 export interface ChatResponse {
@@ -265,4 +271,5 @@ export interface PartnerSuggestion {
   score: number;
   reason: string;
   status: PartnerRelationshipStatus;
+  invite_message: string | null;
 }

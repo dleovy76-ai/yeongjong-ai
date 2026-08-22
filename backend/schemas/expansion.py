@@ -13,3 +13,4 @@ class PartnerSuggestionResponse(BaseModel):
     score: int
     reason: str
     status: PartnerRelationshipStatus
+    invite_message: str | None = None

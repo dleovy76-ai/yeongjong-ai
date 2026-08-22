@@ -276,6 +276,7 @@ class BusinessRelationship(Base):
         nullable=False,
         default=PartnerRelationshipStatus.SUGGESTED,
     )
+    invite_message: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
 
     business_a: Mapped["Business"] = relationship(foreign_keys=[business_a_id])
