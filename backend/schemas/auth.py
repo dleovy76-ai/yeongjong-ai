@@ -5,6 +5,11 @@ from pydantic import BaseModel, EmailStr, Field
 from models import UserRole
 
 
+#: Roles a person can self-assign at signup. ADMIN and PARTNER_MANAGER are
+#: operator-only roles, granted out-of-band - never accepted from this request.
+SELF_REGISTERABLE_ROLES = (UserRole.CUSTOMER, UserRole.BUSINESS_OWNER)
+
+
 class RegisterRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)

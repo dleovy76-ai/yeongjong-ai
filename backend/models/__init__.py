@@ -5,6 +5,7 @@ from .models import (  # noqa: F401
     BusinessCategory,
     BusinessProfile,
     BusinessStatus,
+    Menu,
     User,
     UserRole,
 )

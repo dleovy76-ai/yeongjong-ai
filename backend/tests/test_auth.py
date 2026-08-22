@@ -49,3 +49,30 @@ def test_me_without_token_rejected(client):
 def test_me_with_garbage_token_rejected(client):
     response = client.get("/api/v1/auth/me", headers={"Authorization": "Bearer not-a-real-token"})
     assert response.status_code == 401
+
+
+def test_cannot_self_register_as_admin(client):
+    response = client.post(
+        "/api/v1/auth/register",
+        json={
+            "email": "wannabe-admin@example.com",
+            "password": "password123",
+            "name": "관리자희망",
+            "role": "ADMIN",
+        },
+    )
+    assert response.status_code == 403
+
+
+def test_can_self_register_as_business_owner(client):
+    response = client.post(
+        "/api/v1/auth/register",
+        json={
+            "email": "owner-signup@example.com",
+            "password": "password123",
+            "name": "사장님",
+            "role": "BUSINESS_OWNER",
+        },
+    )
+    assert response.status_code == 201
+    assert response.json()["user"]["role"] == "BUSINESS_OWNER"

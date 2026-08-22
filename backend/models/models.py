@@ -1,8 +1,9 @@
 import enum
 import uuid
 from datetime import datetime
+from decimal import Decimal
 
-from sqlalchemy import Enum, ForeignKey, String, func
+from sqlalchemy import Enum, ForeignKey, Numeric, String, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -83,6 +84,7 @@ class Business(Base):
     profile: Mapped["BusinessProfile | None"] = relationship(
         back_populates="business", uselist=False, cascade="all, delete-orphan"
     )
+    menus: Mapped[list["Menu"]] = relationship(back_populates="business", cascade="all, delete-orphan")
 
 
 class BusinessProfile(Base):
@@ -114,3 +116,28 @@ class BusinessProfile(Base):
     )
 
     business: Mapped["Business"] = relationship(back_populates="profile")
+
+
+class Menu(Base):
+    """Menu item (master plan §7 Step 2). Chef AI (§11) reads from these directly -
+    price/description here are the only ones it may quote, per the AI safety rule (§29)."""
+
+    __tablename__ = "menus"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    business_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("businesses.id"), nullable=False, index=True)
+
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    is_signature: Mapped[bool] = mapped_column(nullable=False, default=False)
+    allergy_info: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    options: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+    business: Mapped["Business"] = relationship(back_populates="menus")

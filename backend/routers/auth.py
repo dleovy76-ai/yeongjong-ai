@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from core.database import get_db
 from core.security import create_jwt_token, decode_jwt_token, hash_password, verify_password
 from models import User
-from schemas.auth import LoginRequest, RegisterRequest, TokenResponse, UserResponse
+from schemas.auth import SELF_REGISTERABLE_ROLES, LoginRequest, RegisterRequest, TokenResponse, UserResponse
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
@@ -34,6 +34,8 @@ def get_current_user(
 
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
 def register(body: RegisterRequest, db: Session = Depends(get_db)) -> TokenResponse:
+    if body.role not in SELF_REGISTERABLE_ROLES:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "가입 시 선택할 수 없는 권한입니다.")
     if db.query(User).filter(User.email == body.email).first() is not None:
         raise HTTPException(status.HTTP_409_CONFLICT, "이미 가입된 이메일입니다.")
 
