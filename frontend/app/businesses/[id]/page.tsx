@@ -92,7 +92,11 @@ export default function BusinessDetailPage() {
       )}
 
       <h2 className="mb-2 font-semibold">AI에게 물어보세요</h2>
-      <ChatWidget businessId={business.id} />
+      <ChatWidget
+        greeting="안녕하세요! 영업시간, 메뉴, 주차, 반려동물 동반 여부 등 궁금한 걸 물어보세요."
+        placeholder="예: 주차 가능한가요?"
+        onSend={async (message) => (await api.chat(business.id, message)).reply}
+      />
     </main>
   );
 }

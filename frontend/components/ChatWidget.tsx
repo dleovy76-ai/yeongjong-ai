@@ -1,17 +1,21 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { api, ApiError } from "@/lib/api";
+import { ApiError } from "@/lib/api";
 
 interface Message {
   role: "user" | "ai";
   text: string;
 }
 
-export function ChatWidget({ businessId }: { businessId: string }) {
-  const [messages, setMessages] = useState<Message[]>([
-    { role: "ai", text: "안녕하세요! 영업시간, 메뉴, 주차, 반려동물 동반 여부 등 궁금한 걸 물어보세요." },
-  ]);
+interface ChatWidgetProps {
+  greeting: string;
+  placeholder: string;
+  onSend: (message: string) => Promise<string>;
+}
+
+export function ChatWidget({ greeting, placeholder, onSend }: ChatWidgetProps) {
+  const [messages, setMessages] = useState<Message[]>([{ role: "ai", text: greeting }]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
 
@@ -24,7 +28,7 @@ export function ChatWidget({ businessId }: { businessId: string }) {
     setInput("");
     setSending(true);
     try {
-      const { reply } = await api.chat(businessId, question);
+      const reply = await onSend(question);
       setMessages((prev) => [...prev, { role: "ai", text: reply }]);
     } catch (err) {
       const text =
@@ -55,7 +59,7 @@ export function ChatWidget({ businessId }: { businessId: string }) {
       <form onSubmit={onSubmit} className="flex gap-2 border-t border-gray-200 p-3">
         <input
           className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm"
-          placeholder="예: 주차 가능한가요?"
+          placeholder={placeholder}
           value={input}
           onChange={(e) => setInput(e.target.value)}
         />

@@ -35,7 +35,7 @@ def test_customer_agent_grounds_prompt_in_approved_facts(db_session):
     llm = FakeLLMProvider(response="네, 실외석에서는 반려동물과 함께하실 수 있어요.")
     agent = CustomerAgent(db=db_session, llm=llm)
 
-    reply = agent.respond(business.id, "강아지 데려가도 되나요?")
+    reply = agent.respond({"business_id": business.id}, "강아지 데려가도 되나요?")
 
     assert reply == "네, 실외석에서는 반려동물과 함께하실 수 있어요."
     assert len(llm.calls) == 1
@@ -56,7 +56,7 @@ def test_customer_agent_never_invents_facts_the_llm_wasnt_given(db_session):
 
     llm = FakeLLMProvider()
     agent = CustomerAgent(db=db_session, llm=llm)
-    agent.respond(business_a.id, "질문")
+    agent.respond({"business_id": business_a.id}, "질문")
 
     system_prompt = llm.calls[0]["system_prompt"]
     assert "다른가게메뉴" not in system_prompt
@@ -67,7 +67,7 @@ def test_customer_agent_returns_not_found_without_calling_llm_when_business_miss
     llm = FakeLLMProvider()
     agent = CustomerAgent(db=db_session, llm=llm)
 
-    reply = agent.respond(uuid.uuid4(), "아무 질문")
+    reply = agent.respond({"business_id": uuid.uuid4()}, "아무 질문")
 
     assert reply == _NOT_FOUND_MESSAGE
     assert llm.calls == []

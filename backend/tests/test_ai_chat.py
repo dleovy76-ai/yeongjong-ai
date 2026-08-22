@@ -1,6 +1,6 @@
 import uuid
 
-import routers.ai as ai_router_module
+import routers._ai_common as ai_common_module
 from services.llm.fake_provider import FakeLLMProvider
 
 
@@ -28,7 +28,7 @@ def _register_and_create_business(client, email="chatowner@example.com"):
 
 def test_chat_endpoint_uses_business_context(client, monkeypatch):
     fake = FakeLLMProvider(response="실외석에서는 가능해요.")
-    monkeypatch.setattr(ai_router_module, "get_llm_provider", lambda: fake)
+    monkeypatch.setattr(ai_common_module, "get_llm_provider", lambda: fake)
 
     business = _register_and_create_business(client)
     response = client.post(
@@ -44,7 +44,7 @@ def test_chat_endpoint_uses_business_context(client, monkeypatch):
 
 def test_chat_endpoint_unknown_business_returns_not_found_reply(client, monkeypatch):
     fake = FakeLLMProvider()
-    monkeypatch.setattr(ai_router_module, "get_llm_provider", lambda: fake)
+    monkeypatch.setattr(ai_common_module, "get_llm_provider", lambda: fake)
 
     response = client.post(
         "/api/v1/ai/chat", json={"business_id": str(uuid.uuid4()), "message": "질문"}
@@ -61,7 +61,7 @@ def test_chat_endpoint_503_when_llm_not_configured(client, monkeypatch):
     def _raise():
         raise GeminiConfigurationError("no key")
 
-    monkeypatch.setattr(ai_router_module, "get_llm_provider", _raise)
+    monkeypatch.setattr(ai_common_module, "get_llm_provider", _raise)
 
     response = client.post(
         "/api/v1/ai/chat", json={"business_id": str(uuid.uuid4()), "message": "질문"}

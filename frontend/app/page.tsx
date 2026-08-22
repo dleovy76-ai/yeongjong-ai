@@ -16,9 +16,9 @@ export default function Home() {
         <Link href="/register" className="rounded-md bg-black px-6 py-3 text-white">
           우리 가게 AI 무료로 만들기
         </Link>
-        <button className="rounded-md border border-black px-6 py-3" disabled>
-          영종도에서 뭐 할까? (준비 중)
-        </button>
+        <Link href="/discover" className="rounded-md border border-black px-6 py-3">
+          영종도에서 뭐 할까?
+        </Link>
       </div>
     </main>
   );

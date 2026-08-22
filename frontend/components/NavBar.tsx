@@ -12,6 +12,7 @@ export function NavBar() {
         영종 AI
       </Link>
       <nav className="flex items-center gap-4 text-sm">
+        <Link href="/discover">영종도에서 뭐 할까?</Link>
         {loading ? null : user ? (
           <>
             <Link href="/dashboard">내 업체</Link>

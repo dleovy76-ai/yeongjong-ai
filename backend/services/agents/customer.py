@@ -1,5 +1,4 @@
 import json
-from uuid import UUID
 
 from services.agents.base import BaseAgent
 from services.tools import BusinessSearchTool, MenuSearchTool
@@ -23,28 +22,32 @@ _SYSTEM_PROMPT_TEMPLATE = """당신은 '{name}'의 Customer AI입니다. 고객�
 
 class CustomerAgent(BaseAgent):
     """Master plan §10 - answers customer FAQs (hours, menu, parking, pets,
-    reservations...) strictly from the business's approved BusinessContext."""
+    reservations...) strictly from the business's approved BusinessContext.
+
+    context: {"business_id": UUID}
+    """
 
     agent_type = "customer"
 
-    def retrieve(self, business_id: UUID, understood: dict) -> dict:
+    def retrieve(self, context: dict, understood: dict) -> dict:
         business_tool = BusinessSearchTool(self.db)
         menu_tool = MenuSearchTool(self.db)
 
-        context = business_tool.get_context(business_id)
-        if context is None:
-            return {"context": None}
+        business_id = context["business_id"]
+        business_context = business_tool.get_context(business_id)
+        if business_context is None:
+            return {"business_context": None}
 
-        context["menus"] = menu_tool.list_menus(business_id)
-        return {"context": context}
+        business_context["menus"] = menu_tool.list_menus(business_id)
+        return {"business_context": business_context}
 
-    def execute(self, business_id: UUID, understood: dict, decided: dict) -> str:
-        context = decided["context"]
-        if context is None:
+    def execute(self, context: dict, understood: dict, decided: dict) -> str:
+        business_context = decided["business_context"]
+        if business_context is None:
             return _NOT_FOUND_MESSAGE
 
         system_prompt = _SYSTEM_PROMPT_TEMPLATE.format(
-            name=context["name"],
-            context_json=json.dumps(context, ensure_ascii=False, indent=2),
+            name=business_context["name"],
+            context_json=json.dumps(business_context, ensure_ascii=False, indent=2),
         )
         return self.llm.generate(system_prompt=system_prompt, user_message=understood["message"])

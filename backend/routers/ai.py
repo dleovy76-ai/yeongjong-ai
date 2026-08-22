@@ -1,27 +1,17 @@
-import httpx
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from core.database import get_db
-from services.agents.customer import CustomerAgent
-from services.llm import get_llm_provider
-from services.llm.gemini_provider import GeminiConfigurationError
+from routers._ai_common import resolve_llm_provider, run_agent
 from schemas.ai import ChatRequest, ChatResponse
+from services.agents.customer import CustomerAgent
 
 router = APIRouter(prefix="/api/v1/ai", tags=["ai"])
 
 
 @router.post("/chat", response_model=ChatResponse)
 def chat(body: ChatRequest, db: Session = Depends(get_db)) -> ChatResponse:
-    try:
-        llm = get_llm_provider()
-    except GeminiConfigurationError as exc:
-        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "AI 기능이 아직 설정되지 않았습니다.") from exc
-
+    llm = resolve_llm_provider()
     agent = CustomerAgent(db=db, llm=llm)
-    try:
-        reply = agent.respond(body.business_id, body.message)
-    except httpx.HTTPError as exc:
-        raise HTTPException(status.HTTP_502_BAD_GATEWAY, "AI 응답을 받아오지 못했습니다.") from exc
-
+    reply = run_agent(agent, {"business_id": body.business_id}, body.message)
     return ChatResponse(agent_type=agent.agent_type, reply=reply)
