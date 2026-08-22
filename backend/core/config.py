@@ -19,7 +19,7 @@ class Settings(BaseSettings):
 
     redis_url: str = "redis://localhost:6379/0"
 
-    jwt_secret: str = "change-me-in-real-env"
+    jwt_secret: str = "change-me-in-real-env-use-at-least-32-random-bytes"
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 1440
 
