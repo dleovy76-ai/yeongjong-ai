@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { ApiError } from "@/lib/api";
+import { PasswordInput } from "@/components/PasswordInput";
 
 export default function RegisterPage() {
   const { register } = useAuth();
@@ -38,6 +39,8 @@ export default function RegisterPage() {
         <label className="flex flex-col gap-1 text-sm">
           이름
           <input
+            name="name"
+            autoComplete="name"
             className="rounded-md border border-gray-300 px-3 py-2"
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -48,6 +51,8 @@ export default function RegisterPage() {
           이메일
           <input
             type="email"
+            name="email"
+            autoComplete="username"
             className="rounded-md border border-gray-300 px-3 py-2"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -56,14 +61,7 @@ export default function RegisterPage() {
         </label>
         <label className="flex flex-col gap-1 text-sm">
           비밀번호 (8자 이상)
-          <input
-            type="password"
-            minLength={8}
-            className="rounded-md border border-gray-300 px-3 py-2"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
+          <PasswordInput value={password} onChange={setPassword} autoComplete="new-password" minLength={8} required />
         </label>
         {error && <p className="text-sm text-red-600">{error}</p>}
         <button

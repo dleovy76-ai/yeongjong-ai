@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import { ApiError } from "@/lib/api";
+import { PasswordInput } from "@/components/PasswordInput";
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -36,6 +37,8 @@ export default function LoginPage() {
           이메일
           <input
             type="email"
+            name="email"
+            autoComplete="username"
             className="rounded-md border border-gray-300 px-3 py-2"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -44,13 +47,7 @@ export default function LoginPage() {
         </label>
         <label className="flex flex-col gap-1 text-sm">
           비밀번호
-          <input
-            type="password"
-            className="rounded-md border border-gray-300 px-3 py-2"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
+          <PasswordInput value={password} onChange={setPassword} autoComplete="current-password" required />
         </label>
         {error && <p className="text-sm text-red-600">{error}</p>}
         <button
