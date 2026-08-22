@@ -58,6 +58,13 @@ export interface TokenResponse {
 export type BusinessCategory = "RESTAURANT" | "CAFE" | "LODGING" | "EXPERIENCE";
 export type BusinessStatus = "DRAFT" | "ACTIVE" | "DISABLED";
 
+export const CATEGORY_LABELS: Record<BusinessCategory, string> = {
+  RESTAURANT: "음식점",
+  CAFE: "카페",
+  LODGING: "숙박",
+  EXPERIENCE: "체험/관광",
+};
+
 export interface Business {
   id: string;
   owner_user_id: string;
@@ -141,4 +148,12 @@ export const api = {
 
   deleteMenu: (token: string, businessId: string, menuId: string) =>
     request<void>(`/api/v1/businesses/${businessId}/menus/${menuId}`, { method: "DELETE", token }),
+
+  chat: (businessId: string, message: string) =>
+    request<ChatResponse>("/api/v1/ai/chat", { method: "POST", body: { business_id: businessId, message } }),
 };
+
+export interface ChatResponse {
+  agent_type: string;
+  reply: string;
+}

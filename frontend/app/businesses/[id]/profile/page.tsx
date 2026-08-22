@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import { api, ApiError } from "@/lib/api";
 
@@ -143,6 +144,15 @@ export default function BusinessProfilePage() {
           {submitting ? "저장 중..." : "저장하기"}
         </button>
       </form>
+
+      {saved && (
+        <Link
+          href={`/businesses/${id}`}
+          className="mt-6 inline-block rounded-md border border-black px-4 py-2 text-center"
+        >
+          AI 테스트해보기 →
+        </Link>
+      )}
     </main>
   );
 }
