@@ -215,3 +215,21 @@ class CouponIssue(Base):
     redeemed_at: Mapped[datetime | None] = mapped_column(nullable=True)
 
     coupon: Mapped["Coupon"] = relationship(back_populates="issues")
+
+
+class AiInteraction(Base):
+    """One agent response, for the §19 Performance Dashboard's "AI 응대 건수"
+    (and future STEP14 event tracking to build on). Deliberately minimal - not
+    the full ai_sessions/ai_messages/ai_agents schema (§27, real STEP14 scope),
+    just enough to answer "how many times did AI actually respond" honestly
+    instead of leaving that number unmeasured. business_id is nullable because
+    not every agent scopes to one business (Info AI doesn't)."""
+
+    __tablename__ = "ai_interactions"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    business_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("businesses.id"), nullable=True, index=True
+    )
+    agent_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False, index=True)

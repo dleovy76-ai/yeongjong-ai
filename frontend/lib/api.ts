@@ -214,9 +214,21 @@ export const api = {
       body: { code },
       token,
     }),
+
+  getPerformance: (token: string, businessId: string) =>
+    request<Performance>(`/api/v1/businesses/${businessId}/performance`, { token }),
 };
 
 export interface ChatResponse {
   agent_type: string;
   reply: string;
+}
+
+export interface Performance {
+  period: string;
+  ai_response_count: number;
+  coupons_issued: number;
+  coupons_redeemed: number;
+  estimated_time_saved_minutes: number;
+  estimated_time_saved_note: string;
 }

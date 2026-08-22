@@ -11,8 +11,10 @@ subclass documents what keys it reads from context."""
 import logging
 from abc import ABC, abstractmethod
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from models import AiInteraction
 from services.llm.base import LLMProvider
 
 logger = logging.getLogger(__name__)
@@ -58,7 +60,23 @@ class BaseAgent(ABC):
         return reply
 
     def log(self, **fields: object) -> None:
-        """§42 observability groundwork - structured log per AI request. Full
-        ai_sessions/ai_messages persistence lands with STEP14 (Performance
-        Engine); this is the minimum useful before that exists."""
+        """§42 observability groundwork - structured log per AI request, plus a
+        minimal AiInteraction row so §19's "AI 응대 건수" is a real count instead
+        of unmeasured. Full ai_sessions/ai_messages persistence (tokens, cost,
+        prompt_version...) lands with STEP14 (Performance Engine); this is the
+        minimum useful before that exists."""
         logger.info("agent_response agent_type=%s %s", self.agent_type, fields)
+
+        context = fields.get("context")
+        business_id = context.get("business_id") if isinstance(context, dict) else None
+        self.db.add(AiInteraction(business_id=business_id, agent_type=self.agent_type))
+        try:
+            self.db.commit()
+        except IntegrityError:
+            # business_id in context didn't reference a real business (e.g. the
+            # "not found" reply path) - don't let a logging side-effect crash the
+            # actual response. Record it without the business association instead
+            # of dropping the interaction entirely.
+            self.db.rollback()
+            self.db.add(AiInteraction(business_id=None, agent_type=self.agent_type))
+            self.db.commit()
