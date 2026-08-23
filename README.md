@@ -56,4 +56,17 @@ Frontend runs at http://localhost:3000.
 
 ## Project status
 
-Currently at **STEP 1 (repository structure)** of the build order in `CLAUDE.md` / `docs/MASTER_PLAN.md` §51 — bootstrap only, no database schema, auth, or agents yet. See those docs for the full dev order and non-negotiable product rules before adding features.
+Core loop is live locally: onboarding, Manager/Customer/Info/Expansion AI, coupons,
+reservations, performance dashboard, partner graph, admin system, event tracking
+(§14). Remaining from `docs/MASTER_PLAN.md` §51's dev order: Chef AI (low
+priority — Customer AI already answers most menu questions), pilot deploy.
+See `CLAUDE.md` / `docs/MASTER_PLAN.md` for the full dev order and non-negotiable
+product rules before adding features.
+
+## Deployment (Railway)
+
+See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for the full step-by-step. Summary:
+two Railway services (`backend/`, `frontend/`) in one project + a managed
+Postgres plugin. Each service picks up its `Procfile` automatically. Redis is
+declared in dependencies/settings but nothing in the codebase actually uses it
+yet — don't provision a Redis plugin for the pilot.
