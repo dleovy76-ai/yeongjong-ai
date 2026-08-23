@@ -4,7 +4,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
-import { api, ApiError } from "@/lib/api";
+import { api, ApiError, type NaverLookupCandidate } from "@/lib/api";
 
 function textOf(value: Record<string, unknown> | null): string {
   if (!value) return "";
@@ -28,6 +28,12 @@ export default function BusinessProfilePage() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  const [naverPlaceUrl, setNaverPlaceUrl] = useState<string | null>(null);
+  const [naverCandidate, setNaverCandidate] = useState<NaverLookupCandidate | null>(null);
+  const [naverLoading, setNaverLoading] = useState(false);
+  const [naverConnecting, setNaverConnecting] = useState(false);
+  const [naverError, setNaverError] = useState<string | null>(null);
+
   useEffect(() => {
     if (!authLoading && !token) router.push("/login");
   }, [authLoading, token, router]);
@@ -42,9 +48,39 @@ export default function BusinessProfilePage() {
         setPetPolicy(profile.pet_policy ?? "");
         setReservationPolicy(profile.reservation_policy ?? "");
         setPaymentMethods(textOf(profile.payment_methods));
+        setNaverPlaceUrl(profile.naver_place_url);
       })
       .finally(() => setLoaded(true));
   }, [id]);
+
+  const onFindOnNaver = async () => {
+    if (!token) return;
+    setNaverError(null);
+    setNaverCandidate(null);
+    setNaverLoading(true);
+    try {
+      const candidate = await api.naverLookup(token, id);
+      setNaverCandidate(candidate);
+    } catch (err) {
+      setNaverError(err instanceof ApiError ? err.message : "네이버 검색 중 오류가 발생했습니다.");
+    } finally {
+      setNaverLoading(false);
+    }
+  };
+
+  const onConfirmNaverLink = async () => {
+    if (!token || !naverCandidate) return;
+    setNaverConnecting(true);
+    try {
+      await api.updateProfile(token, id, { naver_place_url: naverCandidate.map_url });
+      setNaverPlaceUrl(naverCandidate.map_url);
+      setNaverCandidate(null);
+    } catch (err) {
+      setNaverError(err instanceof ApiError ? err.message : "저장 중 오류가 발생했습니다.");
+    } finally {
+      setNaverConnecting(false);
+    }
+  };
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -144,6 +180,62 @@ export default function BusinessProfilePage() {
           {submitting ? "저장 중..." : "저장하기"}
         </button>
       </form>
+
+      <div className="mt-10 rounded-md border border-gray-200 p-4 text-sm">
+        <h2 className="mb-2 font-semibold">네이버 플레이스 연결</h2>
+        <p className="mb-3 text-gray-600">
+          손님이 리뷰, 사진, 정확한 영업시간을 볼 수 있게 네이버 플레이스 페이지를 연결해요.
+        </p>
+
+        {naverPlaceUrl && !naverCandidate && (
+          <p className="mb-3">
+            연결됨:{" "}
+            <a href={naverPlaceUrl} target="_blank" rel="noreferrer" className="underline">
+              네이버에서 열기
+            </a>
+          </p>
+        )}
+
+        {naverCandidate ? (
+          <div className="rounded-md border border-gray-200 p-3">
+            <p className="font-semibold">{naverCandidate.title}</p>
+            <p className="text-gray-500">{naverCandidate.road_address}</p>
+            <p className="mt-1">
+              {naverCandidate.verified ? (
+                <span className="text-green-700">네이버에서 확인된 업체예요</span>
+              ) : (
+                <span className="text-gray-500">네이버에서 확인되지 않았어요 — 직접 확인해주세요</span>
+              )}
+            </p>
+            <div className="mt-3 flex gap-2">
+              <a
+                href={naverCandidate.map_url}
+                target="_blank"
+                rel="noreferrer"
+                className="rounded-md border border-black px-3 py-1.5"
+              >
+                열어서 확인
+              </a>
+              <button
+                onClick={onConfirmNaverLink}
+                disabled={naverConnecting}
+                className="rounded-md bg-black px-3 py-1.5 text-white disabled:opacity-50"
+              >
+                {naverConnecting ? "연결 중..." : "네, 맞아요 연결하기"}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            onClick={onFindOnNaver}
+            disabled={naverLoading}
+            className="rounded-md border border-black px-3 py-1.5 disabled:opacity-50"
+          >
+            {naverLoading ? "찾는 중..." : naverPlaceUrl ? "다시 찾기" : "AI가 네이버에서 찾아보기"}
+          </button>
+        )}
+        {naverError && <p className="mt-2 text-red-600">{naverError}</p>}
+      </div>
 
       {saved && (
         <Link

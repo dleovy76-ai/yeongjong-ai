@@ -30,6 +30,9 @@ class Settings(BaseSettings):
 
     data_go_kr_api_key: str = ""
 
+    naver_client_id: str = ""
+    naver_client_secret: str = ""
+
     frontend_origin: str = "http://localhost:3000"
 
     @property

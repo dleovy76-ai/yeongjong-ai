@@ -92,6 +92,15 @@ export interface BusinessProfile {
   reservation_policy: string | null;
   payment_methods: Record<string, unknown> | null;
   faq: Record<string, unknown> | null;
+  naver_place_url: string | null;
+}
+
+export interface NaverLookupCandidate {
+  title: string;
+  road_address: string;
+  category: string;
+  map_url: string;
+  verified: boolean;
 }
 
 export interface Menu {
@@ -185,6 +194,9 @@ export const api = {
 
   updateProfile: (token: string, id: string, body: Partial<BusinessProfile>) =>
     request<BusinessProfile>(`/api/v1/businesses/${id}/profile`, { method: "PATCH", body, token }),
+
+  naverLookup: (token: string, id: string) =>
+    request<NaverLookupCandidate>(`/api/v1/businesses/${id}/naver-lookup`, { token }),
 
   listMenus: (id: string) => request<Menu[]>(`/api/v1/businesses/${id}/menus`),
 

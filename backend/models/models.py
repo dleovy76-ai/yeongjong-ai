@@ -158,6 +158,8 @@ class BusinessProfile(Base):
     payment_methods: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     faq: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
+    naver_place_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
         server_default=func.now(), onupdate=func.now(), nullable=False

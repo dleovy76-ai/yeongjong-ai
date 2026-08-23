@@ -53,6 +53,7 @@ class BusinessProfileUpdateRequest(BaseModel):
     reservation_policy: str | None = Field(default=None, max_length=500)
     payment_methods: dict | None = None
     faq: dict | None = None
+    naver_place_url: str | None = Field(default=None, max_length=500)
 
 
 class BusinessProfileResponse(BaseModel):
@@ -67,8 +68,17 @@ class BusinessProfileResponse(BaseModel):
     reservation_policy: str | None
     payment_methods: dict | None
     faq: dict | None
+    naver_place_url: str | None
 
     model_config = {"from_attributes": True}
+
+
+class NaverLookupCandidate(BaseModel):
+    title: str
+    road_address: str
+    category: str
+    map_url: str
+    verified: bool
 
 
 class MenuCreateRequest(BaseModel):

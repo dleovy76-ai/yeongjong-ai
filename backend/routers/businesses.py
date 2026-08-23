@@ -1,5 +1,7 @@
+from urllib.parse import quote
 from uuid import UUID
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -17,7 +19,9 @@ from schemas.businesses import (
     MenuCreateRequest,
     MenuResponse,
     MenuUpdateRequest,
+    NaverLookupCandidate,
 )
+from services.external.naver_local_api import NaverApiConfigurationError, NaverLocalApiClient
 
 router = APIRouter(prefix="/api/v1/businesses", tags=["businesses"])
 
@@ -142,6 +146,53 @@ def update_business_profile(
     db.commit()
     db.refresh(business.profile)
     return BusinessProfileResponse.model_validate(business.profile)
+
+
+def _normalize_address(address: str) -> str:
+    return "".join(address.split())
+
+
+def _map_search_url(title: str, road_address: str) -> str:
+    return f"https://map.naver.com/p/search/{quote(f'{title} {road_address}')}"
+
+
+@router.get("/{business_id}/naver-lookup", response_model=NaverLookupCandidate)
+def naver_lookup(
+    business_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> NaverLookupCandidate:
+    """AI가 사장님 대신 네이버에서 업체를 찾아 지도 링크 후보를 만들어주고,
+    사장님은 열어서 확인만 하면 되는 흐름(§29 - 링크를 스크래핑/추측하지 않고,
+    네이버 지역검색 API로 실제 존재를 확인한 뒤에만 verified=True로 표시)."""
+    business = _get_business_or_404(db, business_id)
+    _require_owner(business, current_user)
+
+    normalized_address = _normalize_address(business.address)
+    try:
+        client = NaverLocalApiClient()
+        results = client.search(f"{business.name_ko} {business.address}")
+    except (NaverApiConfigurationError, httpx.HTTPError):
+        results = []
+
+    for result in results:
+        normalized_result = _normalize_address(result.road_address)
+        if normalized_address in normalized_result or normalized_result in normalized_address:
+            return NaverLookupCandidate(
+                title=result.title,
+                road_address=result.road_address,
+                category=result.category,
+                map_url=_map_search_url(result.title, result.road_address),
+                verified=True,
+            )
+
+    return NaverLookupCandidate(
+        title=business.name_ko,
+        road_address=business.address,
+        category="",
+        map_url=_map_search_url(business.name_ko, business.address),
+        verified=False,
+    )
 
 
 @router.post("/{business_id}/menus", response_model=MenuResponse, status_code=status.HTTP_201_CREATED)

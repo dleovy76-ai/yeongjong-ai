@@ -96,7 +96,14 @@ export default function BusinessDetailPage() {
       <p className="text-sm text-gray-500">{CATEGORY_LABELS[business.category]}</p>
       <h1 className="mb-2 text-2xl font-bold">{business.name_ko}</h1>
       <p className="mb-1 text-sm text-gray-600">{business.address}</p>
-      {business.phone && <p className="mb-6 text-sm text-gray-600">{business.phone}</p>}
+      {business.phone && <p className="mb-1 text-sm text-gray-600">{business.phone}</p>}
+      <div className="mb-6">
+        {profile?.naver_place_url && (
+          <a href={profile.naver_place_url} target="_blank" rel="noreferrer" className="text-sm underline">
+            네이버에서 리뷰·영업시간 더 보기
+          </a>
+        )}
+      </div>
 
       <dl className="mb-8 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
         {openingHours && (
