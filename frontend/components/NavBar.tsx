@@ -16,6 +16,7 @@ export function NavBar() {
         {loading ? null : user ? (
           <>
             <Link href="/dashboard">내 업체</Link>
+            {user.role === "ADMIN" && <Link href="/admin">관리자</Link>}
             <span className="text-gray-500">{user.name}님</span>
             <button onClick={logout} className="text-gray-500 underline">
               로그아웃

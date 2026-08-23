@@ -299,7 +299,58 @@ export const api = {
       body: { message },
       token,
     }),
+
+  adminStats: (token: string) => request<AdminStats>("/api/v1/admin/stats", { token }),
+
+  adminListBusinesses: (token: string) =>
+    request<AdminBusiness[]>("/api/v1/admin/businesses", { token }),
+
+  adminUpdateBusinessStatus: (token: string, businessId: string, status: BusinessStatus) =>
+    request<AdminBusiness>(`/api/v1/admin/businesses/${businessId}/status`, {
+      method: "PATCH",
+      body: { status },
+      token,
+    }),
+
+  adminListUsers: (token: string) => request<AdminUser[]>("/api/v1/admin/users", { token }),
+
+  adminAiInteractionSummary: (token: string) =>
+    request<AdminAiInteractionSummary[]>("/api/v1/admin/ai-interactions/summary", { token }),
 };
+
+export interface AdminStats {
+  businesses_by_status: Record<string, number>;
+  users_by_role: Record<string, number>;
+  reservations_by_status: Record<string, number>;
+  coupons_issued: number;
+  coupons_redeemed: number;
+  partner_relationships_by_status: Record<string, number>;
+  ai_interactions_last_30d: number;
+}
+
+export interface AdminBusiness {
+  id: string;
+  name_ko: string;
+  category: BusinessCategory;
+  status: BusinessStatus;
+  owner_email: string | null;
+  created_at: string;
+}
+
+export interface AdminUser {
+  id: string;
+  email: string;
+  name: string;
+  role: UserRole;
+  created_at: string;
+}
+
+export interface AdminAiInteractionSummary {
+  business_id: string | null;
+  business_name: string | null;
+  agent_type: string;
+  count: number;
+}
 
 export interface ChatResponse {
   agent_type: string;
