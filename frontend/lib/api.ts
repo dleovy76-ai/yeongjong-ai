@@ -212,6 +212,9 @@ export const api = {
   chat: (businessId: string, message: string) =>
     request<ChatResponse>("/api/v1/ai/chat", { method: "POST", body: { business_id: businessId, message } }),
 
+  chefChat: (businessId: string, message: string) =>
+    request<ChatResponse>(`/api/v1/businesses/${businessId}/chef/chat`, { method: "POST", body: { message } }),
+
   recommend: (query: string) =>
     request<ChatResponse>("/api/v1/recommendations", { method: "POST", body: { query } }),
 

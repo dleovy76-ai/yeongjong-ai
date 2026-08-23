@@ -164,7 +164,7 @@ export default function BusinessDetailPage() {
       {menus.length > 0 && (
         <div className="mb-8">
           <h2 className="mb-2 font-semibold">메뉴</h2>
-          <ul className="flex flex-col gap-1 text-sm">
+          <ul className="mb-4 flex flex-col gap-1 text-sm">
             {menus.map((m) => (
               <li key={m.id} className="flex justify-between">
                 <span>
@@ -175,6 +175,12 @@ export default function BusinessDetailPage() {
               </li>
             ))}
           </ul>
+          <h3 className="mb-2 text-sm font-semibold">뭘 먹을지 고민되면 Chef AI에게 물어보세요</h3>
+          <ChatWidget
+            greeting="인원수나 매운맛 취향, 알레르기 같은 걸 알려주시면 메뉴 추천해드릴게요."
+            placeholder="예: 2명이서 매운 거 먹고 싶어요"
+            onSend={async (message) => (await api.chefChat(business.id, message)).reply}
+          />
         </div>
       )}
 
