@@ -20,6 +20,7 @@ from models import (
 from routers.auth import get_current_user
 from schemas.admin import (
     AdminAiInteractionSummary,
+    AdminAiMessageDetail,
     AdminBusinessStatusUpdateRequest,
     AdminBusinessSummary,
     AdminStatsResponse,
@@ -42,9 +43,8 @@ def _count_by(db: Session, model, column) -> dict[str, int]:
 
 @router.get("/stats", response_model=AdminStatsResponse)
 def get_stats(db: Session = Depends(get_db), _admin: User = Depends(require_admin)) -> AdminStatsResponse:
-    """Aggregate counts only - no individual conversation content, since the
-    current AiInteraction schema is deliberately minimal (see its docstring).
-    Full conversation-level review needs the STEP14 event-tracking schema."""
+    """Aggregate counts across the platform - see GET /ai-interactions/recent
+    for actual conversation content."""
     thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
     ai_interactions_last_30d = (
         db.query(func.count(AiInteraction.id)).filter(AiInteraction.created_at >= thirty_days_ago).scalar()
@@ -118,9 +118,9 @@ def list_users(db: Session = Depends(get_db), _admin: User = Depends(require_adm
 def ai_interaction_summary(
     db: Session = Depends(get_db), _admin: User = Depends(require_admin)
 ) -> list[AdminAiInteractionSummary]:
-    """Volume-based monitoring only (count per business+agent) - a business
-    with an unusually high count relative to others is the signal this can
-    actually give until STEP14 lands; it cannot show what was said."""
+    """Volume per business+agent - a business with an unusually high count
+    relative to others is a fast anomaly signal; see /ai-interactions/recent
+    to read the actual content behind any of these numbers."""
     rows = (
         db.query(AiInteraction.business_id, Business.name_ko, AiInteraction.agent_type, func.count().label("count"))
         .outerjoin(Business, Business.id == AiInteraction.business_id)
@@ -132,4 +132,37 @@ def ai_interaction_summary(
     return [
         AdminAiInteractionSummary(business_id=business_id, business_name=name, agent_type=agent_type, count=count)
         for business_id, name, agent_type, count in rows
+    ]
+
+
+@router.get("/ai-interactions/recent", response_model=list[AdminAiMessageDetail])
+def recent_ai_interactions(
+    db: Session = Depends(get_db), _admin: User = Depends(require_admin)
+) -> list[AdminAiMessageDetail]:
+    """Real conversation content (STEP14) - the actual message/reply pair,
+    token usage, cost estimate (null unless the operator configured real
+    per-1K-token rates - see Settings.gemini_*_cost_per_1k_tokens) and prompt
+    version, newest first."""
+    rows = (
+        db.query(AiInteraction)
+        .outerjoin(Business, Business.id == AiInteraction.business_id)
+        .order_by(AiInteraction.created_at.desc())
+        .limit(50)
+        .all()
+    )
+    return [
+        AdminAiMessageDetail(
+            id=r.id,
+            business_id=r.business_id,
+            business_name=r.business.name_ko if r.business else None,
+            agent_type=r.agent_type,
+            user_message=r.user_message,
+            reply=r.reply,
+            prompt_tokens=r.prompt_tokens,
+            completion_tokens=r.completion_tokens,
+            estimated_cost_usd=r.estimated_cost_usd,
+            prompt_version=r.prompt_version,
+            created_at=r.created_at,
+        )
+        for r in rows
     ]

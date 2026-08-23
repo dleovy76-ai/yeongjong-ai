@@ -62,4 +62,4 @@ class ExpansionAgent(BaseAgent):
         # Up to 5 items x Korean reasoning text comfortably exceeds the 1024-token
         # default other (single-answer) agents use - confirmed live that 1024
         # silently truncates this agent's output mid-JSON.
-        return self.llm.generate(system_prompt=system_prompt, user_message="분석해줘", max_output_tokens=2048)
+        return self._call_llm(system_prompt=system_prompt, user_message="분석해줘", max_output_tokens=2048)

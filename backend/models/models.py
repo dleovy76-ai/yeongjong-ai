@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import Enum, ForeignKey, Integer, Numeric, String, UniqueConstraint, func
+from sqlalchemy import Enum, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -282,12 +282,16 @@ class Reservation(Base):
 
 
 class AiInteraction(Base):
-    """One agent response, for the §19 Performance Dashboard's "AI 응대 건수"
-    (and future STEP14 event tracking to build on). Deliberately minimal - not
-    the full ai_sessions/ai_messages/ai_agents schema (§27, real STEP14 scope),
-    just enough to answer "how many times did AI actually respond" honestly
-    instead of leaving that number unmeasured. business_id is nullable because
-    not every agent scopes to one business (Info AI doesn't)."""
+    """One agent response (STEP14 event tracking). Started minimal (§19
+    Performance Dashboard's "AI 응대 건수" count only); now also carries the
+    actual message/reply and token usage so admin monitoring (§26) can review
+    real content, not just volume, and so cost can be estimated. Not a
+    separate ai_sessions/ai_messages pair (§27's literal shape) - every
+    request today is a single stateless exchange (no multi-turn session
+    concept exists in the product yet), so one row per exchange is the
+    correct grain, not a premature session/message split. business_id is
+    nullable because not every agent scopes to one business (Info AI
+    doesn't)."""
 
     __tablename__ = "ai_interactions"
 
@@ -296,7 +300,17 @@ class AiInteraction(Base):
         ForeignKey("businesses.id"), nullable=True, index=True
     )
     agent_type: Mapped[str] = mapped_column(String(50), nullable=False)
+
+    user_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    reply: Mapped[str | None] = mapped_column(Text, nullable=True)
+    prompt_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    completion_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    estimated_cost_usd: Mapped[Decimal | None] = mapped_column(Numeric(10, 6), nullable=True)
+    prompt_version: Mapped[str | None] = mapped_column(String(50), nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False, index=True)
+
+    business: Mapped["Business | None"] = relationship()
 
 
 class BusinessRelationship(Base):

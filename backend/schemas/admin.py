@@ -1,4 +1,5 @@
 from datetime import datetime
+from decimal import Decimal
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -46,3 +47,17 @@ class AdminAiInteractionSummary(BaseModel):
     business_name: str | None
     agent_type: str
     count: int
+
+
+class AdminAiMessageDetail(BaseModel):
+    id: UUID
+    business_id: UUID | None
+    business_name: str | None
+    agent_type: str
+    user_message: str | None
+    reply: str | None
+    prompt_tokens: int | None
+    completion_tokens: int | None
+    estimated_cost_usd: Decimal | None
+    prompt_version: str | None
+    created_at: datetime

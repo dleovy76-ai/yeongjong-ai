@@ -54,4 +54,4 @@ class CustomerAgent(BaseAgent):
             name=business_context["name"],
             context_json=json.dumps(business_context, ensure_ascii=False, indent=2),
         )
-        return self.llm.generate(system_prompt=system_prompt, user_message=understood["message"])
+        return self._call_llm(system_prompt=system_prompt, user_message=understood["message"])

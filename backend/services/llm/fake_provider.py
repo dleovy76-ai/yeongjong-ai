@@ -1,4 +1,4 @@
-from services.llm.base import LLMProvider
+from services.llm.base import LLMProvider, LLMResponse
 
 
 class FakeLLMProvider(LLMProvider):
@@ -10,6 +10,6 @@ class FakeLLMProvider(LLMProvider):
         self.response = response
         self.calls: list[dict[str, str]] = []
 
-    def generate(self, *, system_prompt: str, user_message: str, max_output_tokens: int = 1024) -> str:
+    def generate(self, *, system_prompt: str, user_message: str, max_output_tokens: int = 1024) -> LLMResponse:
         self.calls.append({"system_prompt": system_prompt, "user_message": user_message})
-        return self.response
+        return LLMResponse(text=self.response, prompt_tokens=10, completion_tokens=5)

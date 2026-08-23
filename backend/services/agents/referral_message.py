@@ -53,4 +53,4 @@ class ReferralMessageAgent(BaseAgent):
             recipient_name=recipient.name_ko,
             recipient_category=recipient.category.value,
         )
-        return self.llm.generate(system_prompt=system_prompt, user_message="메시지 작성해줘")
+        return self._call_llm(system_prompt=system_prompt, user_message="메시지 작성해줘")

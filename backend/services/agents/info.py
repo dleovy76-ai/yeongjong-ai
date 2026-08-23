@@ -45,4 +45,4 @@ class InfoAgent(BaseAgent):
         system_prompt = _SYSTEM_PROMPT_TEMPLATE.format(
             directory_json=json.dumps(directory, ensure_ascii=False, indent=2)
         )
-        return self.llm.generate(system_prompt=system_prompt, user_message=understood["message"])
+        return self._call_llm(system_prompt=system_prompt, user_message=understood["message"])

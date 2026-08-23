@@ -316,6 +316,9 @@ export const api = {
 
   adminAiInteractionSummary: (token: string) =>
     request<AdminAiInteractionSummary[]>("/api/v1/admin/ai-interactions/summary", { token }),
+
+  adminRecentAiInteractions: (token: string) =>
+    request<AdminAiMessageDetail[]>("/api/v1/admin/ai-interactions/recent", { token }),
 };
 
 export interface AdminStats {
@@ -350,6 +353,20 @@ export interface AdminAiInteractionSummary {
   business_name: string | null;
   agent_type: string;
   count: number;
+}
+
+export interface AdminAiMessageDetail {
+  id: string;
+  business_id: string | null;
+  business_name: string | null;
+  agent_type: string;
+  user_message: string | null;
+  reply: string | null;
+  prompt_tokens: number | null;
+  completion_tokens: number | null;
+  estimated_cost_usd: string | null;
+  prompt_version: string | null;
+  created_at: string;
 }
 
 export interface ChatResponse {

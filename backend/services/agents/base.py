@@ -10,22 +10,36 @@ subclass documents what keys it reads from context."""
 
 import logging
 from abc import ABC, abstractmethod
+from decimal import Decimal
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from core.config import settings
 from models import AiInteraction
-from services.llm.base import LLMProvider
+from services.llm.base import LLMProvider, LLMResponse
 
 logger = logging.getLogger(__name__)
 
 
 class BaseAgent(ABC):
     agent_type: str
+    prompt_version: str = "v1"
 
     def __init__(self, db: Session, llm: LLMProvider) -> None:
         self.db = db
         self.llm = llm
+        self._last_usage: LLMResponse | None = None
+
+    def _call_llm(self, *, system_prompt: str, user_message: str, max_output_tokens: int = 1024) -> str:
+        """Every agent's execute() should call this instead of self.llm.generate()
+        directly - same signature/return type (plain str), but also records
+        token usage on self so log() can persist it (STEP14)."""
+        response = self.llm.generate(
+            system_prompt=system_prompt, user_message=user_message, max_output_tokens=max_output_tokens
+        )
+        self._last_usage = response
+        return response.text
 
     def initialize(self, context: dict) -> None:
         """Per-conversation setup hook. Default: nothing to do."""
@@ -59,17 +73,37 @@ class BaseAgent(ABC):
         self.log(context=context, message=message, reply=reply)
         return reply
 
+    def _estimate_cost(self) -> Decimal | None:
+        if self._last_usage is None:
+            return None
+        input_rate = settings.gemini_input_cost_per_1k_tokens
+        output_rate = settings.gemini_output_cost_per_1k_tokens
+        if input_rate <= 0 and output_rate <= 0:
+            return None
+        prompt_tokens = self._last_usage.prompt_tokens or 0
+        completion_tokens = self._last_usage.completion_tokens or 0
+        cost = (prompt_tokens / 1000) * input_rate + (completion_tokens / 1000) * output_rate
+        return Decimal(str(round(cost, 6)))
+
     def log(self, **fields: object) -> None:
         """§42 observability groundwork - structured log per AI request, plus a
-        minimal AiInteraction row so §19's "AI 응대 건수" is a real count instead
-        of unmeasured. Full ai_sessions/ai_messages persistence (tokens, cost,
-        prompt_version...) lands with STEP14 (Performance Engine); this is the
-        minimum useful before that exists."""
+        full AiInteraction row (STEP14): message/reply content, token usage,
+        an estimated cost (only when the operator has configured real rates -
+        see _estimate_cost), and the agent's prompt_version."""
         logger.info("agent_response agent_type=%s %s", self.agent_type, fields)
 
         context = fields.get("context")
         business_id = context.get("business_id") if isinstance(context, dict) else None
-        self.db.add(AiInteraction(business_id=business_id, agent_type=self.agent_type))
+        row_kwargs = dict(
+            agent_type=self.agent_type,
+            user_message=str(fields.get("message")) if fields.get("message") is not None else None,
+            reply=str(fields.get("reply")) if fields.get("reply") is not None else None,
+            prompt_tokens=self._last_usage.prompt_tokens if self._last_usage else None,
+            completion_tokens=self._last_usage.completion_tokens if self._last_usage else None,
+            estimated_cost_usd=self._estimate_cost(),
+            prompt_version=self.prompt_version,
+        )
+        self.db.add(AiInteraction(business_id=business_id, **row_kwargs))
         try:
             self.db.commit()
         except IntegrityError:
@@ -78,5 +112,5 @@ class BaseAgent(ABC):
             # actual response. Record it without the business association instead
             # of dropping the interaction entirely.
             self.db.rollback()
-            self.db.add(AiInteraction(business_id=None, agent_type=self.agent_type))
+            self.db.add(AiInteraction(business_id=None, **row_kwargs))
             self.db.commit()

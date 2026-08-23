@@ -7,6 +7,7 @@ import {
   api,
   ApiError,
   type AdminAiInteractionSummary,
+  type AdminAiMessageDetail,
   type AdminBusiness,
   type AdminStats,
   type AdminUser,
@@ -41,6 +42,7 @@ export default function AdminPage() {
   const [businesses, setBusinesses] = useState<AdminBusiness[] | null>(null);
   const [users, setUsers] = useState<AdminUser[] | null>(null);
   const [aiSummary, setAiSummary] = useState<AdminAiInteractionSummary[] | null>(null);
+  const [recentMessages, setRecentMessages] = useState<AdminAiMessageDetail[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
 
@@ -57,6 +59,7 @@ export default function AdminPage() {
     api.adminListBusinesses(token).then(setBusinesses).catch(() => setBusinesses([]));
     api.adminListUsers(token).then(setUsers).catch(() => setUsers([]));
     api.adminAiInteractionSummary(token).then(setAiSummary).catch(() => setAiSummary([]));
+    api.adminRecentAiInteractions(token).then(setRecentMessages).catch(() => setRecentMessages([]));
   }, [token, user]);
 
   const toggleDisabled = async (business: AdminBusiness) => {
@@ -157,11 +160,11 @@ export default function AdminPage() {
         )}
       </section>
 
-      <section>
+      <section className="mb-10">
         <h2 className="mb-3 font-semibold">AI 응대 현황 (업체·에이전트별 건수)</h2>
         <p className="mb-3 text-sm text-gray-500">
-          대화 내용은 아직 저장하지 않아요 — 건수 기준으로 비정상적으로 많은 업체가 있는지 정도만 볼 수
-          있어요.
+          건수 기준으로 비정상적으로 많은 업체가 있는지 빠르게 훑어볼 수 있어요. 실제 대화 내용은 아래
+          &quot;최근 AI 대화&quot;에서 볼 수 있어요.
         </p>
         {aiSummary === null ? (
           <p className="text-gray-500">불러오는 중...</p>
@@ -176,6 +179,34 @@ export default function AdminPage() {
               </li>
             ))}
             {aiSummary.length === 0 && <p className="text-gray-500">아직 AI 응대 기록이 없어요.</p>}
+          </ul>
+        )}
+      </section>
+
+      <section>
+        <h2 className="mb-3 font-semibold">최근 AI 대화</h2>
+        <p className="mb-3 text-sm text-gray-500">
+          최근 50건의 실제 질문·답변이에요. 비용은 요금을 설정한 경우에만 표시돼요.
+        </p>
+        {recentMessages === null ? (
+          <p className="text-gray-500">불러오는 중...</p>
+        ) : (
+          <ul className="flex flex-col gap-2">
+            {recentMessages.map((m) => (
+              <li key={m.id} className="rounded-md border border-gray-200 p-3 text-sm">
+                <p className="mb-1 text-gray-500">
+                  {m.business_name ?? "(업체 무관)"} · {m.agent_type} ·{" "}
+                  {new Date(m.created_at).toLocaleString("ko-KR")}
+                </p>
+                {m.user_message && <p>Q. {m.user_message}</p>}
+                {m.reply && <p className="text-gray-700">A. {m.reply}</p>}
+                <p className="mt-1 text-xs text-gray-400">
+                  토큰 {m.prompt_tokens ?? "-"}/{m.completion_tokens ?? "-"}
+                  {m.estimated_cost_usd && ` · $${m.estimated_cost_usd}`}
+                </p>
+              </li>
+            ))}
+            {recentMessages.length === 0 && <p className="text-gray-500">아직 AI 응대 기록이 없어요.</p>}
           </ul>
         )}
       </section>

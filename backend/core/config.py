@@ -26,6 +26,11 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     gemini_api_key: str = ""
     gemini_model: str = "gemini-flash-latest"
+    # Optional, operator-supplied cost estimate (USD per 1K tokens) - left at 0
+    # (meaning "not configured") rather than a hard-coded guess, since pricing
+    # varies by model/tier and a wrong guess would misrepresent real spend.
+    gemini_input_cost_per_1k_tokens: float = 0.0
+    gemini_output_cost_per_1k_tokens: float = 0.0
     anthropic_api_key: str = ""
 
     data_go_kr_api_key: str = ""
