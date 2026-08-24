@@ -12,7 +12,7 @@ from models import (
     User,
     UserRole,
 )
-from services.agents.info import InfoAgent, _EMPTY_DIRECTORY_MESSAGE
+from services.agents.info import InfoAgent, _EMPTY_DIRECTORY_MESSAGE, _KST
 from services.llm.fake_provider import FakeLLMProvider
 
 
@@ -79,6 +79,18 @@ def test_info_agent_includes_signature_menus(db_session):
 
     system_prompt = llm.calls[0]["system_prompt"]
     assert "특선세트" in system_prompt
+
+
+def test_info_agent_includes_current_kst_date_in_prompt(db_session):
+    _make_business(db_session, name="활성카페", status=BusinessStatus.ACTIVE)
+
+    llm = FakeLLMProvider()
+    agent = InfoAgent(db=db_session, llm=llm)
+    agent.respond({}, "오늘 뭐하지")
+
+    system_prompt = llm.calls[0]["system_prompt"]
+    today_str = datetime.now(_KST).strftime("%Y-%m-%d")
+    assert today_str in system_prompt
 
 
 def test_info_agent_includes_verified_tourist_places_only(db_session):
