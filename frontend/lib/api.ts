@@ -358,6 +358,9 @@ export const api = {
 
   adminListUsers: (token: string) => request<AdminUser[]>("/api/v1/admin/users", { token }),
 
+  adminBusinessGraph: (token: string) =>
+    request<BusinessGraphEdge[]>("/api/v1/admin/business-graph", { token }),
+
   adminAiInteractionSummary: (token: string) =>
     request<AdminAiInteractionSummary[]>("/api/v1/admin/ai-interactions/summary", { token }),
 
@@ -413,6 +416,16 @@ export interface AdminAiInteractionSummary {
   business_name: string | null;
   agent_type: string;
   count: number;
+}
+
+export interface BusinessGraphEdge {
+  business_a_id: string;
+  business_a_name: string;
+  business_b_id: string;
+  business_b_name: string;
+  status: PartnerRelationshipStatus;
+  score: number;
+  created_at: string;
 }
 
 export type TouristPlaceStatus = "VERIFIED" | "UNVERIFIED" | "EXPIRED" | "DISABLED";

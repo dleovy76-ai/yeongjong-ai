@@ -11,6 +11,7 @@ import {
   type AdminBusiness,
   type AdminStats,
   type AdminUser,
+  type BusinessGraphEdge,
   type BusinessStatus,
   type TouristPlace,
 } from "@/lib/api";
@@ -47,6 +48,8 @@ export default function AdminPage() {
   const [error, setError] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
 
+  const [businessGraph, setBusinessGraph] = useState<BusinessGraphEdge[] | null>(null);
+
   const [touristPlaces, setTouristPlaces] = useState<TouristPlace[] | null>(null);
   const [placeName, setPlaceName] = useState("");
   const [placeCategory, setPlaceCategory] = useState("");
@@ -70,6 +73,7 @@ export default function AdminPage() {
     api.adminAiInteractionSummary(token).then(setAiSummary).catch(() => setAiSummary([]));
     api.adminRecentAiInteractions(token).then(setRecentMessages).catch(() => setRecentMessages([]));
     api.adminListTouristPlaces(token).then(setTouristPlaces).catch(() => setTouristPlaces([]));
+    api.adminBusinessGraph(token).then(setBusinessGraph).catch(() => setBusinessGraph([]));
   }, [token, user]);
 
   const onAddTouristPlace = async (e: FormEvent) => {
@@ -210,6 +214,33 @@ export default function AdminPage() {
               </li>
             ))}
             {businesses.length === 0 && <p className="text-gray-500">업체가 없어요.</p>}
+          </ul>
+        )}
+      </section>
+
+      <section className="mb-10">
+        <h2 className="mb-3 font-semibold">지역 비즈니스 그래프</h2>
+        <p className="mb-3 text-sm text-gray-600">
+          확장AI가 만든 업체 간 연결 전체 - 누가 누구와 제휴를 제안했고, 어떤 상태인지 한눈에
+          봐요.
+        </p>
+        {businessGraph === null ? (
+          <p className="text-gray-500">불러오는 중...</p>
+        ) : (
+          <ul className="flex flex-col gap-2 text-sm">
+            {businessGraph.map((edge, i) => (
+              <li
+                key={i}
+                className="flex items-center justify-between rounded-md border border-gray-200 p-3"
+              >
+                <span>
+                  {edge.business_a_name} → {edge.business_b_name}{" "}
+                  <span className="text-gray-500">(적합도 {edge.score})</span>
+                </span>
+                <span className="text-xs text-gray-500">{edge.status}</span>
+              </li>
+            ))}
+            {businessGraph.length === 0 && <p className="text-gray-500">아직 연결 데이터가 없어요.</p>}
           </ul>
         )}
       </section>

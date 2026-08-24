@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 
 from core.security import hash_password
-from models import AiInteraction, Transaction, TransactionAttribution, User, UserRole
+from models import AiInteraction, BusinessRelationship, Transaction, TransactionAttribution, User, UserRole
 
 
 def _register(client, email, role="BUSINESS_OWNER"):
@@ -147,6 +147,33 @@ def test_users_list_requires_admin(client, db_session):
     response = client.get("/api/v1/admin/users", headers=admin_headers)
     assert response.status_code == 200
     assert any(u["email"] == "admin-test3@example.com" for u in response.json())
+
+
+def test_business_graph_requires_admin(client):
+    owner_headers = _register(client, "admin-test-owner-graph1@example.com")
+    response = client.get("/api/v1/admin/business-graph", headers=owner_headers)
+    assert response.status_code == 403
+
+
+def test_business_graph_lists_edges_platform_wide(client, db_session):
+    admin_headers = _seed_admin(client, db_session, "admin-test-graph@example.com")
+    owner_headers = _register(client, "admin-test-owner-graph2@example.com")
+    hotel = _create_business(client, owner_headers, "영종호텔")
+    cafe = _create_business(client, owner_headers, "영종카페")
+
+    db_session.add(
+        BusinessRelationship(business_a_id=hotel["id"], business_b_id=cafe["id"], score=88, reason="투숙객 동선")
+    )
+    db_session.commit()
+
+    response = client.get("/api/v1/admin/business-graph", headers=admin_headers)
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body) == 1
+    assert body[0]["business_a_name"] == "영종호텔"
+    assert body[0]["business_b_name"] == "영종카페"
+    assert body[0]["status"] == "SUGGESTED"
+    assert body[0]["score"] == 88
 
 
 def test_tourist_place_create_requires_admin(client):

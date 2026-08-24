@@ -29,6 +29,7 @@ from schemas.admin import (
     AdminBusinessSummary,
     AdminStatsResponse,
     AdminUserSummary,
+    BusinessGraphEdge,
     TouristPlaceCreateRequest,
     TouristPlaceResponse,
     TouristPlaceUpdateRequest,
@@ -136,6 +137,28 @@ def update_business_status(
         owner_email=business.owner.email if business.owner else None,
         created_at=business.created_at,
     )
+
+
+@router.get("/business-graph", response_model=list[BusinessGraphEdge])
+def get_business_graph(
+    db: Session = Depends(get_db), _admin: User = Depends(require_admin)
+) -> list[BusinessGraphEdge]:
+    """§21 Partner Graph (기획서 19번) - "누가 누구와 연결되어 있는가"를 운영자가
+    한눈에 볼 수 있는 최소한의 형태. BusinessRelationship은 이미 계속
+    쌓이고 있었지만(§21), 이걸 보여주는 화면이 전혀 없었음."""
+    rows = db.query(BusinessRelationship).order_by(BusinessRelationship.created_at.desc()).limit(500).all()
+    return [
+        BusinessGraphEdge(
+            business_a_id=r.business_a_id,
+            business_a_name=r.business_a.name_ko,
+            business_b_id=r.business_b_id,
+            business_b_name=r.business_b.name_ko,
+            status=r.status,
+            score=r.score,
+            created_at=r.created_at,
+        )
+        for r in rows
+    ]
 
 
 @router.get("/users", response_model=list[AdminUserSummary])

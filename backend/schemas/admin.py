@@ -4,7 +4,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from models import BusinessCategory, BusinessStatus, TouristPlaceStatus, UserRole
+from models import BusinessCategory, BusinessStatus, PartnerRelationshipStatus, TouristPlaceStatus, UserRole
 
 
 class AdminStatsResponse(BaseModel):
@@ -52,6 +52,19 @@ class AdminAiInteractionSummary(BaseModel):
     business_name: str | None
     agent_type: str
     count: int
+
+
+class BusinessGraphEdge(BaseModel):
+    """§21 Partner Graph (기획서 19번) - "누가 누구와 연결되어 있는가"를
+    운영자가 볼 수 있는 최소 형태. business_a가 제안한 쪽."""
+
+    business_a_id: UUID
+    business_a_name: str
+    business_b_id: UUID
+    business_b_name: str
+    status: PartnerRelationshipStatus
+    score: int
+    created_at: datetime
 
 
 class TouristPlaceCreateRequest(BaseModel):
