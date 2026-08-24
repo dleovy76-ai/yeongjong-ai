@@ -20,6 +20,8 @@ export default function MenusPage() {
   const [allergyInfo, setAllergyInfo] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [drafting, setDrafting] = useState(false);
+  const [draftError, setDraftError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && !token) router.push("/login");
@@ -54,6 +56,20 @@ export default function MenusPage() {
       setError(err instanceof ApiError ? err.message : "메뉴 추가 중 오류가 발생했습니다.");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const onDraftDescription = async () => {
+    if (!token || !name.trim()) return;
+    setDraftError(null);
+    setDrafting(true);
+    try {
+      const draft = await api.draftMenuDescription(token, id, name.trim());
+      setDescription(draft.description);
+    } catch (err) {
+      setDraftError(err instanceof ApiError ? err.message : "초안 작성 중 오류가 발생했습니다.");
+    } finally {
+      setDrafting(false);
     }
   };
 
@@ -135,17 +151,32 @@ export default function MenusPage() {
           />
           대표 메뉴예요
         </label>
-        <label className="flex flex-col gap-1 text-sm">
-          메뉴 설명 (선택)
+        <div className="flex flex-col gap-1 text-sm">
+          <div className="flex items-center justify-between">
+            <label htmlFor="menu-description">메뉴 설명 (선택)</label>
+            <button
+              type="button"
+              onClick={onDraftDescription}
+              disabled={drafting || !name.trim()}
+              className="rounded-md border border-black px-3 py-1 text-xs disabled:opacity-50"
+            >
+              {drafting ? "작성 중..." : "AI가 초안 써줄게요"}
+            </button>
+          </div>
+          {draftError && <p className="text-sm text-red-600">{draftError}</p>}
           <textarea
+            id="menu-description"
             className="rounded-md border border-gray-300 px-3 py-2"
             placeholder="예: 24시간 우려낸 사골 육수에 얼큰하게 끓인 김치찌개"
             rows={2}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
           />
-          <span className="text-xs text-gray-500">Chef AI가 손님에게 메뉴를 추천할 때 이 설명을 참고해요.</span>
-        </label>
+          <span className="text-xs text-gray-500">
+            Chef AI가 손님에게 메뉴를 추천할 때 이 설명을 참고해요. 메뉴명을 먼저 입력하면 AI가 초안을
+            써줘요 — 확인하고 자유롭게 고쳐서 저장하세요.
+          </span>
+        </div>
         <label className="flex flex-col gap-1 text-sm">
           사진 URL (선택)
           <input

@@ -2,10 +2,11 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-const { routerMock, listMenusMock, createMenuMock } = vi.hoisted(() => ({
+const { routerMock, listMenusMock, createMenuMock, draftMenuDescriptionMock } = vi.hoisted(() => ({
   routerMock: { push: vi.fn() },
   listMenusMock: vi.fn(),
   createMenuMock: vi.fn(),
+  draftMenuDescriptionMock: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -21,7 +22,12 @@ vi.mock("@/lib/api", async () => {
   const actual = await vi.importActual<typeof import("@/lib/api")>("@/lib/api");
   return {
     ...actual,
-    api: { ...actual.api, listMenus: listMenusMock, createMenu: createMenuMock },
+    api: {
+      ...actual.api,
+      listMenus: listMenusMock,
+      createMenu: createMenuMock,
+      draftMenuDescription: draftMenuDescriptionMock,
+    },
   };
 });
 
@@ -83,5 +89,27 @@ describe("MenusPage (smoke)", () => {
       image_url: "https://example.com/kimchi.jpg",
       allergy_info: undefined,
     });
+  });
+
+  it("fills the description field with an AI draft based on the typed menu name", async () => {
+    listMenusMock.mockResolvedValueOnce([]);
+    draftMenuDescriptionMock.mockResolvedValueOnce({
+      description: "얼큰한 김치와 돼지고기를 함께 끓인 찌개예요.",
+    });
+
+    const user = userEvent.setup();
+    render(<MenusPage />);
+
+    await screen.findByText("아직 등록된 메뉴가 없어요.");
+
+    const draftButton = screen.getByRole("button", { name: "AI가 초안 써줄게요" });
+    expect(draftButton).toBeDisabled();
+
+    await user.type(screen.getByLabelText(/메뉴명/), "김치찌개");
+    expect(draftButton).toBeEnabled();
+    await user.click(draftButton);
+
+    expect(draftMenuDescriptionMock).toHaveBeenCalledWith("test-token", "biz-1", "김치찌개");
+    expect(await screen.findByDisplayValue("얼큰한 김치와 돼지고기를 함께 끓인 찌개예요.")).toBeInTheDocument();
   });
 });

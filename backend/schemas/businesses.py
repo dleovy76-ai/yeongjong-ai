@@ -141,3 +141,11 @@ class MenuResponse(BaseModel):
     options: dict | None
 
     model_config = {"from_attributes": True}
+
+
+class MenuDraftRequest(BaseModel):
+    name: ValidatedText = Field(min_length=1, max_length=200)
+
+
+class MenuDraftResponse(BaseModel):
+    description: str

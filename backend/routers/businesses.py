@@ -32,11 +32,14 @@ from schemas.businesses import (
     BusinessResponse,
     BusinessUpdateRequest,
     MenuCreateRequest,
+    MenuDraftRequest,
+    MenuDraftResponse,
     MenuResponse,
     MenuUpdateRequest,
     NaverLookupCandidate,
     ProfileDraftResponse,
 )
+from services.agents.menu_draft import MenuDraftAgent
 from services.agents.profile_draft import ProfileDraftAgent
 from services.external.naver_local_api import NaverApiConfigurationError, NaverLocalApiClient
 
@@ -377,6 +380,37 @@ def list_menus(business_id: UUID, db: Session = Depends(get_db)) -> list[MenuRes
     _get_business_or_404(db, business_id)
     menus = db.query(Menu).filter(Menu.business_id == business_id).order_by(Menu.created_at.asc()).all()
     return [MenuResponse.model_validate(m) for m in menus]
+
+
+def _parse_menu_draft(raw_reply: str) -> MenuDraftResponse:
+    cleaned = _JSON_FENCE_RE.sub("", raw_reply).strip()
+    try:
+        parsed = json.loads(cleaned)
+    except json.JSONDecodeError:
+        logger.warning("Menu draft reply was not valid JSON after fence-stripping: %r", raw_reply[:500])
+        return MenuDraftResponse(description="")
+    if not isinstance(parsed, dict):
+        return MenuDraftResponse(description="")
+    return MenuDraftResponse(description=str(parsed.get("description", ""))[:1000])
+
+
+@router.post("/{business_id}/menus/draft-description", response_model=MenuDraftResponse)
+def draft_menu_description(
+    business_id: UUID,
+    body: MenuDraftRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> MenuDraftResponse:
+    """AI가 사장님이 방금 입력한(아직 저장되지 않은) 메뉴 이름만 근거로 설명
+    초안을 만들어주고, 사장님은 확인 후 고쳐서 메뉴 등록 폼으로 저장하는
+    흐름 - 자동 저장하지 않음(§29, /profile/draft와 같은 패턴)."""
+    business = _get_business_or_404(db, business_id)
+    _require_owner(business, current_user)
+
+    llm = resolve_llm_provider()
+    agent = MenuDraftAgent(db=db, llm=llm)
+    raw_reply = run_agent(agent, {"business_id": business_id, "menu_name": body.name}, "초안 작성")
+    return _parse_menu_draft(raw_reply)
 
 
 def _get_menu_or_404(db: Session, business_id: UUID, menu_id: UUID) -> Menu:

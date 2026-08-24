@@ -231,6 +231,13 @@ export const api = {
 
   listMenus: (id: string) => request<Menu[]>(`/api/v1/businesses/${id}/menus`),
 
+  draftMenuDescription: (token: string, businessId: string, name: string) =>
+    request<{ description: string }>(`/api/v1/businesses/${businessId}/menus/draft-description`, {
+      method: "POST",
+      body: { name },
+      token,
+    }),
+
   createMenu: (
     token: string,
     businessId: string,
