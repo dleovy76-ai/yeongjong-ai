@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from core.database import get_db
@@ -40,6 +41,14 @@ def _resolve_attribution(
             raise HTTPException(status.HTTP_404_NOT_FOUND, "연결하려는 쿠폰 사용 내역을 찾을 수 없습니다.")
         if claim.status != CouponIssueStatus.REDEEMED:
             raise HTTPException(status.HTTP_409_CONFLICT, "아직 사용 처리되지 않은 쿠폰은 연결할 수 없습니다.")
+        # AUDIT P1 - friendly pre-check; the DB partial unique index
+        # (uq_transactions_coupon_issue_id) is the real, race-safe guarantee -
+        # see create_transaction()'s commit for the concurrent-request case.
+        already_linked = (
+            db.query(Transaction).filter(Transaction.coupon_issue_id == body.coupon_issue_id).first()
+        )
+        if already_linked is not None:
+            raise HTTPException(status.HTTP_409_CONFLICT, "이 쿠폰 사용 내역은 이미 다른 거래에 연결되어 있습니다.")
         return TransactionAttribution.DIRECT
 
     if body.reservation_id is not None:
@@ -52,6 +61,11 @@ def _resolve_attribution(
             raise HTTPException(status.HTTP_404_NOT_FOUND, "연결하려는 예약을 찾을 수 없습니다.")
         if reservation.status != ReservationStatus.COMPLETED:
             raise HTTPException(status.HTTP_409_CONFLICT, "완료 처리되지 않은 예약은 연결할 수 없습니다.")
+        already_linked = (
+            db.query(Transaction).filter(Transaction.reservation_id == body.reservation_id).first()
+        )
+        if already_linked is not None:
+            raise HTTPException(status.HTTP_409_CONFLICT, "이 예약은 이미 다른 거래에 연결되어 있습니다.")
         return TransactionAttribution.ASSISTED
 
     return TransactionAttribution.UNKNOWN
@@ -82,7 +96,18 @@ def create_transaction(
         occurred_at=body.occurred_at or datetime.now(timezone.utc),
     )
     db.add(transaction)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        # AUDIT P1 - the pre-check in _resolve_attribution() already caught the
+        # common case; this is the race-condition backstop when two requests
+        # for the same coupon/reservation both pass the pre-check before
+        # either commits. The DB's partial unique index is what actually
+        # decides who wins.
+        db.rollback()
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "이 쿠폰 사용 내역 또는 예약은 이미 다른 거래에 연결되어 있습니다."
+        )
     db.refresh(transaction)
     return TransactionResponse.model_validate(transaction)
 

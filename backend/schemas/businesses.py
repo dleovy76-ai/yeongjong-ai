@@ -59,7 +59,16 @@ class BusinessProfileUpdateRequest(BaseModel):
     monthly_visitor_estimate: int | None = Field(default=None, ge=0)
 
 
-class BusinessProfileResponse(BaseModel):
+class BusinessPublicProfileResponse(BaseModel):
+    """공개(비로그인 포함) 응답 - 손님이 물어볼 법한 영업정보만. §29와 같은
+    원칙으로, 사장님이 자진 입력한 경쟁상 민감 데이터(monthly_visitor_estimate
+    등)는 여기 넣지 않는다 - PLATFORM AUDIT P0: 이 필드가 예전에 이 스키마에
+    있었고 이 엔드포인트가 인증 없이 열려 있어서, 업체 ID만 알면 누구나
+    다른 업체의 예상 방문객 수를 볼 수 있었다. Owner/Admin 전용 값은
+    BusinessOwnerProfileResponse(및 그걸 반환하는 별도 인증 필수 엔드포인트)
+    로만 노출한다 - 프론트에서 숨기는 게 아니라 백엔드가 애초에 이 스키마에
+    담지 않는 방식으로 차단."""
+
     id: UUID
     business_id: UUID
     description: str | None
@@ -74,9 +83,15 @@ class BusinessProfileResponse(BaseModel):
     faq: dict | None
     naver_place_url: str | None
     naver_map_url: str | None
-    monthly_visitor_estimate: int | None
 
     model_config = {"from_attributes": True}
+
+
+class BusinessOwnerProfileResponse(BusinessPublicProfileResponse):
+    """사업자 본인/관리자 전용 - 공개 필드 전부 + monthly_visitor_estimate 같은
+    owner-only 값. GET .../profile/owner(require_owner로 보호)만 이걸 반환한다."""
+
+    monthly_visitor_estimate: int | None
 
 
 class ProfileDraftResponse(BaseModel):

@@ -47,7 +47,8 @@ def test_creating_business_auto_creates_empty_profile(client):
     headers = _register(client, "owner2@example.com")
     business = _create_business(client, headers)
 
-    response = client.get(f"/api/v1/businesses/{business['id']}/profile")
+    # DRAFT라 공개 프로필 조회는 소유자 인증이 있어야 200 (AUDIT P1 visibility).
+    response = client.get(f"/api/v1/businesses/{business['id']}/profile", headers=headers)
     assert response.status_code == 200
     profile = response.json()
     assert profile["pet_policy"] is None
@@ -103,7 +104,8 @@ def test_saving_profile_does_not_reactivate_admin_disabled_business(client, db_s
     )
     assert response.status_code == 200
 
-    refreshed = client.get(f"/api/v1/businesses/{business['id']}").json()
+    # DISABLED라 공개 조회는 이제 404 (AUDIT P1) - 소유자 인증으로 상태 확인.
+    refreshed = client.get(f"/api/v1/businesses/{business['id']}", headers=headers).json()
     assert refreshed["status"] == "DISABLED"
 
 

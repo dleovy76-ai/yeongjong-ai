@@ -23,11 +23,12 @@ from models import (
 from routers._ai_common import resolve_llm_provider, run_agent
 from routers._business_common import get_business_or_404 as _get_business_or_404
 from routers._business_common import require_owner as _require_owner
-from routers.auth import get_current_user
+from routers.auth import get_current_user, get_current_user_optional
 from schemas.businesses import (
     BusinessCreateRequest,
-    BusinessProfileResponse,
+    BusinessOwnerProfileResponse,
     BusinessProfileUpdateRequest,
+    BusinessPublicProfileResponse,
     BusinessResponse,
     BusinessUpdateRequest,
     MenuCreateRequest,
@@ -154,9 +155,32 @@ def claim_business(
     return BusinessResponse.model_validate(business)
 
 
+def _is_owner_or_admin(business: Business, current_user: User | None) -> bool:
+    return current_user is not None and (
+        current_user.id == business.owner_user_id or current_user.role == UserRole.ADMIN
+    )
+
+
+def _get_visible_business_or_404(db: Session, business_id: UUID, current_user: User | None) -> Business:
+    """AUDIT P1 (Business visibility) - a single-business GET used to return
+    DRAFT/DISABLED businesses to anyone who had (or guessed) the UUID, even
+    though the list endpoint already restricted itself to ACTIVE. Non-ACTIVE
+    businesses are now 404 for everyone except their own owner or an admin -
+    404 rather than 403 so a stranger can't even tell a non-active business
+    with that ID exists."""
+    business = _get_business_or_404(db, business_id)
+    if business.status != BusinessStatus.ACTIVE and not _is_owner_or_admin(business, current_user):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "업체를 찾을 수 없습니다.")
+    return business
+
+
 @router.get("/{business_id}", response_model=BusinessResponse)
-def get_business(business_id: UUID, db: Session = Depends(get_db)) -> BusinessResponse:
-    return BusinessResponse.model_validate(_get_business_or_404(db, business_id))
+def get_business(
+    business_id: UUID,
+    current_user: User | None = Depends(get_current_user_optional),
+    db: Session = Depends(get_db),
+) -> BusinessResponse:
+    return BusinessResponse.model_validate(_get_visible_business_or_404(db, business_id, current_user))
 
 
 @router.patch("/{business_id}", response_model=BusinessResponse)
@@ -176,21 +200,45 @@ def update_business(
     return BusinessResponse.model_validate(business)
 
 
-@router.get("/{business_id}/profile", response_model=BusinessProfileResponse)
-def get_business_profile(business_id: UUID, db: Session = Depends(get_db)) -> BusinessProfileResponse:
-    business = _get_business_or_404(db, business_id)
+@router.get("/{business_id}/profile", response_model=BusinessPublicProfileResponse)
+def get_business_profile(
+    business_id: UUID,
+    current_user: User | None = Depends(get_current_user_optional),
+    db: Session = Depends(get_db),
+) -> BusinessPublicProfileResponse:
+    """공개 응답 - AUDIT P0. monthly_visitor_estimate 등 owner-only 필드는
+    BusinessPublicProfileResponse 자체에 없어서 여기선 절대 안 나간다(로그인한
+    본인 사장님이 호출해도 마찬가지 - 그 값이 필요하면 아래 /profile/owner를
+    쓴다). 상태 가시성은 get_business와 동일 정책."""
+    business = _get_visible_business_or_404(db, business_id, current_user)
     if business.profile is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "AI 정보가 아직 등록되지 않았습니다.")
-    return BusinessProfileResponse.model_validate(business.profile)
+    return BusinessPublicProfileResponse.model_validate(business.profile)
 
 
-@router.patch("/{business_id}/profile", response_model=BusinessProfileResponse)
+@router.get("/{business_id}/profile/owner", response_model=BusinessOwnerProfileResponse)
+def get_owner_business_profile(
+    business_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> BusinessOwnerProfileResponse:
+    """AUDIT P0 - monthly_visitor_estimate 등 owner-only 필드가 필요한 유일한
+    경로. 인증 없으면 get_current_user가 401, 소유자/관리자가 아니면
+    require_owner가 403 - 프론트 숨김이 아니라 백엔드 authorization으로 차단."""
+    business = _get_business_or_404(db, business_id)
+    _require_owner(business, current_user)
+    if business.profile is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "AI 정보가 아직 등록되지 않았습니다.")
+    return BusinessOwnerProfileResponse.model_validate(business.profile)
+
+
+@router.patch("/{business_id}/profile", response_model=BusinessOwnerProfileResponse)
 def update_business_profile(
     business_id: UUID,
     body: BusinessProfileUpdateRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> BusinessProfileResponse:
+) -> BusinessOwnerProfileResponse:
     business = _get_business_or_404(db, business_id)
     _require_owner(business, current_user)
     if business.profile is None:
@@ -209,7 +257,7 @@ def update_business_profile(
 
     db.commit()
     db.refresh(business.profile)
-    return BusinessProfileResponse.model_validate(business.profile)
+    return BusinessOwnerProfileResponse.model_validate(business.profile)
 
 
 @router.post("/{business_id}/profile/draft", response_model=ProfileDraftResponse)

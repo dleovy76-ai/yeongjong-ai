@@ -64,7 +64,9 @@ def test_owner_can_claim_unclaimed_business(client, db_session):
     body = response.json()
     assert body["owner_user_id"] is not None
 
-    profile = client.get(f"/api/v1/businesses/{business.id}/profile")
+    # 클레임 직후에도 아직 DRAFT라 공개 조회는 소유자 인증이 있어야 200
+    # (AUDIT P1 visibility).
+    profile = client.get(f"/api/v1/businesses/{business.id}/profile", headers=headers)
     assert profile.status_code == 200
 
 

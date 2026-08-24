@@ -3,6 +3,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useParams } from "next/navigation";
 import { ChatWidget } from "@/components/ChatWidget";
+import { useAuth } from "@/lib/auth-context";
 import { api, ApiError, CATEGORY_LABELS, type Business, type BusinessProfile, type Coupon, type Menu } from "@/lib/api";
 
 function textOf(value: Record<string, unknown> | null): string | null {
@@ -13,6 +14,7 @@ function textOf(value: Record<string, unknown> | null): string | null {
 
 export default function BusinessDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const { token, loading: authLoading } = useAuth();
   const [business, setBusiness] = useState<Business | null>(null);
   const [profile, setProfile] = useState<BusinessProfile | null>(null);
   const [menus, setMenus] = useState<Menu[]>([]);
@@ -31,15 +33,19 @@ export default function BusinessDetailPage() {
   const [resvDone, setResvDone] = useState(false);
 
   useEffect(() => {
-    Promise.all([api.getBusiness(id), api.listMenus(id)])
+    // authLoading이 끝날 때까지 기다렸다가 부른다 - 로그인한 사장님이 자기
+    // DRAFT/DISABLED 업체를 "AI 미리보기"로 볼 때 토큰 없이 먼저 요청하면
+    // 404가 나므로(AUDIT P1), 토큰이 준비된 뒤 한 번만 요청한다.
+    if (authLoading) return;
+    Promise.all([api.getBusiness(id, token), api.listMenus(id)])
       .then(([b, m]) => {
         setBusiness(b);
         setMenus(m);
       })
       .catch(() => setNotFound(true));
-    api.getProfile(id).then(setProfile).catch(() => setProfile(null));
+    api.getProfile(id, token).then(setProfile).catch(() => setProfile(null));
     api.listCoupons(id).then(setCoupons).catch(() => setCoupons([]));
-  }, [id]);
+  }, [id, token, authLoading]);
 
   const claimCoupon = async (couponId: string) => {
     try {

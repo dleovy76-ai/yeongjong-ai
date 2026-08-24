@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import Enum, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint, func
+from sqlalchemy import Enum, ForeignKey, Index, Integer, Numeric, String, Text, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -417,9 +417,32 @@ class Transaction(Base):
     amount). Owner-recorded at checkout, linked to at most one already-real
     signal (a redeemed coupon claim or a completed reservation) - see
     TransactionAttribution for why attribution is derived server-side, never
-    owner-chosen."""
+    owner-chosen.
+
+    AUDIT P1 - nothing used to stop the same coupon_issue_id/reservation_id
+    from being linked to more than one Transaction, so a mistaken (or
+    intentional) double-entry at checkout could double-count "AI 연결 매출" in
+    KPI/performance numbers. The two partial unique indexes below are the
+    actual integrity guarantee (race-condition safe - a concurrent double
+    INSERT fails at the DB, not just at an application-level check-then-insert
+    race); routers/transactions.py additionally pre-checks and returns a
+    friendly 409 in the common (non-racing) case."""
 
     __tablename__ = "transactions"
+    __table_args__ = (
+        Index(
+            "uq_transactions_coupon_issue_id",
+            "coupon_issue_id",
+            unique=True,
+            postgresql_where="coupon_issue_id IS NOT NULL",
+        ),
+        Index(
+            "uq_transactions_reservation_id",
+            "reservation_id",
+            unique=True,
+            postgresql_where="reservation_id IS NOT NULL",
+        ),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     business_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("businesses.id"), nullable=False, index=True)

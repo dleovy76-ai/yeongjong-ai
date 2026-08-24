@@ -50,8 +50,9 @@ export default function BusinessProfilePage() {
   }, [authLoading, token, router]);
 
   useEffect(() => {
+    if (!token) return;
     api
-      .getProfile(id)
+      .getOwnerProfile(token, id)
       .then((profile) => {
         setDescription(profile.description ?? "");
         setBrandTone(profile.brand_tone ?? "");
@@ -70,7 +71,7 @@ export default function BusinessProfilePage() {
         setNaverMapUrl(profile.naver_map_url);
       })
       .finally(() => setLoaded(true));
-  }, [id]);
+  }, [id, token]);
 
   const onDraftWithAi = async () => {
     if (!token) return;

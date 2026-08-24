@@ -97,6 +97,12 @@ export interface BusinessProfile {
   faq: Record<string, unknown> | null;
   naver_place_url: string | null;
   naver_map_url: string | null;
+}
+
+// AUDIT P0 - monthly_visitor_estimate is owner/admin-only now; the public
+// GET .../profile endpoint never returns it (backend strips it at the schema
+// level, not just in the UI). Only GET/PATCH .../profile/owner carries it.
+export interface BusinessOwnerProfile extends BusinessProfile {
   monthly_visitor_estimate: number | null;
 }
 
@@ -190,7 +196,11 @@ export const api = {
     }
   ) => request<Business>("/api/v1/businesses", { method: "POST", body, token }),
 
-  getBusiness: (id: string) => request<Business>(`/api/v1/businesses/${id}`),
+  // AUDIT P1 - non-ACTIVE businesses now 404 unless the caller is the owner
+  // or an admin, so an optional token lets the owner's own "AI 미리보기" page
+  // keep working for a business that isn't ACTIVE yet.
+  getBusiness: (id: string, token?: string | null) =>
+    request<Business>(`/api/v1/businesses/${id}`, { token }),
 
   updateBusiness: (token: string, id: string, body: Partial<Business>) =>
     request<Business>(`/api/v1/businesses/${id}`, { method: "PATCH", body, token }),
@@ -201,10 +211,17 @@ export const api = {
   claimBusiness: (token: string, id: string) =>
     request<Business>(`/api/v1/businesses/${id}/claim`, { method: "POST", token }),
 
-  getProfile: (id: string) => request<BusinessProfile>(`/api/v1/businesses/${id}/profile`),
+  getProfile: (id: string, token?: string | null) =>
+    request<BusinessProfile>(`/api/v1/businesses/${id}/profile`, { token }),
 
-  updateProfile: (token: string, id: string, body: Partial<BusinessProfile>) =>
-    request<BusinessProfile>(`/api/v1/businesses/${id}/profile`, { method: "PATCH", body, token }),
+  // AUDIT P0 - owner-only view (monthly_visitor_estimate included); backend
+  // 401s with no token, 403s for a non-owner, never falls back to the public
+  // shape.
+  getOwnerProfile: (token: string, id: string) =>
+    request<BusinessOwnerProfile>(`/api/v1/businesses/${id}/profile/owner`, { token }),
+
+  updateProfile: (token: string, id: string, body: Partial<BusinessOwnerProfile>) =>
+    request<BusinessOwnerProfile>(`/api/v1/businesses/${id}/profile`, { method: "PATCH", body, token }),
 
   naverLookup: (token: string, id: string) =>
     request<NaverLookupCandidate>(`/api/v1/businesses/${id}/naver-lookup`, { token }),

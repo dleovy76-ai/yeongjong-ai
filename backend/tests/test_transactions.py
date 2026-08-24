@@ -123,6 +123,87 @@ def test_transaction_without_any_link_is_unknown_attribution(client):
     assert response.json()["attribution"] == "UNKNOWN"
 
 
+def test_second_transaction_on_same_coupon_issue_is_rejected(client):
+    headers = _register(client, "txn-dup-coupon@example.com")
+    business = _create_business(client, headers)
+    redeemed = _issue_and_redeem_coupon(client, headers, business["id"])
+
+    first = client.post(
+        f"/api/v1/businesses/{business['id']}/transactions",
+        headers=headers,
+        json={"amount": "15000", "coupon_issue_id": redeemed["id"]},
+    )
+    assert first.status_code == 201, first.text
+
+    second = client.post(
+        f"/api/v1/businesses/{business['id']}/transactions",
+        headers=headers,
+        json={"amount": "15000", "coupon_issue_id": redeemed["id"]},
+    )
+    assert second.status_code == 409
+
+    # AUDIT P1 - the failed second attempt must not have poisoned the session
+    # for a following, legitimate transaction.
+    unrelated = client.post(
+        f"/api/v1/businesses/{business['id']}/transactions", headers=headers, json={"amount": "3000"}
+    )
+    assert unrelated.status_code == 201, unrelated.text
+
+
+def test_second_transaction_on_same_reservation_is_rejected(client):
+    headers = _register(client, "txn-dup-reservation@example.com")
+    business = _create_business(client, headers)
+    reservation = _create_reservation(client, business["id"])
+    client.patch(
+        f"/api/v1/businesses/{business['id']}/reservations/{reservation['id']}",
+        headers=headers,
+        json={"status": "COMPLETED"},
+    )
+
+    first = client.post(
+        f"/api/v1/businesses/{business['id']}/transactions",
+        headers=headers,
+        json={"amount": "50000", "reservation_id": reservation["id"]},
+    )
+    assert first.status_code == 201, first.text
+
+    second = client.post(
+        f"/api/v1/businesses/{business['id']}/transactions",
+        headers=headers,
+        json={"amount": "50000", "reservation_id": reservation["id"]},
+    )
+    assert second.status_code == 409
+
+
+def test_coupon_and_reservation_can_each_have_their_own_transaction(client):
+    headers = _register(client, "txn-both-ok@example.com")
+    business = _create_business(client, headers)
+    redeemed = _issue_and_redeem_coupon(client, headers, business["id"])
+    reservation = _create_reservation(client, business["id"])
+    client.patch(
+        f"/api/v1/businesses/{business['id']}/reservations/{reservation['id']}",
+        headers=headers,
+        json={"status": "COMPLETED"},
+    )
+
+    coupon_txn = client.post(
+        f"/api/v1/businesses/{business['id']}/transactions",
+        headers=headers,
+        json={"amount": "15000", "coupon_issue_id": redeemed["id"]},
+    )
+    assert coupon_txn.status_code == 201, coupon_txn.text
+
+    reservation_txn = client.post(
+        f"/api/v1/businesses/{business['id']}/transactions",
+        headers=headers,
+        json={"amount": "50000", "reservation_id": reservation["id"]},
+    )
+    assert reservation_txn.status_code == 201, reservation_txn.text
+
+    listed = client.get(f"/api/v1/businesses/{business['id']}/transactions", headers=headers).json()
+    assert len(listed) == 2
+
+
 def test_transaction_requires_owner(client):
     headers = _register(client, "txn-owner6@example.com")
     business = _create_business(client, headers)
