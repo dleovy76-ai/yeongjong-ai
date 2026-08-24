@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import {
@@ -12,6 +12,7 @@ import {
   type AdminStats,
   type AdminUser,
   type BusinessStatus,
+  type TouristPlace,
 } from "@/lib/api";
 
 const STATUS_LABEL: Record<BusinessStatus, string> = {
@@ -46,6 +47,14 @@ export default function AdminPage() {
   const [error, setError] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
 
+  const [touristPlaces, setTouristPlaces] = useState<TouristPlace[] | null>(null);
+  const [placeName, setPlaceName] = useState("");
+  const [placeCategory, setPlaceCategory] = useState("");
+  const [placeSource, setPlaceSource] = useState("");
+  const [placeSubmitting, setPlaceSubmitting] = useState(false);
+  const [placeError, setPlaceError] = useState<string | null>(null);
+  const [verifyingId, setVerifyingId] = useState<string | null>(null);
+
   useEffect(() => {
     if (authLoading) return;
     if (!token || user?.role !== "ADMIN") {
@@ -60,7 +69,45 @@ export default function AdminPage() {
     api.adminListUsers(token).then(setUsers).catch(() => setUsers([]));
     api.adminAiInteractionSummary(token).then(setAiSummary).catch(() => setAiSummary([]));
     api.adminRecentAiInteractions(token).then(setRecentMessages).catch(() => setRecentMessages([]));
+    api.adminListTouristPlaces(token).then(setTouristPlaces).catch(() => setTouristPlaces([]));
   }, [token, user]);
+
+  const onAddTouristPlace = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!token || !placeName.trim() || !placeCategory.trim()) return;
+    setPlaceError(null);
+    setPlaceSubmitting(true);
+    try {
+      const created = await api.adminCreateTouristPlace(token, {
+        name: placeName.trim(),
+        category: placeCategory.trim(),
+        source_name: placeSource.trim() || undefined,
+      });
+      setTouristPlaces((prev) => (prev ? [created, ...prev] : [created]));
+      setPlaceName("");
+      setPlaceCategory("");
+      setPlaceSource("");
+    } catch (err) {
+      setPlaceError(err instanceof ApiError ? err.message : "추가 중 오류가 발생했습니다.");
+    } finally {
+      setPlaceSubmitting(false);
+    }
+  };
+
+  const onToggleVerified = async (place: TouristPlace) => {
+    if (!token) return;
+    setPlaceError(null);
+    setVerifyingId(place.id);
+    try {
+      const nextStatus = place.status === "VERIFIED" ? "UNVERIFIED" : "VERIFIED";
+      const updated = await api.adminUpdateTouristPlace(token, place.id, { status: nextStatus });
+      setTouristPlaces((prev) => prev?.map((p) => (p.id === updated.id ? updated : p)) ?? null);
+    } catch (err) {
+      setPlaceError(err instanceof ApiError ? err.message : "상태 변경 중 오류가 발생했습니다.");
+    } finally {
+      setVerifyingId(null);
+    }
+  };
 
   const toggleDisabled = async (business: AdminBusiness) => {
     if (!token) return;
@@ -156,6 +203,71 @@ export default function AdminPage() {
                 </span>
               </li>
             ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="mb-10">
+        <h2 className="mb-3 font-semibold">관광지 관리 (Info AI 근거 데이터)</h2>
+        <p className="mb-3 text-sm text-gray-500">
+          여기서 검증(VERIFIED)한 곳만 방문객 AI가 추천에 사용해요. 실제 출처(공식 기관, 직접 확인 등)를
+          확인한 곳만 검증 처리해주세요 — AI가 스스로 지어내지 않도록 하는 안전장치예요.
+        </p>
+        <form onSubmit={onAddTouristPlace} className="mb-4 flex flex-wrap gap-2">
+          <input
+            className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+            placeholder="이름 (예: 을왕리해수욕장)"
+            value={placeName}
+            onChange={(e) => setPlaceName(e.target.value)}
+          />
+          <input
+            className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+            placeholder="분류 (예: 해변)"
+            value={placeCategory}
+            onChange={(e) => setPlaceCategory(e.target.value)}
+          />
+          <input
+            className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+            placeholder="출처 (예: 인천 중구청, 직접 확인)"
+            value={placeSource}
+            onChange={(e) => setPlaceSource(e.target.value)}
+          />
+          <button
+            type="submit"
+            disabled={placeSubmitting}
+            className="rounded-md bg-black px-3 py-2 text-sm text-white disabled:opacity-50"
+          >
+            {placeSubmitting ? "추가 중..." : "추가"}
+          </button>
+        </form>
+        {placeError && <p className="mb-2 text-sm text-red-600">{placeError}</p>}
+        {touristPlaces === null ? (
+          <p className="text-gray-500">불러오는 중...</p>
+        ) : (
+          <ul className="flex flex-col gap-2">
+            {touristPlaces.map((p) => (
+              <li
+                key={p.id}
+                className="flex items-center justify-between rounded-md border border-gray-200 p-3 text-sm"
+              >
+                <div>
+                  <p className="font-semibold">
+                    {p.name} <span className="font-normal text-gray-500">· {p.category}</span>
+                  </p>
+                  <p className="text-gray-500">
+                    {p.status} {p.source_name && `· 출처: ${p.source_name}`}
+                  </p>
+                </div>
+                <button
+                  onClick={() => onToggleVerified(p)}
+                  disabled={verifyingId === p.id}
+                  className="rounded-md border border-black px-3 py-1.5 disabled:opacity-50"
+                >
+                  {p.status === "VERIFIED" ? "검증 해제" : "검증 완료로 표시"}
+                </button>
+              </li>
+            ))}
+            {touristPlaces.length === 0 && <p className="text-gray-500">등록된 관광지가 없어요.</p>}
           </ul>
         )}
       </section>

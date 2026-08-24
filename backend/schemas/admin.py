@@ -2,9 +2,9 @@ from datetime import datetime
 from decimal import Decimal
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
-from models import BusinessCategory, BusinessStatus, UserRole
+from models import BusinessCategory, BusinessStatus, TouristPlaceStatus, UserRole
 
 
 class AdminStatsResponse(BaseModel):
@@ -47,6 +47,53 @@ class AdminAiInteractionSummary(BaseModel):
     business_name: str | None
     agent_type: str
     count: int
+
+
+class TouristPlaceCreateRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+    category: str = Field(min_length=1, max_length=100)
+    description: str | None = Field(default=None, max_length=1000)
+    address: str | None = Field(default=None, max_length=300)
+    lon: float | None = None
+    lat: float | None = None
+    source_name: str | None = Field(default=None, max_length=200)
+    source_url: str | None = Field(default=None, max_length=500)
+    verified_at: datetime | None = None
+    expires_at: datetime | None = None
+    status: TouristPlaceStatus = TouristPlaceStatus.UNVERIFIED
+
+
+class TouristPlaceUpdateRequest(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    category: str | None = Field(default=None, min_length=1, max_length=100)
+    description: str | None = Field(default=None, max_length=1000)
+    address: str | None = Field(default=None, max_length=300)
+    lon: float | None = None
+    lat: float | None = None
+    source_name: str | None = Field(default=None, max_length=200)
+    source_url: str | None = Field(default=None, max_length=500)
+    verified_at: datetime | None = None
+    expires_at: datetime | None = None
+    status: TouristPlaceStatus | None = None
+
+
+class TouristPlaceResponse(BaseModel):
+    id: UUID
+    name: str
+    category: str
+    description: str | None
+    address: str | None
+    lon: float | None
+    lat: float | None
+    source_name: str | None
+    source_url: str | None
+    verified_at: datetime | None
+    expires_at: datetime | None
+    status: TouristPlaceStatus
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
 
 
 class AdminAiMessageDetail(BaseModel):

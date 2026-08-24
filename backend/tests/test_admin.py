@@ -91,6 +91,91 @@ def test_users_list_requires_admin(client, db_session):
     assert any(u["email"] == "admin-test3@example.com" for u in response.json())
 
 
+def test_tourist_place_create_requires_admin(client):
+    owner_headers = _register(client, "admin-test-owner5@example.com")
+    response = client.post(
+        "/api/v1/admin/tourist-places",
+        headers=owner_headers,
+        json={"name": "을왕리해수욕장", "category": "해변"},
+    )
+    assert response.status_code == 403
+
+
+def test_tourist_place_create_defaults_to_unverified_with_no_verified_at(client, db_session):
+    admin_headers = _seed_admin(client, db_session, "admin-test5@example.com")
+    response = client.post(
+        "/api/v1/admin/tourist-places",
+        headers=admin_headers,
+        json={"name": "을왕리해수욕장", "category": "해변"},
+    )
+    assert response.status_code == 201, response.text
+    body = response.json()
+    assert body["status"] == "UNVERIFIED"
+    assert body["verified_at"] is None
+
+
+def test_tourist_place_create_verified_stamps_verified_at(client, db_session):
+    admin_headers = _seed_admin(client, db_session, "admin-test6@example.com")
+    response = client.post(
+        "/api/v1/admin/tourist-places",
+        headers=admin_headers,
+        json={
+            "name": "을왕리해수욕장",
+            "category": "해변",
+            "status": "VERIFIED",
+            "source_name": "인천 중구청",
+        },
+    )
+    assert response.status_code == 201, response.text
+    body = response.json()
+    assert body["status"] == "VERIFIED"
+    assert body["verified_at"] is not None
+
+
+def test_tourist_place_list_requires_admin(client, db_session):
+    admin_headers = _seed_admin(client, db_session, "admin-test7@example.com")
+    owner_headers = _register(client, "admin-test-owner6@example.com")
+    client.post(
+        "/api/v1/admin/tourist-places", headers=admin_headers, json={"name": "장소1", "category": "관광지"}
+    )
+
+    forbidden = client.get("/api/v1/admin/tourist-places", headers=owner_headers)
+    assert forbidden.status_code == 403
+
+    listed = client.get("/api/v1/admin/tourist-places", headers=admin_headers)
+    assert listed.status_code == 200
+    assert any(p["name"] == "장소1" for p in listed.json())
+
+
+def test_tourist_place_update_to_verified_stamps_verified_at(client, db_session):
+    admin_headers = _seed_admin(client, db_session, "admin-test8@example.com")
+    created = client.post(
+        "/api/v1/admin/tourist-places", headers=admin_headers, json={"name": "장소2", "category": "관광지"}
+    ).json()
+    assert created["status"] == "UNVERIFIED"
+
+    updated = client.patch(
+        f"/api/v1/admin/tourist-places/{created['id']}",
+        headers=admin_headers,
+        json={"status": "VERIFIED", "source_name": "한국관광공사"},
+    )
+    assert updated.status_code == 200
+    body = updated.json()
+    assert body["status"] == "VERIFIED"
+    assert body["verified_at"] is not None
+    assert body["source_name"] == "한국관광공사"
+
+
+def test_tourist_place_update_nonexistent_404(client, db_session):
+    admin_headers = _seed_admin(client, db_session, "admin-test9@example.com")
+    response = client.patch(
+        "/api/v1/admin/tourist-places/00000000-0000-0000-0000-000000000000",
+        headers=admin_headers,
+        json={"status": "VERIFIED"},
+    )
+    assert response.status_code == 404
+
+
 def test_ai_interaction_summary_groups_by_business_and_agent(client, db_session):
     admin_headers = _seed_admin(client, db_session, "admin-test4@example.com")
     owner_headers = _register(client, "admin-test-owner4@example.com")

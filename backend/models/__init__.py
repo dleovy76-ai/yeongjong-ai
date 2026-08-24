@@ -16,6 +16,8 @@ from .models import (  # noqa: F401
     PartnerRelationshipStatus,
     Reservation,
     ReservationStatus,
+    TouristPlace,
+    TouristPlaceStatus,
     User,
     UserRole,
 )

@@ -332,6 +332,17 @@ export const api = {
 
   adminRecentAiInteractions: (token: string) =>
     request<AdminAiMessageDetail[]>("/api/v1/admin/ai-interactions/recent", { token }),
+
+  adminListTouristPlaces: (token: string) =>
+    request<TouristPlace[]>("/api/v1/admin/tourist-places", { token }),
+
+  adminCreateTouristPlace: (
+    token: string,
+    body: { name: string; category: string; source_name?: string; source_url?: string; status?: TouristPlaceStatus }
+  ) => request<TouristPlace>("/api/v1/admin/tourist-places", { method: "POST", body, token }),
+
+  adminUpdateTouristPlace: (token: string, id: string, body: Partial<TouristPlace>) =>
+    request<TouristPlace>(`/api/v1/admin/tourist-places/${id}`, { method: "PATCH", body, token }),
 };
 
 export interface AdminStats {
@@ -366,6 +377,25 @@ export interface AdminAiInteractionSummary {
   business_name: string | null;
   agent_type: string;
   count: number;
+}
+
+export type TouristPlaceStatus = "VERIFIED" | "UNVERIFIED" | "EXPIRED" | "DISABLED";
+
+export interface TouristPlace {
+  id: string;
+  name: string;
+  category: string;
+  description: string | null;
+  address: string | null;
+  lon: number | null;
+  lat: number | null;
+  source_name: string | null;
+  source_url: string | null;
+  verified_at: string | null;
+  expires_at: string | null;
+  status: TouristPlaceStatus;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface AdminAiMessageDetail {

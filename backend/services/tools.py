@@ -20,6 +20,8 @@ from models import (
     CouponStatus,
     Menu,
     PartnerRelationshipStatus,
+    TouristPlace,
+    TouristPlaceStatus,
 )
 
 
@@ -118,6 +120,41 @@ class BusinessDirectoryTool:
                 }
             )
         return results
+
+
+class TouristPlaceSearchTool:
+    """Master plan §12/§28 Info AI's regional-knowledge counterpart to
+    BusinessDirectoryTool - only ever returns admin-verified, non-expired
+    rows (§29: AI must not invent 관광지 운영 여부). Rows an admin hasn't
+    verified, or has let expire/disabled, are invisible here regardless of
+    what they contain."""
+
+    def __init__(self, db: Session) -> None:
+        self.db = db
+
+    def list_verified(self, limit: int = 30) -> list[dict]:
+        now = datetime.now(timezone.utc)
+        candidates = (
+            self.db.query(TouristPlace)
+            .filter(TouristPlace.status == TouristPlaceStatus.VERIFIED)
+            .order_by(TouristPlace.created_at.desc())
+            .all()
+        )
+        # naive-column-vs-aware-now comparison done in Python, matching
+        # is_coupon_currently_claimable's convention above.
+        places = [
+            p for p in candidates if p.expires_at is None or p.expires_at.replace(tzinfo=timezone.utc) > now
+        ][:limit]
+        return [
+            {
+                "id": str(p.id),
+                "name": p.name,
+                "category": p.category,
+                "description": p.description,
+                "address": p.address,
+            }
+            for p in places
+        ]
 
 
 class MenuSearchTool:

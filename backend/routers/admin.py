@@ -14,6 +14,8 @@ from models import (
     CouponIssue,
     CouponIssueStatus,
     Reservation,
+    TouristPlace,
+    TouristPlaceStatus,
     User,
     UserRole,
 )
@@ -25,6 +27,9 @@ from schemas.admin import (
     AdminBusinessSummary,
     AdminStatsResponse,
     AdminUserSummary,
+    TouristPlaceCreateRequest,
+    TouristPlaceResponse,
+    TouristPlaceUpdateRequest,
 )
 
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
@@ -112,6 +117,55 @@ def update_business_status(
 def list_users(db: Session = Depends(get_db), _admin: User = Depends(require_admin)) -> list[AdminUserSummary]:
     rows = db.query(User).order_by(User.created_at.desc()).limit(200).all()
     return [AdminUserSummary.model_validate(u) for u in rows]
+
+
+@router.post("/tourist-places", response_model=TouristPlaceResponse, status_code=status.HTTP_201_CREATED)
+def create_tourist_place(
+    body: TouristPlaceCreateRequest, db: Session = Depends(get_db), _admin: User = Depends(require_admin)
+) -> TouristPlaceResponse:
+    """§12/§28 - only an admin may add a tourist_places row (관리자 검증정보),
+    never the LLM (§29). VERIFIED without an explicit verified_at gets one
+    stamped now - the admin marking it VERIFIED *is* the verification act."""
+    verified_at = body.verified_at
+    if body.status == TouristPlaceStatus.VERIFIED and verified_at is None:
+        verified_at = datetime.now(timezone.utc)
+
+    place = TouristPlace(**body.model_dump(exclude={"verified_at"}), verified_at=verified_at)
+    db.add(place)
+    db.commit()
+    db.refresh(place)
+    return TouristPlaceResponse.model_validate(place)
+
+
+@router.get("/tourist-places", response_model=list[TouristPlaceResponse])
+def list_tourist_places(
+    db: Session = Depends(get_db), _admin: User = Depends(require_admin)
+) -> list[TouristPlaceResponse]:
+    rows = db.query(TouristPlace).order_by(TouristPlace.created_at.desc()).limit(200).all()
+    return [TouristPlaceResponse.model_validate(r) for r in rows]
+
+
+@router.patch("/tourist-places/{place_id}", response_model=TouristPlaceResponse)
+def update_tourist_place(
+    place_id: UUID,
+    body: TouristPlaceUpdateRequest,
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_admin),
+) -> TouristPlaceResponse:
+    place = db.get(TouristPlace, place_id)
+    if place is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "관광지 정보를 찾을 수 없습니다.")
+
+    updates = body.model_dump(exclude_unset=True)
+    newly_verified = updates.get("status") == TouristPlaceStatus.VERIFIED and place.status != TouristPlaceStatus.VERIFIED
+    if newly_verified and "verified_at" not in updates:
+        updates["verified_at"] = datetime.now(timezone.utc)
+
+    for field, value in updates.items():
+        setattr(place, field, value)
+    db.commit()
+    db.refresh(place)
+    return TouristPlaceResponse.model_validate(place)
 
 
 @router.get("/ai-interactions/summary", response_model=list[AdminAiInteractionSummary])

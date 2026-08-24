@@ -1,6 +1,17 @@
 import uuid
+from datetime import datetime, timedelta, timezone
 
-from models import Business, BusinessCategory, BusinessProfile, BusinessStatus, Menu, User, UserRole
+from models import (
+    Business,
+    BusinessCategory,
+    BusinessProfile,
+    BusinessStatus,
+    Menu,
+    TouristPlace,
+    TouristPlaceStatus,
+    User,
+    UserRole,
+)
 from services.agents.info import InfoAgent, _EMPTY_DIRECTORY_MESSAGE
 from services.llm.fake_provider import FakeLLMProvider
 
@@ -68,3 +79,53 @@ def test_info_agent_includes_signature_menus(db_session):
 
     system_prompt = llm.calls[0]["system_prompt"]
     assert "특선세트" in system_prompt
+
+
+def test_info_agent_includes_verified_tourist_places_only(db_session):
+    db_session.add(
+        TouristPlace(name="을왕리해수욕장", category="해변", status=TouristPlaceStatus.VERIFIED)
+    )
+    db_session.add(
+        TouristPlace(name="미검증관광지", category="관광지", status=TouristPlaceStatus.UNVERIFIED)
+    )
+    db_session.add(
+        TouristPlace(name="폐쇄된관광지", category="관광지", status=TouristPlaceStatus.DISABLED)
+    )
+    db_session.flush()
+
+    llm = FakeLLMProvider()
+    agent = InfoAgent(db=db_session, llm=llm)
+    agent.respond({}, "바다 보이는 곳")
+
+    system_prompt = llm.calls[0]["system_prompt"]
+    assert "을왕리해수욕장" in system_prompt
+    assert "미검증관광지" not in system_prompt
+    assert "폐쇄된관광지" not in system_prompt
+
+
+def test_info_agent_excludes_expired_tourist_places(db_session):
+    db_session.add(
+        TouristPlace(
+            name="지난축제",
+            category="행사",
+            status=TouristPlaceStatus.VERIFIED,
+            expires_at=datetime.now(timezone.utc) - timedelta(days=1),
+        )
+    )
+    db_session.add(
+        TouristPlace(
+            name="다가올축제",
+            category="행사",
+            status=TouristPlaceStatus.VERIFIED,
+            expires_at=datetime.now(timezone.utc) + timedelta(days=30),
+        )
+    )
+    db_session.flush()
+
+    llm = FakeLLMProvider()
+    agent = InfoAgent(db=db_session, llm=llm)
+    agent.respond({}, "행사 있어?")
+
+    system_prompt = llm.calls[0]["system_prompt"]
+    assert "다가올축제" in system_prompt
+    assert "지난축제" not in system_prompt

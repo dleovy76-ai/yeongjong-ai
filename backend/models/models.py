@@ -62,6 +62,18 @@ class PartnerRelationshipStatus(str, enum.Enum):
     REJECTED = "REJECTED"
 
 
+class TouristPlaceStatus(str, enum.Enum):
+    """Master plan §12 Info AI source-aware states. Info AI may only recommend
+    VERIFIED entries (§29 - never invent 관광지 운영 여부); UNVERIFIED is the
+    default for a freshly-added place until an admin confirms it against a
+    real source, EXPIRED/DISABLED are both excluded from recommendations."""
+
+    VERIFIED = "VERIFIED"
+    UNVERIFIED = "UNVERIFIED"
+    EXPIRED = "EXPIRED"
+    DISABLED = "DISABLED"
+
+
 def _uuid_pk() -> Mapped[uuid.UUID]:
     return mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
@@ -341,3 +353,37 @@ class BusinessRelationship(Base):
 
     business_a: Mapped["Business"] = relationship(foreign_keys=[business_a_id])
     business_b: Mapped["Business"] = relationship(foreign_keys=[business_b_id])
+
+
+class TouristPlace(Base):
+    """Master plan §12/§13/§27/§28 - Info AI's regional-knowledge counterpart
+    to registered businesses (attractions, beaches, festivals, etc. that
+    aren't a platform business). Source-aware by design: only an admin can
+    create/edit rows (§28 knowledge-source priority - 관리자 검증정보), and Info
+    AI must only ever see status=VERIFIED, non-expired rows (see
+    TouristPlaceSearchTool in services/tools.py) - never LLM-generated."""
+
+    __tablename__ = "tourist_places"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    category: Mapped[str] = mapped_column(String(100), nullable=False)
+    description: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    address: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    lon: Mapped[float | None] = mapped_column(nullable=True)
+    lat: Mapped[float | None] = mapped_column(nullable=True)
+
+    source_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    source_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    verified_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    expires_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    status: Mapped[TouristPlaceStatus] = mapped_column(
+        Enum(TouristPlaceStatus, name="tourist_place_status"),
+        nullable=False,
+        default=TouristPlaceStatus.UNVERIFIED,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        server_default=func.now(), onupdate=func.now(), nullable=False
+    )
