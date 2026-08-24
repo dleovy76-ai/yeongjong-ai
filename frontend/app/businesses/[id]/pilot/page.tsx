@@ -58,7 +58,7 @@ export default function BusinessPilotDashboardPage() {
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-12">
-      <h1 className="mb-2 text-2xl font-bold">Pilot 대시보드</h1>
+      <h1 className="mb-2 text-2xl font-bold">파일럿 운영 현황</h1>
       <p className="mb-6 text-sm text-gray-600">
         {dashboard ? dashboard.business_name : "우리 가게"}에서 AI가 실제로 얼마나 쓰이고 매출로 이어졌는지 봅니다.
       </p>
@@ -83,7 +83,7 @@ export default function BusinessPilotDashboardPage() {
       {dashboard && (
         <>
           <section className="mb-10">
-            <h2 className="mb-3 font-semibold">핵심 Funnel</h2>
+            <h2 className="mb-3 font-semibold">손님이 줄어드는 단계</h2>
             <div className="flex flex-col gap-2">
               {dashboard.funnel.map((step) => (
                 <div key={step.key} className="flex items-center justify-between rounded-md border border-gray-200 p-3 text-sm">
@@ -104,7 +104,7 @@ export default function BusinessPilotDashboardPage() {
           <section className="mb-10">
             <h2 className="mb-3 font-semibold">매출</h2>
             <div className="rounded-md border-2 border-black p-4">
-              <p className="text-xs text-gray-500">AI 연결 매출 (DIRECT + ASSISTED - 실제로 검증된 연결만)</p>
+              <p className="text-xs text-gray-500">AI 추천으로 이어진 매출 (쿠폰·예약으로 확인된 것만)</p>
               <p className="text-2xl font-bold">{formatWon(dashboard.revenue.ai_connected_revenue)}</p>
               <p className="mt-1 text-xs text-gray-400">
                 {dashboard.revenue.ai_connected_transaction_count.toLocaleString()}건
@@ -112,11 +112,11 @@ export default function BusinessPilotDashboardPage() {
             </div>
             <dl className="mt-3 grid grid-cols-3 gap-3 text-sm">
               <div className="rounded-md bg-gray-50 p-3">
-                <dt className="text-xs text-gray-500">DIRECT (쿠폰으로 연결 확인)</dt>
+                <dt className="text-xs text-gray-500">쿠폰으로 확인</dt>
                 <dd className="font-semibold">{formatWon(dashboard.revenue.direct_revenue)}</dd>
               </div>
               <div className="rounded-md bg-gray-50 p-3">
-                <dt className="text-xs text-gray-500">ASSISTED (예약으로 연결 확인)</dt>
+                <dt className="text-xs text-gray-500">예약으로 확인</dt>
                 <dd className="font-semibold">{formatWon(dashboard.revenue.assisted_revenue)}</dd>
               </div>
               <div className="rounded-md bg-gray-50 p-3">

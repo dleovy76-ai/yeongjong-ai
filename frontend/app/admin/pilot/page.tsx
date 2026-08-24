@@ -90,13 +90,13 @@ export default function AdminPilotDashboardPage() {
   return (
     <main className="mx-auto max-w-4xl px-6 py-12">
       <div className="mb-2 flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Pilot Operations Dashboard</h1>
+        <h1 className="text-2xl font-bold">파일럿 운영 현황</h1>
         <Link href="/admin" className="text-sm underline">
           ← 관리자 메인
         </Link>
       </div>
       <p className="mb-6 text-sm text-gray-600">
-        "AI가 실제로 지역 업체의 매출을 만드는가?"를 측정합니다. Pilot 상태로 지정된 업체만 집계합니다.
+        "AI가 실제로 지역 업체의 매출을 만드는가?"를 측정합니다. 파일럿 상태로 지정된 업체만 집계합니다.
       </p>
 
       <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
@@ -127,14 +127,14 @@ export default function AdminPilotDashboardPage() {
 
       {overview && overview.pilot_business_count === 0 && (
         <p className="rounded-md border border-gray-200 p-4 text-sm text-gray-500">
-          아직 Pilot 상태로 지정된 업체가 없습니다. 아래 업체 목록에서 "파일럿 진행 중"으로 지정하면 여기 집계됩니다.
+          아직 파일럿 상태로 지정된 업체가 없습니다. 아래 업체 목록에서 "파일럿 진행 중"으로 지정하면 여기 집계됩니다.
         </p>
       )}
 
       {overview && overview.pilot_business_count > 0 && (
         <>
           <section className="mb-10">
-            <h2 className="mb-3 font-semibold">핵심 Funnel</h2>
+            <h2 className="mb-3 font-semibold">손님이 줄어드는 단계</h2>
             <div className="flex flex-col gap-2">
               {overview.funnel.map((step) => (
                 <div key={step.key} className="flex items-center justify-between rounded-md border border-gray-200 p-3 text-sm">
@@ -153,7 +153,7 @@ export default function AdminPilotDashboardPage() {
           </section>
 
           <section className="mb-10 rounded-md border-2 border-black p-4">
-            <p className="text-xs text-gray-500">AI 연결 매출 (DIRECT + ASSISTED, 파일럿 업체 전체)</p>
+            <p className="text-xs text-gray-500">AI 추천으로 이어진 매출 (쿠폰·예약으로 확인된 것만, 파일럿 업체 전체)</p>
             <p className="text-2xl font-bold">{formatWon(overview.revenue.ai_connected_revenue)}</p>
             <p className="mt-1 text-xs text-gray-400">
               전체 거래액 {formatWon(overview.revenue.total_revenue)} · 연결 확인 안 됨(AI 매출 아님){" "}
@@ -162,31 +162,31 @@ export default function AdminPilotDashboardPage() {
           </section>
 
           <section className="mb-10">
-            <h2 className="mb-3 font-semibold">Business</h2>
+            <h2 className="mb-3 font-semibold">업체 현황</h2>
             <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
-              <KpiCard label="Pilot 업체 수" value={overview.pilot_business_count} />
-              <KpiCard label="ACTIVE 업체 수" value={overview.active_business_count} />
-              <KpiCard label="일간 활성 업체" value={overview.daily_active_businesses} />
-              <KpiCard label="주간 활성 업체" value={overview.weekly_active_businesses} />
+              <KpiCard label="파일럿 업체 수" value={overview.pilot_business_count} />
+              <KpiCard label="공개 중인 업체 수" value={overview.active_business_count} />
+              <KpiCard label="오늘 AI 쓴 업체" value={overview.daily_active_businesses} />
+              <KpiCard label="이번 주 AI 쓴 업체" value={overview.weekly_active_businesses} />
             </dl>
           </section>
 
           <section className="mb-10">
-            <h2 className="mb-3 font-semibold">Customer</h2>
+            <h2 className="mb-3 font-semibold">손님 응대</h2>
             <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
               <KpiCard label="Customer AI 질문" value={overview.customer_ai_questions} />
               <KpiCard label="Chef AI 질문" value={overview.chef_ai_questions} />
-              <KpiCard label="Info AI 질문 (플랫폼 전체)" value={overview.info_ai_questions} />
-              <KpiCard label="추천 노출 (플랫폼 전체)" value={overview.recommendation_impressions} />
-              <KpiCard label="추천 클릭 (플랫폼 전체)" value={overview.recommendation_clicks} />
+              <KpiCard label="Info AI 질문 (전체 합산)" value={overview.info_ai_questions} />
+              <KpiCard label="AI가 추천한 횟수 (전체 합산)" value={overview.recommendation_impressions} />
+              <KpiCard label="손님이 실제로 눌러본 횟수 (전체 합산)" value={overview.recommendation_clicks} />
             </dl>
             <p className="mt-2 text-xs text-gray-400">
-              Info AI는 특정 업체에 종속되지 않는 agent라 질문·노출 수는 업체별이 아니라 플랫폼 전체 값입니다.
+              Info AI는 특정 업체에 매이지 않는 AI라 질문·추천 수는 업체별이 아니라 전체 합산 값입니다.
             </p>
           </section>
 
           <section className="mb-10">
-            <h2 className="mb-3 font-semibold">Conversion</h2>
+            <h2 className="mb-3 font-semibold">실제 행동으로 이어진 수</h2>
             <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
               <KpiCard label="쿠폰 발급" value={overview.coupons_issued} />
               <KpiCard label="쿠폰 사용" value={overview.coupons_redeemed} />
@@ -198,13 +198,13 @@ export default function AdminPilotDashboardPage() {
           </section>
 
           <section className="mb-10">
-            <h2 className="mb-3 font-semibold">Expansion</h2>
+            <h2 className="mb-3 font-semibold">업체 확장</h2>
             <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
               <KpiCard label="Expansion AI 실행" value={overview.expansion_runs} />
               <KpiCard label="추천 파트너 후보" value={overview.partner_candidates} />
               <KpiCard label="제휴 제안" value={overview.partner_invites} />
-              <KpiCard label="Referral 클릭" value={overview.referral_clicks} />
-              <KpiCard label="신규 업체 가입 (referral)" value={overview.new_businesses_via_referral} />
+              <KpiCard label="소개 링크 클릭" value={overview.referral_clicks} />
+              <KpiCard label="소개로 새로 가입한 업체" value={overview.new_businesses_via_referral} />
             </dl>
           </section>
 
@@ -219,7 +219,7 @@ export default function AdminPilotDashboardPage() {
                     <th className="py-2 pr-3">추천 클릭</th>
                     <th className="py-2 pr-3">거래</th>
                     <th className="py-2 pr-3">AI 연결 매출</th>
-                    <th className="py-2 pr-3">Pilot 상태</th>
+                    <th className="py-2 pr-3">파일럿 상태</th>
                   </tr>
                 </thead>
                 <tbody>

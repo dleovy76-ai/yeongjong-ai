@@ -102,7 +102,7 @@ describe("AdminPilotDashboardPage (smoke)", () => {
     getAdminPilotOverviewMock.mockResolvedValueOnce(emptyOverview);
     render(<AdminPilotDashboardPage />);
 
-    expect(await screen.findByText(/아직 Pilot 상태로 지정된 업체가 없습니다/)).toBeInTheDocument();
+    expect(await screen.findByText(/아직 파일럿 상태로 지정된 업체가 없습니다/)).toBeInTheDocument();
   });
 
   it("renders funnel, revenue, and the business comparison table when data exists", async () => {

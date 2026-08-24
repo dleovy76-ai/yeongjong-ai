@@ -26,6 +26,19 @@ const STATUS_LABEL: Record<BusinessStatus, string> = {
   DISABLED: "비활성화됨",
 };
 
+const TOURIST_STATUS_LABEL: Record<string, string> = {
+  VERIFIED: "확인 완료",
+  UNVERIFIED: "확인 전",
+  EXPIRED: "기간 만료",
+  DISABLED: "비활성화됨",
+};
+
+const ATTRIBUTION_LABEL: Record<string, string> = {
+  DIRECT: "쿠폰으로 확인",
+  ASSISTED: "예약으로 확인",
+  UNKNOWN: "확인 안 됨",
+};
+
 function CountTable({ counts }: { counts: Record<string, number> }) {
   const entries = Object.entries(counts);
   if (entries.length === 0) return <p className="text-gray-500">데이터 없음</p>;
@@ -157,13 +170,13 @@ export default function AdminPage() {
       <div className="mb-8 flex items-center justify-between">
         <h1 className="text-2xl font-bold">관리자</h1>
         <Link href="/admin/pilot" className="rounded-md border border-black px-4 py-2 text-sm">
-          Pilot Operations Dashboard →
+          파일럿 운영 현황 →
         </Link>
       </div>
       {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
 
       <section className="mb-10">
-        <h2 className="mb-1 font-semibold">핵심 KPI</h2>
+        <h2 className="mb-1 font-semibold">한눈에 보는 숫자</h2>
         <p className="mb-3 text-sm text-gray-600">
           많은 숫자를 다 보지 않고, 이 7개만 본다. 가장 중요한 숫자는 맨 아래 강조된 값이에요.
         </p>
@@ -178,15 +191,15 @@ export default function AdminPage() {
               </div>
               <div className="rounded-md border border-gray-200 p-3 text-center">
                 <p className="text-xl font-bold">{kpi.active_owner_ai_last_30d.toLocaleString()}</p>
-                <p className="mt-1 text-xs text-gray-500">활성 사장님 AI (30일)</p>
+                <p className="mt-1 text-xs text-gray-500">최근 30일 AI 쓴 사장님 수</p>
               </div>
               <div className="rounded-md border border-gray-200 p-3 text-center">
                 <p className="text-xl font-bold">{kpi.ai_response_count_last_30d.toLocaleString()}</p>
-                <p className="mt-1 text-xs text-gray-500">AI 응대 건수 (30일)</p>
+                <p className="mt-1 text-xs text-gray-500">AI가 답한 횟수 (30일)</p>
               </div>
               <div className="rounded-md border border-gray-200 p-3 text-center">
                 <p className="text-xl font-bold">{kpi.ai_recommendation_count_last_30d.toLocaleString()}</p>
-                <p className="mt-1 text-xs text-gray-500">AI 추천 건수 (30일)</p>
+                <p className="mt-1 text-xs text-gray-500">AI가 추천한 횟수 (30일)</p>
               </div>
               <div className="rounded-md border border-gray-200 p-3 text-center">
                 <p className="text-xl font-bold">
@@ -198,7 +211,7 @@ export default function AdminPage() {
                     ? `${(kpi.reservation_conversion_rate * 100).toFixed(0)}%`
                     : "-"}
                 </p>
-                <p className="mt-1 text-xs text-gray-500">쿠폰 / 예약 전환율</p>
+                <p className="mt-1 text-xs text-gray-500">쿠폰 사용 비율 / 예약 성사율</p>
               </div>
               <div className="rounded-md border border-gray-200 p-3 text-center">
                 <p className="text-xl font-bold">{kpi.actual_visits.toLocaleString()}</p>
@@ -208,7 +221,7 @@ export default function AdminPage() {
             <div className="rounded-md border-2 border-black p-4 text-center">
               <p className="text-3xl font-bold">{Number(kpi.ai_connected_revenue).toLocaleString()}원</p>
               <p className="mt-1 text-sm text-gray-600">
-                AI 연결 거래액 — AI가 실제로 만들어낸 확인 가능한 거래액
+                AI 추천으로 이어진 매출 — AI가 실제로 만들어낸 확인 가능한 매출
               </p>
             </div>
           </div>
@@ -216,7 +229,7 @@ export default function AdminPage() {
       </section>
 
       <section className="mb-10">
-        <h2 className="mb-3 font-semibold">현황 (상세)</h2>
+        <h2 className="mb-3 font-semibold">전체 통계 자세히 보기</h2>
         {stats === null ? (
           <p className="text-gray-500">불러오는 중...</p>
         ) : (
@@ -234,15 +247,15 @@ export default function AdminPage() {
               <CountTable counts={stats.reservations_by_status} />
             </div>
             <div>
-              <p className="mb-1 text-gray-500">파트너 제휴 상태</p>
+              <p className="mb-1 text-gray-500">업체 간 협력 현황</p>
               <CountTable counts={stats.partner_relationships_by_status} />
             </div>
             <p className="text-gray-700">
               쿠폰 발급 {stats.coupons_issued}건 · 사용 {stats.coupons_redeemed}건
             </p>
-            <p className="text-gray-700">최근 30일 AI 응대 {stats.ai_interactions_last_30d}건</p>
+            <p className="text-gray-700">최근 30일 AI가 답한 횟수 {stats.ai_interactions_last_30d}건</p>
             <div>
-              <p className="mb-1 text-gray-500">AI 응대 유형별 (전체 기간)</p>
+              <p className="mb-1 text-gray-500">AI별 응대 현황 (전체 기간)</p>
               <CountTable counts={stats.ai_interactions_by_agent_type} />
             </div>
             <div className="rounded-md border border-gray-200 p-3">
@@ -252,18 +265,19 @@ export default function AdminPage() {
                 {Number(stats.transactions_total_amount).toLocaleString()}원
               </p>
               <p className="mt-1 text-gray-700">
-                AI 연결 매출(DIRECT+ASSISTED) {Number(stats.transactions_ai_connected_amount).toLocaleString()}원
+                AI 추천으로 이어진 매출 {Number(stats.transactions_ai_connected_amount).toLocaleString()}원
               </p>
               <ul className="mt-1 flex flex-wrap gap-3 text-xs text-gray-500">
                 {Object.entries(stats.transactions_amount_by_attribution).map(([attribution, amount]) => (
                   <li key={attribution}>
-                    {attribution} {Number(amount).toLocaleString()}원
+                    {ATTRIBUTION_LABEL[attribution] ?? attribution} {Number(amount).toLocaleString()}원
                   </li>
                 ))}
               </ul>
               <p className="mt-2 text-xs text-gray-500">
-                DIRECT=쿠폰 사용으로 연결 확인, ASSISTED=예약 완료로 연결 확인, UNKNOWN=실제 거래이나
-                AI 연결 확인 불가 - 단순 추천은 매출로 계산하지 않아요.
+                쿠폰으로 확인 = 쿠폰 사용으로 연결 확인됨, 예약으로 확인 = 예약 완료로 연결 확인됨,
+                확인 안 됨 = 실제 거래이지만 AI와의 연결은 확인 불가 - 단순 추천은 매출로 계산하지
+                않아요.
               </p>
             </div>
           </div>
@@ -281,7 +295,7 @@ export default function AdminPage() {
                 <div>
                   <p className="font-semibold">{b.name_ko}</p>
                   <p className="text-gray-500">
-                    {b.owner_email ?? "미claim"} · {STATUS_LABEL[b.status]}
+                    {b.owner_email ?? "주인 없음"} · {STATUS_LABEL[b.status]}
                   </p>
                 </div>
                 <div className="flex gap-2">
@@ -323,7 +337,7 @@ export default function AdminPage() {
       </section>
 
       <section className="mb-10">
-        <h2 className="mb-3 font-semibold">지역 비즈니스 그래프</h2>
+        <h2 className="mb-3 font-semibold">우리 동네 업체 연결망</h2>
         <p className="mb-3 text-sm text-gray-600">
           확장AI가 만든 업체 간 연결 전체 - 누가 누구와 제휴를 제안했고, 어떤 상태인지 한눈에
           봐요.
@@ -342,11 +356,11 @@ export default function AdminPage() {
                   <span className="text-gray-500">
                     {edge.relationship_type === "NEAR"
                       ? `(약 ${edge.distance_m}m)`
-                      : `(적합도 ${edge.score})`}
+                      : `(어울리는 정도 ${edge.score})`}
                   </span>
                 </span>
                 <span className="text-xs text-gray-500">
-                  {edge.relationship_type === "NEAR" ? "NEAR" : edge.status}
+                  {edge.relationship_type === "NEAR" ? "가까운 업체" : edge.status}
                 </span>
               </li>
             ))}
@@ -374,10 +388,10 @@ export default function AdminPage() {
       </section>
 
       <section className="mb-10">
-        <h2 className="mb-3 font-semibold">관광지 관리 (Info AI 근거 데이터)</h2>
+        <h2 className="mb-3 font-semibold">관광지 정보 관리 (AI가 답할 때 쓰는 자료)</h2>
         <p className="mb-3 text-sm text-gray-500">
-          여기서 검증(VERIFIED)한 곳만 방문객 AI가 추천에 사용해요. 실제 출처(공식 기관, 직접 확인 등)를
-          확인한 곳만 검증 처리해주세요 — AI가 스스로 지어내지 않도록 하는 안전장치예요.
+          여기서 확인 완료로 표시한 곳만 방문객 AI가 추천에 사용해요. 실제 출처(공식 기관, 직접 확인 등)를
+          확인한 곳만 확인 완료로 표시해주세요 — AI가 스스로 지어내지 않도록 하는 안전장치예요.
         </p>
         <form onSubmit={onAddTouristPlace} className="mb-4 flex flex-wrap gap-2">
           <input
@@ -421,7 +435,7 @@ export default function AdminPage() {
                     {p.name} <span className="font-normal text-gray-500">· {p.category}</span>
                   </p>
                   <p className="text-gray-500">
-                    {p.status} {p.source_name && `· 출처: ${p.source_name}`}
+                    {TOURIST_STATUS_LABEL[p.status] ?? p.status} {p.source_name && `· 출처: ${p.source_name}`}
                   </p>
                 </div>
                 <button
@@ -429,7 +443,7 @@ export default function AdminPage() {
                   disabled={verifyingId === p.id}
                   className="rounded-md border border-black px-3 py-1.5 disabled:opacity-50"
                 >
-                  {p.status === "VERIFIED" ? "검증 해제" : "검증 완료로 표시"}
+                  {p.status === "VERIFIED" ? "확인 취소" : "확인 완료로 표시"}
                 </button>
               </li>
             ))}
@@ -439,7 +453,7 @@ export default function AdminPage() {
       </section>
 
       <section className="mb-10">
-        <h2 className="mb-3 font-semibold">AI 응대 현황 (업체·에이전트별 건수)</h2>
+        <h2 className="mb-3 font-semibold">AI별 응대 현황 (업체별 건수)</h2>
         <p className="mb-3 text-sm text-gray-500">
           건수 기준으로 비정상적으로 많은 업체가 있는지 빠르게 훑어볼 수 있어요. 실제 대화 내용은 아래
           &quot;최근 AI 대화&quot;에서 볼 수 있어요.
