@@ -242,6 +242,10 @@ class Menu(Base):
     image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     is_signature: Mapped[bool] = mapped_column(nullable=False, default=False)
     allergy_info: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # 사장님이 직접 입력한 실제 재료/원산지 사실만 담는다(§29) - AI가 추측해서
+    # 채우지 않는다. 채워져 있으면 메뉴 설명 초안과 Chef AI 답변이 그대로
+    # 인용하고, 비어 있으면 원산지 얘기를 아예 꺼내지 않는다.
+    origin_info: Mapped[str | None] = mapped_column(String(500), nullable=True)
     options: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)

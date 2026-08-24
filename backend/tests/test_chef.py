@@ -57,6 +57,17 @@ def test_chef_chat_mentions_allergy_info_when_present(client, monkeypatch):
     assert "새우, 밀가루 함유" in fake.calls[0]["system_prompt"]
 
 
+def test_chef_chat_mentions_origin_info_when_present(client, monkeypatch):
+    fake = FakeLLMProvider()
+    monkeypatch.setattr(ai_common_module, "get_llm_provider", lambda: fake)
+
+    business, headers = _register_and_create_business(client, "chef-owner7@example.com")
+    _add_menu(client, headers, business["id"], name="백합칼국수", origin_info="인천 앞바다산 백합 사용")
+
+    client.post(f"/api/v1/businesses/{business['id']}/chef/chat", json={"message": "재료가 뭐예요?"})
+    assert "인천 앞바다산 백합 사용" in fake.calls[0]["system_prompt"]
+
+
 def test_chef_chat_includes_brand_tone_as_a_style_instruction(client, monkeypatch):
     fake = FakeLLMProvider()
     monkeypatch.setattr(ai_common_module, "get_llm_provider", lambda: fake)

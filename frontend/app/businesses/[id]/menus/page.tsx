@@ -18,6 +18,7 @@ export default function MenusPage() {
   const [description, setDescription] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [allergyInfo, setAllergyInfo] = useState("");
+  const [originInfo, setOriginInfo] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [drafting, setDrafting] = useState(false);
@@ -44,6 +45,7 @@ export default function MenusPage() {
         description: description || undefined,
         image_url: imageUrl || undefined,
         allergy_info: allergyInfo || undefined,
+        origin_info: originInfo || undefined,
       });
       setMenus((prev) => [...(prev ?? []), menu]);
       setName("");
@@ -52,6 +54,7 @@ export default function MenusPage() {
       setDescription("");
       setImageUrl("");
       setAllergyInfo("");
+      setOriginInfo("");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "메뉴 추가 중 오류가 발생했습니다.");
     } finally {
@@ -64,7 +67,7 @@ export default function MenusPage() {
     setDraftError(null);
     setDrafting(true);
     try {
-      const draft = await api.draftMenuDescription(token, id, name.trim(), isSignature);
+      const draft = await api.draftMenuDescription(token, id, name.trim(), isSignature, originInfo.trim());
       setDescription(draft.description);
     } catch (err) {
       setDraftError(err instanceof ApiError ? err.message : "초안 작성 중 오류가 발생했습니다.");
@@ -107,6 +110,9 @@ export default function MenusPage() {
                     {menu.is_signature && "⭐ "}
                     {menu.name} — {Number(menu.price).toLocaleString()}원
                   </span>
+                  {menu.origin_info && (
+                    <p className="text-xs text-gray-500">재료/원산지: {menu.origin_info}</p>
+                  )}
                   {menu.allergy_info && (
                     <p className="text-xs text-gray-500">알레르기: {menu.allergy_info}</p>
                   )}
@@ -188,6 +194,19 @@ export default function MenusPage() {
           <span className="text-xs text-gray-500">
             새로 업로드하는 게 아니라, 이미 어딘가에 올려둔 사진의 링크를 붙여넣는 거예요. 붙여넣으면
             Chef AI가 이 메뉴를 추천할 때 손님에게 사진도 같이 보여줘요.
+          </span>
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          재료/원산지 (선택)
+          <input
+            className="rounded-md border border-gray-300 px-3 py-2"
+            placeholder="예: 인천 앞바다에서 직접 잡은 백합 사용"
+            value={originInfo}
+            onChange={(e) => setOriginInfo(e.target.value)}
+          />
+          <span className="text-xs text-gray-500">
+            여기 적은 내용만 실제 사실로 취급돼요. 채워두면 AI 초안과 Chef AI 답변에 그대로
+            활용돼서 신뢰도를 높여주고, 비워두면 AI는 재료·원산지를 절대 추측해서 말하지 않아요.
           </span>
         </label>
         <label className="flex flex-col gap-1 text-sm">

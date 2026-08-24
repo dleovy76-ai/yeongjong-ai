@@ -64,6 +64,7 @@ describe("BusinessDetailPage (smoke) - Chef AI", () => {
         image_url: null,
         is_signature: true,
         allergy_info: null,
+        origin_info: null,
         options: null,
       },
     ]);
@@ -99,6 +100,7 @@ describe("BusinessDetailPage (smoke) - Chef AI", () => {
         image_url: "https://example.com/jjajang.jpg",
         is_signature: true,
         allergy_info: null,
+        origin_info: null,
         options: null,
       },
     ]);

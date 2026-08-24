@@ -129,6 +129,7 @@ export interface Menu {
   image_url: string | null;
   is_signature: boolean;
   allergy_info: string | null;
+  origin_info: string | null;
   options: Record<string, unknown> | null;
 }
 
@@ -231,10 +232,16 @@ export const api = {
 
   listMenus: (id: string) => request<Menu[]>(`/api/v1/businesses/${id}/menus`),
 
-  draftMenuDescription: (token: string, businessId: string, name: string, isSignature: boolean) =>
+  draftMenuDescription: (
+    token: string,
+    businessId: string,
+    name: string,
+    isSignature: boolean,
+    originInfo?: string
+  ) =>
     request<{ description: string }>(`/api/v1/businesses/${businessId}/menus/draft-description`, {
       method: "POST",
-      body: { name, is_signature: isSignature },
+      body: { name, is_signature: isSignature, origin_info: originInfo || undefined },
       token,
     }),
 
@@ -248,6 +255,7 @@ export const api = {
       image_url?: string;
       is_signature?: boolean;
       allergy_info?: string;
+      origin_info?: string;
     }
   ) => request<Menu>(`/api/v1/businesses/${businessId}/menus`, { method: "POST", body, token }),
 

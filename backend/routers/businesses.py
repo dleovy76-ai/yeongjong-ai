@@ -409,7 +409,12 @@ def draft_menu_description(
 
     llm = resolve_llm_provider()
     agent = MenuDraftAgent(db=db, llm=llm)
-    context = {"business_id": business_id, "menu_name": body.name, "is_signature": body.is_signature}
+    context = {
+        "business_id": business_id,
+        "menu_name": body.name,
+        "is_signature": body.is_signature,
+        "origin_info": body.origin_info,
+    }
     raw_reply = run_agent(agent, context, "초안 작성")
     return _parse_menu_draft(raw_reply)
 

@@ -54,6 +54,42 @@ def test_draft_signature_flag_reaches_the_prompt(client, monkeypatch):
     assert "대표 메뉴 여부: 예" in fake.calls[0]["system_prompt"]
 
 
+def test_draft_uses_real_origin_info_when_provided(client, monkeypatch):
+    headers = _register(client, "menu-draft-owner7@example.com")
+    business = _create_business(client, headers)
+
+    fake = FakeLLMProvider(response='{"description": "인천 앞바다산 백합으로 끓인 칼국수예요."}')
+    monkeypatch.setattr(ai_common_module, "get_llm_provider", lambda: fake)
+
+    response = client.post(
+        f"/api/v1/businesses/{business['id']}/menus/draft-description",
+        headers=headers,
+        json={"name": "백합칼국수", "origin_info": "인천 앞바다산 백합 사용"},
+    )
+    assert response.status_code == 200
+    prompt = fake.calls[0]["system_prompt"]
+    assert "인천 앞바다산 백합 사용" in prompt
+    assert "자연스럽게 문장에 녹여" in prompt
+
+
+def test_draft_forbids_origin_mention_when_not_provided(client, monkeypatch):
+    headers = _register(client, "menu-draft-owner8@example.com")
+    business = _create_business(client, headers)
+
+    fake = FakeLLMProvider(response='{"description": "따뜻한 칼국수예요."}')
+    monkeypatch.setattr(ai_common_module, "get_llm_provider", lambda: fake)
+
+    response = client.post(
+        f"/api/v1/businesses/{business['id']}/menus/draft-description",
+        headers=headers,
+        json={"name": "백합칼국수"},
+    )
+    assert response.status_code == 200
+    prompt = fake.calls[0]["system_prompt"]
+    assert "절대 언급하지 마세요" in prompt
+    assert "인천" not in prompt
+
+
 def test_draft_returns_empty_description_on_malformed_json(client, monkeypatch):
     headers = _register(client, "menu-draft-owner2@example.com")
     business = _create_business(client, headers)

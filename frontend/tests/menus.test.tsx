@@ -34,7 +34,7 @@ vi.mock("@/lib/api", async () => {
 import MenusPage from "@/app/businesses/[id]/menus/page";
 
 describe("MenusPage (smoke)", () => {
-  it("shows an existing menu's photo and allergy info", async () => {
+  it("shows an existing menu's photo, origin, and allergy info", async () => {
     listMenusMock.mockResolvedValueOnce([
       {
         id: "m1",
@@ -45,6 +45,7 @@ describe("MenusPage (smoke)", () => {
         image_url: "https://example.com/shrimp.jpg",
         is_signature: false,
         allergy_info: "새우, 밀가루 함유",
+        origin_info: "국내산 새우 사용",
         options: null,
       },
     ]);
@@ -52,6 +53,7 @@ describe("MenusPage (smoke)", () => {
     render(<MenusPage />);
 
     expect(await screen.findByText(/새우튀김/)).toBeInTheDocument();
+    expect(screen.getByText("재료/원산지: 국내산 새우 사용")).toBeInTheDocument();
     expect(screen.getByText("알레르기: 새우, 밀가루 함유")).toBeInTheDocument();
     expect(screen.getByAltText("새우튀김")).toHaveAttribute("src", "https://example.com/shrimp.jpg");
   });
@@ -67,6 +69,7 @@ describe("MenusPage (smoke)", () => {
       image_url: "https://example.com/kimchi.jpg",
       is_signature: false,
       allergy_info: null,
+      origin_info: null,
       options: null,
     });
 
@@ -88,6 +91,7 @@ describe("MenusPage (smoke)", () => {
       description: "얼큰한 김치찌개",
       image_url: "https://example.com/kimchi.jpg",
       allergy_info: undefined,
+      origin_info: undefined,
     });
   });
 
@@ -109,7 +113,7 @@ describe("MenusPage (smoke)", () => {
     expect(draftButton).toBeEnabled();
     await user.click(draftButton);
 
-    expect(draftMenuDescriptionMock).toHaveBeenCalledWith("test-token", "biz-1", "김치찌개", false);
+    expect(draftMenuDescriptionMock).toHaveBeenCalledWith("test-token", "biz-1", "김치찌개", false, "");
     expect(await screen.findByDisplayValue("얼큰한 김치와 돼지고기를 함께 끓인 찌개예요.")).toBeInTheDocument();
   });
 });

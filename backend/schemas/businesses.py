@@ -116,6 +116,7 @@ class MenuCreateRequest(BaseModel):
     image_url: str | None = Field(default=None, max_length=500)
     is_signature: bool = False
     allergy_info: ValidatedText | None = Field(default=None, max_length=500)
+    origin_info: ValidatedText | None = Field(default=None, max_length=500)
     options: dict | None = None
 
 
@@ -126,6 +127,7 @@ class MenuUpdateRequest(BaseModel):
     image_url: str | None = Field(default=None, max_length=500)
     is_signature: bool | None = None
     allergy_info: ValidatedText | None = Field(default=None, max_length=500)
+    origin_info: ValidatedText | None = Field(default=None, max_length=500)
     options: dict | None = None
 
 
@@ -138,6 +140,7 @@ class MenuResponse(BaseModel):
     image_url: str | None
     is_signature: bool
     allergy_info: str | None
+    origin_info: str | None
     options: dict | None
 
     model_config = {"from_attributes": True}
@@ -146,6 +149,7 @@ class MenuResponse(BaseModel):
 class MenuDraftRequest(BaseModel):
     name: ValidatedText = Field(min_length=1, max_length=200)
     is_signature: bool = False
+    origin_info: ValidatedText | None = Field(default=None, max_length=500)
 
 
 class MenuDraftResponse(BaseModel):

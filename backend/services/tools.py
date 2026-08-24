@@ -177,6 +177,7 @@ class MenuSearchTool:
                 "price": str(m.price),
                 "is_signature": m.is_signature,
                 "allergy_info": m.allergy_info,
+                "origin_info": m.origin_info,
             }
             for m in menus
         ]
