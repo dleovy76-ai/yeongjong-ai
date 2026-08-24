@@ -75,8 +75,10 @@ def test_performance_counts_ai_responses_and_coupon_activity(client, monkeypatch
     assert response.status_code == 200
     body = response.json()
     assert body["ai_response_count"] == 2
+    assert body["ai_response_count_by_agent_type"] == {"customer": 2}
     assert body["coupons_issued"] == 2
     assert body["coupons_redeemed"] == 1
+    assert body["reservations_this_month"] == 1
     assert body["estimated_time_saved_minutes"] == 6
     assert "추정" in body["estimated_time_saved_note"]
     assert body["revenue_total"] == "37000.00"

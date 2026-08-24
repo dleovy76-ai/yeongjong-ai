@@ -331,6 +331,19 @@ class PerformanceSummaryTool:
             )
             .count()
         )
+        reservations_this_month = (
+            self.db.query(Reservation)
+            .filter(Reservation.business_id == business_id, Reservation.created_at >= month_start)
+            .count()
+        )
+        # 기획서 12번 "가장 성과가 좋았던 기능" - 매출 인과관계까지 증명할 방법은
+        # 없으니(§29), 정직하게 "가장 많이 쓰인 기능"(응대 건수 기준)으로 제한한다.
+        ai_response_count_by_agent_type = dict(
+            self.db.query(AiInteraction.agent_type, func.count())
+            .filter(AiInteraction.business_id == business_id, AiInteraction.created_at >= month_start)
+            .group_by(AiInteraction.agent_type)
+            .all()
+        )
 
         revenue_total = (
             self.db.query(func.coalesce(func.sum(Transaction.amount), 0))
@@ -353,8 +366,10 @@ class PerformanceSummaryTool:
         return {
             "period": month_start.strftime("%Y-%m"),
             "ai_response_count": ai_response_count,
+            "ai_response_count_by_agent_type": ai_response_count_by_agent_type,
             "coupons_issued": coupons_issued,
             "coupons_redeemed": coupons_redeemed,
+            "reservations_this_month": reservations_this_month,
             # str, not Decimal - this dict also flows straight into
             # ManagerDashboardTool's json.dumps() for the LLM prompt (see
             # coupon_summary's str(discount_value) just below for the same

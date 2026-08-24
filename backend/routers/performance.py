@@ -33,8 +33,10 @@ def get_performance(
     return PerformanceResponse(
         period=summary["period"],
         ai_response_count=summary["ai_response_count"],
+        ai_response_count_by_agent_type=summary["ai_response_count_by_agent_type"],
         coupons_issued=summary["coupons_issued"],
         coupons_redeemed=summary["coupons_redeemed"],
+        reservations_this_month=summary["reservations_this_month"],
         estimated_time_saved_minutes=summary["ai_response_count"] * _MINUTES_SAVED_PER_AI_RESPONSE,
         revenue_total=summary["revenue_total"],
         revenue_direct=summary["revenue_direct"],

@@ -452,8 +452,10 @@ export interface ChatResponse {
 export interface Performance {
   period: string;
   ai_response_count: number;
+  ai_response_count_by_agent_type: Record<string, number>;
   coupons_issued: number;
   coupons_redeemed: number;
+  reservations_this_month: number;
   estimated_time_saved_minutes: number;
   estimated_time_saved_note: string;
   revenue_total: string;
