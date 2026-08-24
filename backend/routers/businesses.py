@@ -198,6 +198,15 @@ def update_business_profile(
 
     for field, value in body.model_dump(exclude_unset=True).items():
         setattr(business.profile, field, value)
+
+    # 온보딩 Step 3(AI 정보)가 실질적인 "완료" 지점인데, 여기서 DRAFT->ACTIVE로
+    # 넘어가는 곳이 어디에도 없어서 사장님이 온보딩을 다 마쳐도 손님에게
+    # 영원히 안 보이는 상태로 남아있었음(실제 라이브 데이터에서 확인된 버그 -
+    # 기획서 24번 실사용 업체 검증 도중 발견). DISABLED는 관리자가 모더레이션
+    # 목적으로 끈 것이므로 절대 여기서 되살리지 않는다 - DRAFT일 때만 전환.
+    if business.status == BusinessStatus.DRAFT:
+        business.status = BusinessStatus.ACTIVE
+
     db.commit()
     db.refresh(business.profile)
     return BusinessProfileResponse.model_validate(business.profile)

@@ -72,6 +72,41 @@ def test_owner_can_update_business_and_profile(client):
     assert profile_update.json()["pet_policy"] == "실외석 동반 가능"
 
 
+def test_saving_profile_auto_activates_draft_business(client):
+    headers = _register(client, "owner-autoactivate@example.com")
+    business = _create_business(client, headers)
+    assert business["status"] == "DRAFT"
+
+    response = client.patch(
+        f"/api/v1/businesses/{business['id']}/profile",
+        headers=headers,
+        json={"pet_policy": "실외석 동반 가능"},
+    )
+    assert response.status_code == 200
+
+    refreshed = client.get(f"/api/v1/businesses/{business['id']}").json()
+    assert refreshed["status"] == "ACTIVE"
+
+
+def test_saving_profile_does_not_reactivate_admin_disabled_business(client, db_session):
+    from models import Business, BusinessStatus
+
+    headers = _register(client, "owner-staydisabled@example.com")
+    business = _create_business(client, headers)
+    db_session.query(Business).filter(Business.id == business["id"]).update({"status": BusinessStatus.DISABLED})
+    db_session.commit()
+
+    response = client.patch(
+        f"/api/v1/businesses/{business['id']}/profile",
+        headers=headers,
+        json={"pet_policy": "실외석 동반 가능"},
+    )
+    assert response.status_code == 200
+
+    refreshed = client.get(f"/api/v1/businesses/{business['id']}").json()
+    assert refreshed["status"] == "DISABLED"
+
+
 def test_non_owner_cannot_update_business(client):
     owner_headers = _register(client, "owner4@example.com")
     business = _create_business(client, owner_headers)
