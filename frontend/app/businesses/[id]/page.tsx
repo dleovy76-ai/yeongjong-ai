@@ -185,7 +185,10 @@ export default function BusinessDetailPage() {
           <ChatWidget
             greeting="인원수나 매운맛 취향, 알레르기 같은 걸 알려주시면 메뉴 추천해드릴게요."
             placeholder="예: 2명이서 매운 거 먹고 싶어요"
-            onSend={async (message) => (await api.chefChat(business.id, message)).reply}
+            onSend={async (message) => {
+              const res = await api.chefChat(business.id, message);
+              return { text: res.reply, images: res.menu_images };
+            }}
           />
         </div>
       )}
@@ -265,7 +268,7 @@ export default function BusinessDetailPage() {
       <ChatWidget
         greeting="안녕하세요! 영업시간, 메뉴, 주차, 반려동물 동반 여부 등 궁금한 걸 물어보세요."
         placeholder="예: 주차 가능한가요?"
-        onSend={async (message) => (await api.chat(business.id, message)).reply}
+        onSend={async (message) => ({ text: (await api.chat(business.id, message)).reply })}
       />
     </main>
   );

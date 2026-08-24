@@ -234,7 +234,14 @@ export const api = {
   createMenu: (
     token: string,
     businessId: string,
-    body: { name: string; description?: string; price: string; is_signature?: boolean; allergy_info?: string }
+    body: {
+      name: string;
+      description?: string;
+      price: string;
+      image_url?: string;
+      is_signature?: boolean;
+      allergy_info?: string;
+    }
   ) => request<Menu>(`/api/v1/businesses/${businessId}/menus`, { method: "POST", body, token }),
 
   deleteMenu: (token: string, businessId: string, menuId: string) =>
@@ -244,7 +251,10 @@ export const api = {
     request<ChatResponse>("/api/v1/ai/chat", { method: "POST", body: { business_id: businessId, message } }),
 
   chefChat: (businessId: string, message: string) =>
-    request<ChatResponse>(`/api/v1/businesses/${businessId}/chef/chat`, { method: "POST", body: { message } }),
+    request<ChefChatResponse>(`/api/v1/businesses/${businessId}/chef/chat`, {
+      method: "POST",
+      body: { message },
+    }),
 
   recommend: (query: string) =>
     request<RecommendationResponse>("/api/v1/recommendations", { method: "POST", body: { query } }),
@@ -643,6 +653,16 @@ export interface AdminAiMessageDetail {
 export interface ChatResponse {
   agent_type: string;
   reply: string;
+}
+
+export interface MenuImageItem {
+  id: string;
+  name: string;
+  image_url: string;
+}
+
+export interface ChefChatResponse extends ChatResponse {
+  menu_images: MenuImageItem[];
 }
 
 export interface RecommendationItem {

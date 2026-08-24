@@ -86,6 +86,46 @@ def test_chef_chat_no_menu_returns_fixed_message_without_calling_llm(client, mon
     assert fake.calls == []
 
 
+def test_chef_chat_attaches_image_for_menu_named_in_the_reply(client, monkeypatch):
+    fake = FakeLLMProvider(response="매운 걸 좋아하시면 김치찌개(9,000원)를 추천드려요!")
+    monkeypatch.setattr(ai_common_module, "get_llm_provider", lambda: fake)
+
+    business, headers = _register_and_create_business(client, "chef-owner5@example.com")
+    menu = _add_menu(
+        client, headers, business["id"], name="김치찌개", image_url="https://example.com/kimchi.jpg"
+    )
+    _add_menu(
+        client,
+        headers,
+        business["id"],
+        name="된장찌개",
+        image_url="https://example.com/doenjang.jpg",
+        is_signature=False,
+    )
+
+    response = client.post(
+        f"/api/v1/businesses/{business['id']}/chef/chat", json={"message": "매운 거 추천해주세요"}
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["menu_images"] == [
+        {"id": menu["id"], "name": "김치찌개", "image_url": "https://example.com/kimchi.jpg"}
+    ]
+
+
+def test_chef_chat_omits_image_when_menu_has_no_photo(client, monkeypatch):
+    fake = FakeLLMProvider(response="김치찌개(9,000원) 어떠세요?")
+    monkeypatch.setattr(ai_common_module, "get_llm_provider", lambda: fake)
+
+    business, headers = _register_and_create_business(client, "chef-owner6@example.com")
+    _add_menu(client, headers, business["id"], name="김치찌개")
+
+    response = client.post(
+        f"/api/v1/businesses/{business['id']}/chef/chat", json={"message": "추천해줘"}
+    )
+    assert response.json()["menu_images"] == []
+
+
 def test_chef_chat_unknown_business_returns_not_found(client, monkeypatch):
     fake = FakeLLMProvider()
     monkeypatch.setattr(ai_common_module, "get_llm_provider", lambda: fake)

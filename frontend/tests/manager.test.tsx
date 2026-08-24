@@ -34,6 +34,9 @@ describe("ManagerChatPage (smoke) - 사장님 AI", () => {
   it("renders the chat UI and sends a message through Manager AI", async () => {
     authStateRef.current = { token: "test-token", loading: false };
     managerChatMock.mockResolvedValueOnce({ agent_type: "manager", reply: "이번 달 매출은 아직 기록이 없어요." });
+    // ChatWidget의 onSend는 이제 { text, images? }를 반환한다 - managerChat 응답
+    // 자체는 바뀌지 않았고, 페이지 쪽 onSend 콜백이 reply를 text로 감싸서
+    // 넘겨줄 뿐이므로 이 목(mock)은 그대로 { agent_type, reply } 형태로 둔다.
 
     const user = userEvent.setup();
     render(<ManagerChatPage />);

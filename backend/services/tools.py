@@ -181,6 +181,15 @@ class MenuSearchTool:
             for m in menus
         ]
 
+    def list_menus_with_media(self, business_id: UUID) -> list[dict]:
+        """Chef AI 답변에 실제 메뉴 사진을 붙이기 위한 전용 조회 - list_menus()와
+        분리해두는 이유는, id/image_url을 프롬프트(list_menus의 결과)에 절대
+        섞지 않기 위해서다. LLM에게 URL을 보여주면 문장 속에 잘못 베끼거나
+        지어낼 여지가 생기므로, 이 메서드의 결과는 LLM 호출 후 답변 문장에
+        실제 메뉴 이름이 등장하는지 코드가 직접 대조하는 데만 쓴다."""
+        menus = self.db.query(Menu).filter(Menu.business_id == business_id).all()
+        return [{"id": str(m.id), "name": m.name, "image_url": m.image_url} for m in menus]
+
 
 class CouponSearchTool:
     """Master plan §15/§18 - lets Customer/Info AI mention a real, currently

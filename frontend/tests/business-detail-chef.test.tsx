@@ -85,4 +85,41 @@ describe("BusinessDetailPage (smoke) - Chef AI", () => {
     expect(await screen.findByText("대표 메뉴인 짜장면을 추천드려요!")).toBeInTheDocument();
     expect(chefChatMock).toHaveBeenCalledWith("biz-1", "매운 거 추천해줘");
   });
+
+  it("shows the real menu photo when Chef AI's reply names a menu with an image", async () => {
+    getBusinessMock.mockResolvedValueOnce(business);
+    getProfileMock.mockResolvedValueOnce(null);
+    listMenusMock.mockResolvedValueOnce([
+      {
+        id: "m1",
+        business_id: "biz-1",
+        name: "짜장면",
+        description: null,
+        price: "8500",
+        image_url: "https://example.com/jjajang.jpg",
+        is_signature: true,
+        allergy_info: null,
+        options: null,
+      },
+    ]);
+    listCouponsMock.mockResolvedValueOnce([]);
+    chefChatMock.mockResolvedValueOnce({
+      agent_type: "chef",
+      reply: "대표 메뉴인 짜장면을 추천드려요!",
+      menu_images: [{ id: "m1", name: "짜장면", image_url: "https://example.com/jjajang.jpg" }],
+    });
+
+    const user = userEvent.setup();
+    render(<BusinessDetailPage />);
+
+    expect(await screen.findByText("영종 식당")).toBeInTheDocument();
+    const chefInput = screen.getByPlaceholderText("예: 2명이서 매운 거 먹고 싶어요");
+    await user.type(chefInput, "매운 거 추천해줘");
+    const chefForm = chefInput.closest("form");
+    if (!chefForm) throw new Error("Chef AI form not found");
+    await user.click(within(chefForm).getByRole("button", { name: "전송" }));
+
+    const photo = await screen.findByAltText("짜장면");
+    expect(photo).toHaveAttribute("src", "https://example.com/jjajang.jpg");
+  });
 });

@@ -15,6 +15,9 @@ export default function MenusPage() {
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
   const [isSignature, setIsSignature] = useState(false);
+  const [description, setDescription] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
+  const [allergyInfo, setAllergyInfo] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -32,11 +35,21 @@ export default function MenusPage() {
     setError(null);
     setSubmitting(true);
     try {
-      const menu = await api.createMenu(token, id, { name, price, is_signature: isSignature });
+      const menu = await api.createMenu(token, id, {
+        name,
+        price,
+        is_signature: isSignature,
+        description: description || undefined,
+        image_url: imageUrl || undefined,
+        allergy_info: allergyInfo || undefined,
+      });
       setMenus((prev) => [...(prev ?? []), menu]);
       setName("");
       setPrice("");
       setIsSignature(false);
+      setDescription("");
+      setImageUrl("");
+      setAllergyInfo("");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "메뉴 추가 중 오류가 발생했습니다.");
     } finally {
@@ -64,10 +77,25 @@ export default function MenusPage() {
               key={menu.id}
               className="flex items-center justify-between rounded-md border border-gray-200 px-3 py-2 text-sm"
             >
-              <span>
-                {menu.is_signature && "⭐ "}
-                {menu.name} — {Number(menu.price).toLocaleString()}원
-              </span>
+              <div className="flex items-center gap-3">
+                {menu.image_url && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={menu.image_url}
+                    alt={menu.name}
+                    className="h-12 w-12 rounded-md border border-gray-200 object-cover"
+                  />
+                )}
+                <div>
+                  <span>
+                    {menu.is_signature && "⭐ "}
+                    {menu.name} — {Number(menu.price).toLocaleString()}원
+                  </span>
+                  {menu.allergy_info && (
+                    <p className="text-xs text-gray-500">알레르기: {menu.allergy_info}</p>
+                  )}
+                </div>
+              </div>
               <button onClick={() => onDelete(menu.id)} className="text-gray-500 underline">
                 삭제
               </button>
@@ -106,6 +134,42 @@ export default function MenusPage() {
             onChange={(e) => setIsSignature(e.target.checked)}
           />
           대표 메뉴예요
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          메뉴 설명 (선택)
+          <textarea
+            className="rounded-md border border-gray-300 px-3 py-2"
+            placeholder="예: 24시간 우려낸 사골 육수에 얼큰하게 끓인 김치찌개"
+            rows={2}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+          <span className="text-xs text-gray-500">Chef AI가 손님에게 메뉴를 추천할 때 이 설명을 참고해요.</span>
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          사진 URL (선택)
+          <input
+            className="rounded-md border border-gray-300 px-3 py-2"
+            placeholder="예: 인스타그램·블로그에 이미 올려둔 사진 링크"
+            value={imageUrl}
+            onChange={(e) => setImageUrl(e.target.value)}
+          />
+          <span className="text-xs text-gray-500">
+            새로 업로드하는 게 아니라, 이미 어딘가에 올려둔 사진의 링크를 붙여넣는 거예요. 붙여넣으면
+            Chef AI가 이 메뉴를 추천할 때 손님에게 사진도 같이 보여줘요.
+          </span>
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          알레르기 정보 (선택)
+          <input
+            className="rounded-md border border-gray-300 px-3 py-2"
+            placeholder="예: 새우, 밀가루 함유"
+            value={allergyInfo}
+            onChange={(e) => setAllergyInfo(e.target.value)}
+          />
+          <span className="text-xs text-gray-500">
+            비워두면 Chef AI는 손님이 알레르기를 물어봤을 때 "확인이 필요합니다"라고 답해요.
+          </span>
         </label>
         {error && <p className="text-sm text-red-600">{error}</p>}
         <button

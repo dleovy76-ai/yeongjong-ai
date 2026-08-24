@@ -3,15 +3,27 @@
 import { useState, type FormEvent } from "react";
 import { ApiError } from "@/lib/api";
 
+interface ChatImage {
+  id: string;
+  name: string;
+  image_url: string;
+}
+
+interface ChatReply {
+  text: string;
+  images?: ChatImage[];
+}
+
 interface Message {
   role: "user" | "ai";
   text: string;
+  images?: ChatImage[];
 }
 
 interface ChatWidgetProps {
   greeting: string;
   placeholder: string;
-  onSend: (message: string) => Promise<string>;
+  onSend: (message: string) => Promise<ChatReply>;
 }
 
 export function ChatWidget({ greeting, placeholder, onSend }: ChatWidgetProps) {
@@ -29,7 +41,7 @@ export function ChatWidget({ greeting, placeholder, onSend }: ChatWidgetProps) {
     setSending(true);
     try {
       const reply = await onSend(question);
-      setMessages((prev) => [...prev, { role: "ai", text: reply }]);
+      setMessages((prev) => [...prev, { role: "ai", text: reply.text, images: reply.images }]);
     } catch (err) {
       const text =
         err instanceof ApiError ? err.message : "AI 응답을 받아오지 못했습니다. 잠시 후 다시 시도해 주세요.";
@@ -52,6 +64,18 @@ export function ChatWidget({ greeting, placeholder, onSend }: ChatWidgetProps) {
             >
               {m.text}
             </span>
+            {m.images && m.images.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {m.images.map((img) => (
+                  <img
+                    key={img.id}
+                    src={img.image_url}
+                    alt={img.name}
+                    className="h-20 w-20 rounded-md border border-gray-200 object-cover"
+                  />
+                ))}
+              </div>
+            )}
           </div>
         ))}
         {sending && <p className="text-left text-sm text-gray-400">답변 작성 중...</p>}

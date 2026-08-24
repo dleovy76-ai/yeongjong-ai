@@ -28,7 +28,7 @@ export default function ManagerChatPage() {
       <ChatWidget
         greeting="안녕하세요, 사장님! 이번 달 어떠세요? 편하게 물어보세요. 예: '이번 달 어때?', '손님 좀 늘려줘'"
         placeholder="예: 손님 좀 늘려줘"
-        onSend={async (message) => (await api.managerChat(authToken, id, message)).reply}
+        onSend={async (message) => ({ text: (await api.managerChat(authToken, id, message)).reply })}
       />
     </main>
   );

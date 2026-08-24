@@ -24,7 +24,7 @@ export default function DiscoverPage() {
     setRecommendations(response.recommendations);
     setClickedIds(new Set());
     inFlightIds.current = new Set();
-    return response.reply;
+    return { text: response.reply };
   };
 
   const handleRecommendationClick = (item: RecommendationItem) => {
