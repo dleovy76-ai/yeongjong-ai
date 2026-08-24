@@ -1,3 +1,6 @@
+import json
+import logging
+import re
 from urllib.parse import quote
 from uuid import UUID
 
@@ -7,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from core.database import get_db
 from models import Business, BusinessCategory, BusinessProfile, BusinessStatus, Menu, User, UserRole
+from routers._ai_common import resolve_llm_provider, run_agent
 from routers._business_common import get_business_or_404 as _get_business_or_404
 from routers._business_common import require_owner as _require_owner
 from routers.auth import get_current_user
@@ -20,10 +24,31 @@ from schemas.businesses import (
     MenuResponse,
     MenuUpdateRequest,
     NaverLookupCandidate,
+    ProfileDraftResponse,
 )
+from services.agents.profile_draft import ProfileDraftAgent
 from services.external.naver_local_api import NaverApiConfigurationError, NaverLocalApiClient
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/api/v1/businesses", tags=["businesses"])
+
+_JSON_FENCE_RE = re.compile(r"^```(?:json)?\s*|\s*```$", re.MULTILINE)
+
+
+def _parse_profile_draft(raw_reply: str) -> ProfileDraftResponse:
+    cleaned = _JSON_FENCE_RE.sub("", raw_reply).strip()
+    try:
+        parsed = json.loads(cleaned)
+    except json.JSONDecodeError:
+        logger.warning("Profile draft reply was not valid JSON after fence-stripping: %r", raw_reply[:500])
+        return ProfileDraftResponse(description="", brand_tone="")
+    if not isinstance(parsed, dict):
+        return ProfileDraftResponse(description="", brand_tone="")
+    return ProfileDraftResponse(
+        description=str(parsed.get("description", ""))[:2000],
+        brand_tone=str(parsed.get("brand_tone", ""))[:500],
+    )
 
 
 @router.post("", response_model=BusinessResponse, status_code=status.HTTP_201_CREATED)
@@ -146,6 +171,26 @@ def update_business_profile(
     db.commit()
     db.refresh(business.profile)
     return BusinessProfileResponse.model_validate(business.profile)
+
+
+@router.post("/{business_id}/profile/draft", response_model=ProfileDraftResponse)
+def draft_business_profile(
+    business_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> ProfileDraftResponse:
+    """AI가 업체 이름·업종·대표 메뉴만 근거로 소개글/브랜드톤 초안을 만들어주고,
+    사장님은 확인 후 고쳐서 /profile PATCH로 저장하는 흐름 - 자동 저장하지
+    않음(§29, 네이버 링크 기능과 같은 패턴)."""
+    business = _get_business_or_404(db, business_id)
+    _require_owner(business, current_user)
+    if business.profile is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "AI 정보가 아직 등록되지 않았습니다.")
+
+    llm = resolve_llm_provider()
+    agent = ProfileDraftAgent(db=db, llm=llm)
+    raw_reply = run_agent(agent, {"business_id": business_id}, "초안 작성")
+    return _parse_profile_draft(raw_reply)
 
 
 def _normalize_address(address: str) -> str:

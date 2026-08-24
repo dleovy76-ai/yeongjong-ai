@@ -96,6 +96,11 @@ export interface BusinessProfile {
   naver_map_url: string | null;
 }
 
+export interface ProfileDraft {
+  description: string;
+  brand_tone: string;
+}
+
 export interface NaverLookupCandidate {
   title: string;
   road_address: string;
@@ -199,6 +204,9 @@ export const api = {
 
   naverLookup: (token: string, id: string) =>
     request<NaverLookupCandidate>(`/api/v1/businesses/${id}/naver-lookup`, { token }),
+
+  draftProfile: (token: string, id: string) =>
+    request<ProfileDraft>(`/api/v1/businesses/${id}/profile/draft`, { method: "POST", token }),
 
   listMenus: (id: string) => request<Menu[]>(`/api/v1/businesses/${id}/menus`),
 

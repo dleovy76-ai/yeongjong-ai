@@ -55,6 +55,17 @@ def test_customer_agent_grounds_prompt_in_approved_facts(db_session):
     assert llm.calls[0]["user_message"] == "강아지 데려가도 되나요?"
 
 
+def test_customer_agent_includes_brand_tone_as_a_style_instruction(db_session):
+    business = _make_business(db_session, brand_tone="친근하고 정겨운 존댓말")
+
+    llm = FakeLLMProvider()
+    agent = CustomerAgent(db=db_session, llm=llm)
+    agent.respond({"business_id": business.id}, "질문")
+
+    system_prompt = llm.calls[0]["system_prompt"]
+    assert "친근하고 정겨운 존댓말" in system_prompt
+
+
 def test_customer_agent_never_invents_facts_the_llm_wasnt_given(db_session):
     """The agent's job is to make sure only approved facts reach the model - it
     can't control what the model does with them, but it must never smuggle in

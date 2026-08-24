@@ -20,6 +20,8 @@ _SYSTEM_PROMPT_TEMPLATE = """당신은 '{name}'의 Chef AI입니다. 손님이 �
 - is_signature가 true인 메뉴는 대표 메뉴이니 특별한 이유가 없다면 우선 추천하세요.
 - [승인된 정보]의 coupons 목록에 지금 받을 수 있는 쿠폰이 있다면, 추천과 자연스럽게 이어질 때 \
 알려주세요.
+- brand_tone은 사실 정보가 아니라 답변 말투 지시입니다 - 손님에게 그대로 말하지 말고, 그 \
+말투로 답변하세요. brand_tone이 없으면 친절하고 간결한 기본 존댓말을 쓰세요.
 - 친절하고 간결하게, 한국어로 답변하세요.
 
 [메뉴 목록]
@@ -27,6 +29,9 @@ _SYSTEM_PROMPT_TEMPLATE = """당신은 '{name}'의 Chef AI입니다. 손님이 �
 
 [쿠폰 목록]
 {coupons_json}
+
+[brand_tone]
+{brand_tone}
 """
 
 
@@ -49,12 +54,13 @@ class ChefAgent(BaseAgent):
         business_id = context["business_id"]
         business_context = business_tool.get_context(business_id)
         if business_context is None:
-            return {"name": None, "menus": [], "coupons": []}
+            return {"name": None, "menus": [], "coupons": [], "brand_tone": None}
 
         return {
             "name": business_context["name"],
             "menus": menu_tool.list_menus(business_id),
             "coupons": coupon_tool.list_claimable(business_id),
+            "brand_tone": business_context["brand_tone"],
         }
 
     def execute(self, context: dict, understood: dict, decided: dict) -> str:
@@ -67,5 +73,6 @@ class ChefAgent(BaseAgent):
             name=decided["name"],
             menus_json=json.dumps(decided["menus"], ensure_ascii=False, indent=2),
             coupons_json=json.dumps(decided["coupons"], ensure_ascii=False, indent=2),
+            brand_tone=decided["brand_tone"] or "(지정되지 않음)",
         )
         return self._call_llm(system_prompt=system_prompt, user_message=understood["message"])

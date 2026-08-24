@@ -74,6 +74,7 @@ class BusinessSearchTool:
             "address": business.address,
             "phone": business.phone,
             "description": profile.description,
+            "brand_tone": profile.brand_tone,
             "opening_hours": profile.opening_hours,
             "holiday": profile.holiday,
             "parking": profile.parking,

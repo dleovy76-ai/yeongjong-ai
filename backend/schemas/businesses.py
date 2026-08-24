@@ -75,6 +75,11 @@ class BusinessProfileResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class ProfileDraftResponse(BaseModel):
+    description: str
+    brand_tone: str
+
+
 class NaverLookupCandidate(BaseModel):
     title: str
     road_address: str

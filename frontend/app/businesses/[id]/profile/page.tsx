@@ -18,6 +18,10 @@ export default function BusinessProfilePage() {
   const router = useRouter();
 
   const [loaded, setLoaded] = useState(false);
+  const [description, setDescription] = useState("");
+  const [brandTone, setBrandTone] = useState("");
+  const [drafting, setDrafting] = useState(false);
+  const [draftError, setDraftError] = useState<string | null>(null);
   const [openingHours, setOpeningHours] = useState("");
   const [holiday, setHoliday] = useState("");
   const [parking, setParking] = useState("");
@@ -43,6 +47,8 @@ export default function BusinessProfilePage() {
     api
       .getProfile(id)
       .then((profile) => {
+        setDescription(profile.description ?? "");
+        setBrandTone(profile.brand_tone ?? "");
         setOpeningHours(textOf(profile.opening_hours));
         setHoliday(profile.holiday ?? "");
         setParking(profile.parking ?? "");
@@ -54,6 +60,21 @@ export default function BusinessProfilePage() {
       })
       .finally(() => setLoaded(true));
   }, [id]);
+
+  const onDraftWithAi = async () => {
+    if (!token) return;
+    setDraftError(null);
+    setDrafting(true);
+    try {
+      const draft = await api.draftProfile(token, id);
+      setDescription(draft.description);
+      setBrandTone(draft.brand_tone);
+    } catch (err) {
+      setDraftError(err instanceof ApiError ? err.message : "초안 작성 중 오류가 발생했습니다.");
+    } finally {
+      setDrafting(false);
+    }
+  };
 
   const onFindOnNaver = async () => {
     if (!token) return;
@@ -96,6 +117,8 @@ export default function BusinessProfilePage() {
     setSubmitting(true);
     try {
       await api.updateProfile(token, id, {
+        description: description || undefined,
+        brand_tone: brandTone || undefined,
         opening_hours: openingHours ? { text: openingHours } : undefined,
         holiday: holiday || undefined,
         parking: parking || undefined,
@@ -122,6 +145,37 @@ export default function BusinessProfilePage() {
         답합니다 — 확실하지 않은 건 추측해서 알려주지 않아요.
       </p>
       <form onSubmit={onSubmit} className="flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-semibold">가게 소개 & AI 말투</p>
+          <button
+            type="button"
+            onClick={onDraftWithAi}
+            disabled={drafting}
+            className="rounded-md border border-black px-3 py-1 text-xs disabled:opacity-50"
+          >
+            {drafting ? "작성 중..." : "AI가 초안 써줄게요"}
+          </button>
+        </div>
+        {draftError && <p className="text-sm text-red-600">{draftError}</p>}
+        <label className="flex flex-col gap-1 text-sm">
+          가게 소개
+          <textarea
+            className="rounded-md border border-gray-300 px-3 py-2"
+            placeholder="예: 영종식당은 바지락 칼국수를 대표 메뉴로 하는 한식당입니다."
+            rows={3}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          AI 말투
+          <input
+            className="rounded-md border border-gray-300 px-3 py-2"
+            placeholder="예: 친근하고 정겨운 존댓말"
+            value={brandTone}
+            onChange={(e) => setBrandTone(e.target.value)}
+          />
+        </label>
         <label className="flex flex-col gap-1 text-sm">
           영업시간
           <input
