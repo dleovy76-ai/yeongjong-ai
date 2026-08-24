@@ -44,6 +44,33 @@ def test_manager_agent_grounds_prompt_in_real_dashboard(db_session):
     assert llm.calls[0]["user_message"] == "손님 좀 늘려줘"
 
 
+def test_manager_agent_prompt_includes_real_revenue_figures(db_session):
+    """Regression check: the manager prompt used to explicitly tell the LLM
+    revenue/payment data was never tracked (true before transactions.py
+    existed) - now that owners can record real transactions, that sentence
+    would make the agent falsely deny data it actually has."""
+    from models import Transaction, TransactionAttribution
+
+    business = _make_business(db_session)
+    db_session.add(
+        Transaction(
+            business_id=business.id,
+            amount="12000",
+            attribution=TransactionAttribution.NONE,
+            occurred_at=business.created_at,
+        )
+    )
+    db_session.flush()
+
+    llm = FakeLLMProvider(response="이번 달 매출은 12,000원이에요.")
+    agent = ManagerAgent(db=db_session, llm=llm)
+    agent.respond({"business_id": business.id}, "오늘 매출 어때?")
+
+    system_prompt = llm.calls[0]["system_prompt"]
+    assert "12000" in system_prompt
+    assert "결제/매출 데이터를 직접 연동하지 않으므로" not in system_prompt
+
+
 def test_manager_agent_returns_not_found_without_calling_llm_when_business_missing(db_session):
     llm = FakeLLMProvider()
     agent = ManagerAgent(db=db_session, llm=llm)

@@ -22,6 +22,8 @@ from models import (
     CouponStatus,
     Menu,
     PartnerRelationshipStatus,
+    Reservation,
+    ReservationStatus,
     TouristPlace,
     TouristPlaceStatus,
     Transaction,
@@ -395,6 +397,17 @@ class ManagerDashboardTool:
             .all()
         )
 
+        upcoming_reservations = (
+            self.db.query(Reservation)
+            .filter(
+                Reservation.business_id == business_id,
+                Reservation.status.in_([ReservationStatus.REQUESTED, ReservationStatus.CONFIRMED]),
+            )
+            .order_by(Reservation.reservation_time.asc())
+            .limit(10)
+            .all()
+        )
+
         return {
             "business_name": business.name_ko,
             "category": business.category.value,
@@ -403,5 +416,15 @@ class ManagerDashboardTool:
             "coupons": coupon_summary,
             "pending_partner_suggestions": [
                 {"name": r.business_b.name_ko, "score": r.score} for r in pending_suggestions
+            ],
+            "upcoming_reservations": [
+                {
+                    "customer_name": r.customer_name,
+                    "customer_phone": r.customer_phone,
+                    "party_size": r.party_size,
+                    "reservation_time": r.reservation_time.isoformat(),
+                    "status": r.status.value,
+                }
+                for r in upcoming_reservations
             ],
         }

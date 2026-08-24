@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime, timedelta, timezone
 
 from models import (
     AiInteraction,
@@ -9,6 +10,8 @@ from models import (
     CouponDiscountType,
     CouponStatus,
     PartnerRelationshipStatus,
+    Reservation,
+    ReservationStatus,
     User,
     UserRole,
 )
@@ -95,3 +98,34 @@ def test_dashboard_includes_only_pending_partner_suggestions(db_session):
 
     names = [s["name"] for s in dashboard["pending_partner_suggestions"]]
     assert names == ["대기중업체"]
+
+
+def test_dashboard_includes_upcoming_but_not_cancelled_reservations(db_session):
+    business = _make_business(db_session)
+    future = datetime.now(timezone.utc) + timedelta(hours=24)
+    db_session.add(
+        Reservation(
+            business_id=business.id,
+            customer_name="김방문",
+            customer_phone="010-1234-5678",
+            reservation_time=future,
+            party_size=4,
+            status=ReservationStatus.REQUESTED,
+        )
+    )
+    db_session.add(
+        Reservation(
+            business_id=business.id,
+            customer_name="이취소",
+            customer_phone="010-0000-0000",
+            reservation_time=future,
+            party_size=2,
+            status=ReservationStatus.CANCELLED,
+        )
+    )
+    db_session.flush()
+
+    dashboard = ManagerDashboardTool(db_session).get_dashboard(business.id)
+
+    names = [r["customer_name"] for r in dashboard["upcoming_reservations"]]
+    assert names == ["김방문"]
