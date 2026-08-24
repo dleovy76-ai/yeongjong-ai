@@ -1,6 +1,6 @@
 import uuid
 
-from models import Business, BusinessCategory, User, UserRole
+from models import Business, BusinessCategory, BusinessRelationship, User, UserRole
 
 
 def _register(client, email, role="BUSINESS_OWNER"):
@@ -66,6 +66,34 @@ def test_owner_can_claim_unclaimed_business(client, db_session):
 
     profile = client.get(f"/api/v1/businesses/{business.id}/profile")
     assert profile.status_code == 200
+
+
+def test_claiming_after_referral_click_confirms_signup(client, db_session):
+    recipient = _seed_unclaimed_business(db_session, name_ko="영종 수산시장")
+    sender_owner = User(email="sender-owner@example.com", password_hash="x", role=UserRole.BUSINESS_OWNER, name="사장")
+    db_session.add(sender_owner)
+    db_session.flush()
+    sender = Business(owner_user_id=sender_owner.id, name_ko="영종 식당", category=BusinessCategory.RESTAURANT, address="인천 중구 3")
+    db_session.add(sender)
+    db_session.flush()
+    relationship = BusinessRelationship(
+        business_a_id=sender.id, business_b_id=recipient.id, score=80, reason="근접", referral_token="tok123"
+    )
+    db_session.add(relationship)
+    db_session.commit()
+
+    # visiting the public join link stamps referral_clicked_at
+    joined = client.get("/api/v1/referral/tok123")
+    assert joined.status_code == 200
+    assert joined.json()["name_ko"] == "영종 수산시장"
+
+    headers = _register(client, "referred-claimer@example.com")
+    response = client.post(f"/api/v1/businesses/{recipient.id}/claim", headers=headers)
+    assert response.status_code == 200
+
+    db_session.refresh(relationship)
+    assert relationship.referral_clicked_at is not None
+    assert relationship.referral_signup_confirmed_at is not None
 
 
 def test_cannot_claim_already_claimed_business(client, db_session):

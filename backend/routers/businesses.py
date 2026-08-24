@@ -1,6 +1,7 @@
 import json
 import logging
 import re
+from datetime import datetime, timezone
 from urllib.parse import quote
 from uuid import UUID
 
@@ -9,7 +10,16 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from core.database import get_db
-from models import Business, BusinessCategory, BusinessProfile, BusinessStatus, Menu, User, UserRole
+from models import (
+    Business,
+    BusinessCategory,
+    BusinessProfile,
+    BusinessRelationship,
+    BusinessStatus,
+    Menu,
+    User,
+    UserRole,
+)
 from routers._ai_common import resolve_llm_provider, run_agent
 from routers._business_common import get_business_or_404 as _get_business_or_404
 from routers._business_common import require_owner as _require_owner
@@ -119,6 +129,26 @@ def claim_business(
     business.owner_user_id = current_user.id
     if business.profile is None:
         db.add(BusinessProfile(business_id=business.id))
+
+    # 기획서 14번 (가입 추적) - this business was recruited by another
+    # business's Expansion AI if someone opened its /join/{token} link and
+    # then, afterward, this exact business got claimed. Scoped to one
+    # specific business + one specific link click, not a platform-wide
+    # guess (§29) - the closest thing to a provable "AI가 새 업체를
+    # 모집했다" signal without any visitor/session tracking.
+    pending_referral = (
+        db.query(BusinessRelationship)
+        .filter(
+            BusinessRelationship.business_b_id == business.id,
+            BusinessRelationship.referral_clicked_at.isnot(None),
+            BusinessRelationship.referral_signup_confirmed_at.is_(None),
+        )
+        .order_by(BusinessRelationship.referral_clicked_at.desc())
+        .first()
+    )
+    if pending_referral is not None:
+        pending_referral.referral_signup_confirmed_at = datetime.now(timezone.utc)
+
     db.commit()
     db.refresh(business)
     return BusinessResponse.model_validate(business)

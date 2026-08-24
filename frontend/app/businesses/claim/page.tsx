@@ -1,15 +1,24 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { Suspense, useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { api, ApiError, CATEGORY_LABELS, type Business } from "@/lib/api";
 
 export default function ClaimBusinessPage() {
+  return (
+    <Suspense fallback={null}>
+      <ClaimBusinessPageInner />
+    </Suspense>
+  );
+}
+
+function ClaimBusinessPageInner() {
   const { token, loading: authLoading } = useAuth();
   const router = useRouter();
-  const [query, setQuery] = useState("");
+  const searchParams = useSearchParams();
+  const [query, setQuery] = useState(searchParams.get("query") ?? "");
   const [results, setResults] = useState<Business[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [claimingId, setClaimingId] = useState<string | null>(null);
@@ -17,6 +26,13 @@ export default function ClaimBusinessPage() {
   useEffect(() => {
     if (!authLoading && !token) router.push("/login");
   }, [authLoading, token, router]);
+
+  useEffect(() => {
+    const prefilled = searchParams.get("query");
+    if (!token || !prefilled) return;
+    api.listUnclaimedBusinesses(prefilled).then(setResults).catch(() => setResults([]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
 
   const onSearch = async (e: FormEvent) => {
     e.preventDefault();

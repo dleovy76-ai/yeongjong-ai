@@ -43,6 +43,12 @@ def test_analyze_persists_valid_suggestions_and_drops_hallucinated_id(client, mo
     assert body[0]["business_b_id"] == cafe["id"]
     assert body[0]["score"] == 92
     assert body[0]["status"] == "SUGGESTED"
+    assert body[0]["referral_token"]
+
+    # the token round-trips as a real public join link
+    join = client.get(f"/api/v1/referral/{body[0]['referral_token']}")
+    assert join.status_code == 200
+    assert join.json()["name_ko"] == "영종카페"
 
 
 def test_analyze_rerun_updates_instead_of_duplicating(client, monkeypatch):

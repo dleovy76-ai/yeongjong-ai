@@ -13,6 +13,7 @@ from routers.expansion import router as expansion_router
 from routers.manager import router as manager_router
 from routers.performance import router as performance_router
 from routers.recommendations import router as recommendations_router
+from routers.referral import router as referral_router
 from routers.reservations import router as reservations_router
 from routers.transactions import router as transactions_router
 
@@ -40,6 +41,7 @@ app.include_router(reservations_router)
 app.include_router(admin_router)
 app.include_router(chef_router)
 app.include_router(transactions_router)
+app.include_router(referral_router)
 
 
 @app.get("/health")

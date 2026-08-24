@@ -23,6 +23,7 @@ export default function ExpansionPage() {
   const [invitingId, setInvitingId] = useState<string | null>(null);
   const [messagingId, setMessagingId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [copiedLinkId, setCopiedLinkId] = useState<string | null>(null);
 
   const [incoming, setIncoming] = useState<IncomingPartnerInvite[] | null>(null);
   const [respondingId, setRespondingId] = useState<string | null>(null);
@@ -106,6 +107,17 @@ export default function ExpansionPage() {
       setTimeout(() => setCopiedId((prev) => (prev === partnerId ? null : prev)), 2000);
     } catch {
       // clipboard API unavailable - the text is still visible to select/copy manually
+    }
+  };
+
+  const onCopyInviteLink = async (partnerId: string, referralToken: string) => {
+    const link = `${window.location.origin}/join/${referralToken}`;
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopiedLinkId(partnerId);
+      setTimeout(() => setCopiedLinkId((prev) => (prev === partnerId ? null : prev)), 2000);
+    } catch {
+      // clipboard API unavailable - not fatal, the button just won't confirm
     }
   };
 
@@ -203,6 +215,15 @@ export default function ExpansionPage() {
                   </button>
                 )}
               </div>
+
+              {s.referral_token && (
+                <button
+                  onClick={() => onCopyInviteLink(s.business_b_id, s.referral_token!)}
+                  className="mt-2 text-xs underline"
+                >
+                  {copiedLinkId === s.business_b_id ? "초대 링크 복사됨!" : "초대 링크 복사하기"}
+                </button>
+              )}
 
               {s.invite_message ? (
                 <div className="mt-3 rounded-md bg-gray-50 p-3">

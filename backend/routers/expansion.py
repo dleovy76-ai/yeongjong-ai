@@ -1,6 +1,7 @@
 import json
 import logging
 import re
+import secrets
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -48,6 +49,7 @@ def _to_response(relationship: BusinessRelationship, business_b: Business) -> Pa
         reason=relationship.reason,
         status=relationship.status,
         invite_message=relationship.invite_message,
+        referral_token=relationship.referral_token,
     )
 
 
@@ -94,7 +96,11 @@ def analyze_expansion(
             relationship = existing
         else:
             relationship = BusinessRelationship(
-                business_a_id=business_id, business_b_id=candidate_id, score=score, reason=reason
+                business_a_id=business_id,
+                business_b_id=candidate_id,
+                score=score,
+                reason=reason,
+                referral_token=secrets.token_urlsafe(16),
             )
             db.add(relationship)
         results.append((relationship, candidate))

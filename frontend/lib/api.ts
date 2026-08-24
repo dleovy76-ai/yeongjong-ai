@@ -333,6 +333,9 @@ export const api = {
       token,
     }),
 
+  getReferralJoinInfo: (referralToken: string) =>
+    request<ReferralJoinInfo>(`/api/v1/referral/${referralToken}`),
+
   managerChat: (token: string, businessId: string, message: string) =>
     request<ChatResponse>(`/api/v1/businesses/${businessId}/manager/chat`, {
       method: "POST",
@@ -466,7 +469,7 @@ export interface Performance {
   revenue_ai_connected_note: string;
 }
 
-export type TransactionAttribution = "DIRECT" | "NONE";
+export type TransactionAttribution = "DIRECT" | "ASSISTED" | "UNKNOWN";
 
 export interface Transaction {
   id: string;
@@ -491,6 +494,16 @@ export interface PartnerSuggestion {
   reason: string;
   status: PartnerRelationshipStatus;
   invite_message: string | null;
+  referral_token: string | null;
+}
+
+export interface ReferralJoinInfo {
+  business_id: string;
+  name_ko: string;
+  category: BusinessCategory;
+  address: string;
+  is_claimed: boolean;
+  sender_name: string;
 }
 
 export interface IncomingPartnerInvite {

@@ -372,6 +372,19 @@ class BusinessRelationship(Base):
         default=PartnerRelationshipStatus.SUGGESTED,
     )
     invite_message: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+
+    # 기획서 14번 (초대 링크 생성/가입 추적) - referral_token identifies this
+    # specific relationship in a public, no-auth "/join/{token}" link; the
+    # two timestamps are the only two facts about it worth recording:
+    # someone opened the link (clicked_at), and business_b was actually
+    # claimed afterward (signup_confirmed_at) - see routers/businesses.py
+    # claim_business(). Anything beyond these two observable events (e.g. a
+    # made-up "expected customer exchange" number) isn't grounded in real
+    # data (§29), so it isn't tracked.
+    referral_token: Mapped[str | None] = mapped_column(String(32), unique=True, nullable=True, index=True)
+    referral_clicked_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    referral_signup_confirmed_at: Mapped[datetime | None] = mapped_column(nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
 
     business_a: Mapped["Business"] = relationship(foreign_keys=[business_a_id])

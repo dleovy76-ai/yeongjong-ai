@@ -14,6 +14,7 @@ class PartnerSuggestionResponse(BaseModel):
     reason: str
     status: PartnerRelationshipStatus
     invite_message: str | None = None
+    referral_token: str | None = None
 
 
 class IncomingPartnerInviteResponse(BaseModel):
@@ -28,3 +29,15 @@ class IncomingPartnerInviteResponse(BaseModel):
     reason: str
     status: PartnerRelationshipStatus
     invite_message: str | None = None
+
+
+class ReferralJoinInfo(BaseModel):
+    """Public (no-auth) view for a /referral/{token} link - only what a
+    prospective business needs to decide whether to claim their listing."""
+
+    business_id: UUID
+    name_ko: str
+    category: BusinessCategory
+    address: str
+    is_claimed: bool
+    sender_name: str
