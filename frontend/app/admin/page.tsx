@@ -113,12 +113,11 @@ export default function AdminPage() {
     }
   };
 
-  const toggleDisabled = async (business: AdminBusiness) => {
+  const setBusinessStatus = async (business: AdminBusiness, nextStatus: BusinessStatus) => {
     if (!token) return;
     setError(null);
     setTogglingId(business.id);
     try {
-      const nextStatus = business.status === "DISABLED" ? "DRAFT" : "DISABLED";
       const updated = await api.adminUpdateBusinessStatus(token, business.id, nextStatus);
       setBusinesses((prev) => prev?.map((b) => (b.id === updated.id ? updated : b)) ?? null);
     } catch (err) {
@@ -127,6 +126,9 @@ export default function AdminPage() {
       setTogglingId(null);
     }
   };
+
+  const toggleDisabled = (business: AdminBusiness) =>
+    setBusinessStatus(business, business.status === "DISABLED" ? "ACTIVE" : "DISABLED");
 
   if (authLoading || !user || user.role !== "ADMIN") return null;
 
@@ -204,13 +206,24 @@ export default function AdminPage() {
                     {b.owner_email ?? "미claim"} · {STATUS_LABEL[b.status]}
                   </p>
                 </div>
-                <button
-                  onClick={() => toggleDisabled(b)}
-                  disabled={togglingId === b.id}
-                  className="rounded-md border border-black px-3 py-1.5 disabled:opacity-50"
-                >
-                  {b.status === "DISABLED" ? "재활성화" : "비활성화"}
-                </button>
+                <div className="flex gap-2">
+                  {b.status === "DRAFT" && (
+                    <button
+                      onClick={() => setBusinessStatus(b, "ACTIVE")}
+                      disabled={togglingId === b.id}
+                      className="rounded-md bg-black px-3 py-1.5 text-white disabled:opacity-50"
+                    >
+                      공개하기
+                    </button>
+                  )}
+                  <button
+                    onClick={() => toggleDisabled(b)}
+                    disabled={togglingId === b.id}
+                    className="rounded-md border border-black px-3 py-1.5 disabled:opacity-50"
+                  >
+                    {b.status === "DISABLED" ? "재활성화" : "비활성화"}
+                  </button>
+                </div>
               </li>
             ))}
             {businesses.length === 0 && <p className="text-gray-500">업체가 없어요.</p>}
