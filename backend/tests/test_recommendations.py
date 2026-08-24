@@ -118,3 +118,88 @@ def test_recommendation_click_404s_for_unknown_entity(client, monkeypatch):
         json={"entity_id": str(uuid.uuid4()), "entity_type": "business"},
     )
     assert response.status_code == 404
+
+
+def test_recommendation_click_rejects_malformed_interaction_id(client):
+    """FRONTEND-TRACKING TASK 3 - path의 interaction_id가 UUID 형식조차 아니면
+    FastAPI가 라우터 코드에 닿기 전에 422로 거부해야 한다."""
+    response = client.post(
+        "/api/v1/recommendations/not-a-uuid/click",
+        json={"entity_id": "also-not-a-uuid", "entity_type": "business"},
+    )
+    assert response.status_code == 422
+
+
+def test_recommendation_click_rejects_malformed_entity_id(client, monkeypatch):
+    business = _register_and_activate_business(client)
+    fake = FakeLLMProvider(response=json.dumps({"picks": [{"id": business["id"], "reason": "좋아요"}]}))
+    monkeypatch.setattr(ai_common_module, "get_llm_provider", lambda: fake)
+    reco = client.post("/api/v1/recommendations", json={"query": "카페"}).json()
+
+    response = client.post(
+        f"/api/v1/recommendations/{reco['interaction_id']}/click",
+        json={"entity_id": "not-a-uuid", "entity_type": "business"},
+    )
+    assert response.status_code == 422
+
+
+def test_recommendation_click_rejects_invalid_entity_type(client, monkeypatch):
+    import uuid
+
+    business = _register_and_activate_business(client)
+    fake = FakeLLMProvider(response=json.dumps({"picks": [{"id": business["id"], "reason": "좋아요"}]}))
+    monkeypatch.setattr(ai_common_module, "get_llm_provider", lambda: fake)
+    reco = client.post("/api/v1/recommendations", json={"query": "카페"}).json()
+
+    response = client.post(
+        f"/api/v1/recommendations/{reco['interaction_id']}/click",
+        json={"entity_id": str(uuid.uuid4()), "entity_type": "not_a_real_type"},
+    )
+    assert response.status_code == 422
+
+
+def test_recommendation_click_allows_repeated_clicks(client, monkeypatch):
+    """중복 클릭 방지는 의도적으로 frontend 책임(debounce)이다 - 백엔드는
+    같은 interaction/entity 조합의 반복 클릭 자체를 막지 않는다(방문 의사
+    신호를 여러 번 기록하는 것 자체는 무해함, Transaction 중복 집계와는
+    다른 문제). 이 테스트는 그 설계를 문서화한다."""
+    business = _register_and_activate_business(client)
+    fake = FakeLLMProvider(response=json.dumps({"picks": [{"id": business["id"], "reason": "좋아요"}]}))
+    monkeypatch.setattr(ai_common_module, "get_llm_provider", lambda: fake)
+    reco = client.post("/api/v1/recommendations", json={"query": "카페"}).json()
+
+    first = client.post(
+        f"/api/v1/recommendations/{reco['interaction_id']}/click",
+        json={"entity_id": business["id"], "entity_type": "business"},
+    )
+    second = client.post(
+        f"/api/v1/recommendations/{reco['interaction_id']}/click",
+        json={"entity_id": business["id"], "entity_type": "business"},
+    )
+    assert first.status_code == 201
+    assert second.status_code == 201
+    assert first.json()["id"] != second.json()["id"]
+
+
+def test_recommendation_click_requires_no_auth_by_design(client, monkeypatch):
+    """FRONTEND-TRACKING TASK 3 보안 확인 - InfoAgent 추천은 로그인 없는
+    공개 기능이라 AiInteraction 자체가 애초에 특정 사용자 소유가 아니다.
+    "다른 사용자의 interaction_id를 조작"이라는 표현이 성립하려면 먼저
+    interaction에 소유자가 있어야 하는데, 없다 - interaction_id를 아는
+    누구나 같은 조건(비로그인)으로 클릭을 기록할 수 있는 게 의도된
+    설계다. 클릭이 노출하거나 바꿀 수 있는 사적 데이터는 없다 - entity_id는
+    이미 공개 목록 API(GET /businesses)로 조회 가능한 정보다. 이 테스트는
+    Authorization 헤더를 전혀 보내지 않고도 정상 동작함을 명시적으로
+    확인한다(다른 클릭 테스트들도 전부 헤더 없이 통과하지만, 여기서 그
+    설계 의도를 이름 붙여 문서화한다)."""
+    business = _register_and_activate_business(client)
+    fake = FakeLLMProvider(response=json.dumps({"picks": [{"id": business["id"], "reason": "좋아요"}]}))
+    monkeypatch.setattr(ai_common_module, "get_llm_provider", lambda: fake)
+    reco = client.post("/api/v1/recommendations", json={"query": "카페"}).json()
+
+    response = client.post(
+        f"/api/v1/recommendations/{reco['interaction_id']}/click",
+        json={"entity_id": business["id"], "entity_type": "business"},
+        headers={},
+    )
+    assert response.status_code == 201
