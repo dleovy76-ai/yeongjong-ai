@@ -93,6 +93,7 @@ export interface BusinessProfile {
   payment_methods: Record<string, unknown> | null;
   faq: Record<string, unknown> | null;
   naver_place_url: string | null;
+  naver_map_url: string | null;
 }
 
 export interface NaverLookupCandidate {

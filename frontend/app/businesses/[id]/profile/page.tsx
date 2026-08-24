@@ -29,6 +29,7 @@ export default function BusinessProfilePage() {
   const [submitting, setSubmitting] = useState(false);
 
   const [naverPlaceUrl, setNaverPlaceUrl] = useState<string | null>(null);
+  const [naverMapUrl, setNaverMapUrl] = useState<string | null>(null);
   const [naverCandidate, setNaverCandidate] = useState<NaverLookupCandidate | null>(null);
   const [naverLoading, setNaverLoading] = useState(false);
   const [naverConnecting, setNaverConnecting] = useState(false);
@@ -49,6 +50,7 @@ export default function BusinessProfilePage() {
         setReservationPolicy(profile.reservation_policy ?? "");
         setPaymentMethods(textOf(profile.payment_methods));
         setNaverPlaceUrl(profile.naver_place_url);
+        setNaverMapUrl(profile.naver_map_url);
       })
       .finally(() => setLoaded(true));
   }, [id]);
@@ -72,8 +74,12 @@ export default function BusinessProfilePage() {
     if (!token || !naverCandidate) return;
     setNaverConnecting(true);
     try {
-      await api.updateProfile(token, id, { naver_place_url: naverCandidate.naver_url });
+      await api.updateProfile(token, id, {
+        naver_place_url: naverCandidate.naver_url,
+        naver_map_url: naverCandidate.map_url,
+      });
       setNaverPlaceUrl(naverCandidate.naver_url);
+      setNaverMapUrl(naverCandidate.map_url);
       setNaverCandidate(null);
     } catch (err) {
       setNaverError(err instanceof ApiError ? err.message : "저장 중 오류가 발생했습니다.");
@@ -190,7 +196,7 @@ export default function BusinessProfilePage() {
         {naverPlaceUrl && !naverCandidate && (
           <p className="mb-3">
             연결됨:{" "}
-            <a href={naverPlaceUrl} target="_blank" rel="noreferrer" className="underline">
+            <a href={naverMapUrl ?? naverPlaceUrl} target="_blank" rel="noreferrer" className="underline">
               네이버에서 열기
             </a>
           </p>
