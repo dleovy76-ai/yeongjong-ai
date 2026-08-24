@@ -152,7 +152,16 @@ def _normalize_address(address: str) -> str:
     return "".join(address.split())
 
 
-def _map_search_url(title: str, road_address: str) -> str:
+def _map_url(title: str, lon: float | None, lat: float | None, road_address: str) -> str:
+    """Prefer a coordinate-anchored link (confirmed live: map.naver.com's own
+    text search silently biases toward the *viewer's* current location, not
+    the query text, so a plain name+address search can resolve to a
+    completely different city and show "no results" even for a fully correct
+    address). Falls back to text search only when no coordinates are known -
+    less reliable, but better than nothing for an owner-entered address we
+    haven't geocoded."""
+    if lon is not None and lat is not None:
+        return f"https://map.naver.com/?lng={lon}&lat={lat}&title={quote(title)}"
     return f"https://map.naver.com/p/search/{quote(f'{title} {road_address}')}"
 
 
@@ -182,7 +191,7 @@ def naver_lookup(
                 title=result.title,
                 road_address=result.road_address,
                 category=result.category,
-                map_url=_map_search_url(result.title, result.road_address),
+                map_url=_map_url(result.title, result.lon, result.lat, result.road_address),
                 verified=True,
             )
 
@@ -190,7 +199,7 @@ def naver_lookup(
         title=business.name_ko,
         road_address=business.address,
         category="",
-        map_url=_map_search_url(business.name_ko, business.address),
+        map_url=_map_url(business.name_ko, business.lon, business.lat, business.address),
         verified=False,
     )
 

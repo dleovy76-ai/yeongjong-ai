@@ -38,7 +38,15 @@ def test_naver_lookup_marks_verified_on_matching_address(client, monkeypatch):
         businesses_router,
         "NaverLocalApiClient",
         lambda: _FakeClient(
-            [NaverLocalResult(title="영종면옥 칼국수", road_address="인천광역시 영종구 영종진광장로 45 101호", category="한식")]
+            [
+                NaverLocalResult(
+                    title="영종면옥 칼국수",
+                    road_address="인천광역시 영종구 영종진광장로 45 101호",
+                    category="한식",
+                    lon=126.578574,
+                    lat=37.495670,
+                )
+            ]
         ),
     )
 
@@ -48,6 +56,8 @@ def test_naver_lookup_marks_verified_on_matching_address(client, monkeypatch):
     assert body["verified"] is True
     assert body["title"] == "영종면옥 칼국수"
     assert "map.naver.com" in body["map_url"]
+    assert "lng=126.578574" in body["map_url"]
+    assert "lat=37.49567" in body["map_url"]
 
 
 def test_naver_lookup_falls_back_unverified_when_no_match(client, monkeypatch):
@@ -58,7 +68,14 @@ def test_naver_lookup_falls_back_unverified_when_no_match(client, monkeypatch):
         businesses_router,
         "NaverLocalApiClient",
         lambda: _FakeClient(
-            [NaverLocalResult(title="전혀 다른 가게", road_address="서울특별시 강남구 어딘가 1", category="카페")]
+            [
+                NaverLocalResult(
+                    title="전혀 다른 가게",
+                    road_address="서울특별시 강남구 어딘가 1",
+                    category="카페",
+                    lon=127.0, lat=37.5,
+                )
+            ]
         ),
     )
 
@@ -67,6 +84,8 @@ def test_naver_lookup_falls_back_unverified_when_no_match(client, monkeypatch):
     body = response.json()
     assert body["verified"] is False
     assert body["title"] == "영종면옥"
+    # no coordinates known for an owner-entered business -> falls back to text search
+    assert "map.naver.com/p/search/" in body["map_url"]
 
 
 def test_naver_lookup_requires_owner(client, monkeypatch):
@@ -78,6 +97,26 @@ def test_naver_lookup_requires_owner(client, monkeypatch):
 
     response = client.get(f"/api/v1/businesses/{business['id']}/naver-lookup", headers=other_headers)
     assert response.status_code == 403
+
+
+def test_naver_lookup_falls_back_to_coordinates_when_business_has_them(client, db_session, monkeypatch):
+    from models import Business
+
+    headers = _register(client, "naver-lookup6@example.com")
+    business = _create_business(client, headers)
+    db_session.query(Business).filter(Business.id == business["id"]).update(
+        {"lon": 126.578574, "lat": 37.495670}
+    )
+    db_session.commit()
+
+    monkeypatch.setattr(businesses_router, "NaverLocalApiClient", lambda: _FakeClient([]))
+
+    response = client.get(f"/api/v1/businesses/{business['id']}/naver-lookup", headers=headers)
+    assert response.status_code == 200
+    body = response.json()
+    assert body["verified"] is False
+    assert "lng=126.578574" in body["map_url"]
+    assert "lat=37.49567" in body["map_url"]
 
 
 def test_naver_lookup_requires_auth(client):
