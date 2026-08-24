@@ -77,7 +77,7 @@ class NaverLookupCandidate(BaseModel):
     title: str
     road_address: str
     category: str
-    map_url: str
+    naver_url: str
     verified: bool
 
 

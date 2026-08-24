@@ -152,17 +152,13 @@ def _normalize_address(address: str) -> str:
     return "".join(address.split())
 
 
-def _map_url(title: str, lon: float | None, lat: float | None, road_address: str) -> str:
-    """Prefer a coordinate-anchored link (confirmed live: map.naver.com's own
-    text search silently biases toward the *viewer's* current location, not
-    the query text, so a plain name+address search can resolve to a
-    completely different city and show "no results" even for a fully correct
-    address). Falls back to text search only when no coordinates are known -
-    less reliable, but better than nothing for an owner-entered address we
-    haven't geocoded."""
-    if lon is not None and lat is not None:
-        return f"https://map.naver.com/?lng={lon}&lat={lat}&title={quote(title)}"
-    return f"https://map.naver.com/p/search/{quote(f'{title} {road_address}')}"
+def _naver_search_url(title: str) -> str:
+    """Naver's normal integrated-search results page (통합검색), not a map
+    pin - confirmed live this is what actually surfaces the 플레이스 panel
+    (reviews, hours, photos) that "네이버에서 리뷰·영업시간 더 보기" promises;
+    a map.naver.com link only shows a pin, no reviews at all. where=nexearch
+    is the stable param Naver's own search results use for this view."""
+    return f"https://search.naver.com/search.naver?where=nexearch&query={quote(title)}"
 
 
 @router.get("/{business_id}/naver-lookup", response_model=NaverLookupCandidate)
@@ -171,7 +167,7 @@ def naver_lookup(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> NaverLookupCandidate:
-    """AI가 사장님 대신 네이버에서 업체를 찾아 지도 링크 후보를 만들어주고,
+    """AI가 사장님 대신 네이버에서 업체를 찾아 네이버 검색 링크 후보를 만들어주고,
     사장님은 열어서 확인만 하면 되는 흐름(§29 - 링크를 스크래핑/추측하지 않고,
     네이버 지역검색 API로 실제 존재를 확인한 뒤에만 verified=True로 표시)."""
     business = _get_business_or_404(db, business_id)
@@ -191,7 +187,7 @@ def naver_lookup(
                 title=result.title,
                 road_address=result.road_address,
                 category=result.category,
-                map_url=_map_url(result.title, result.lon, result.lat, result.road_address),
+                naver_url=_naver_search_url(result.title),
                 verified=True,
             )
 
@@ -199,7 +195,7 @@ def naver_lookup(
         title=business.name_ko,
         road_address=business.address,
         category="",
-        map_url=_map_url(business.name_ko, business.lon, business.lat, business.address),
+        naver_url=_naver_search_url(business.name_ko),
         verified=False,
     )
 

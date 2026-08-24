@@ -1,6 +1,6 @@
 """Client for NAVER API HUB's local-search endpoint (지역 검색), used only to
 verify a business is really registered with Naver before handing the owner a
-ready-made 네이버 지도 link to confirm - never to scrape or store review
+ready-made 네이버 검색 link to confirm - never to scrape or store review
 counts/hours/menus, which this endpoint doesn't return at all.
 
 Endpoint discovered live (not guessed): the classic openapi.naver.com/
@@ -30,8 +30,6 @@ class NaverLocalResult:
     title: str
     road_address: str
     category: str
-    lon: float | None
-    lat: float | None
 
 
 def _strip_tags(text: str) -> str:
@@ -66,20 +64,6 @@ class NaverLocalApiClient:
                     title=_strip_tags(item.get("title", "")),
                     road_address=road_address,
                     category=item.get("category", ""),
-                    lon=_parse_coord(item.get("mapx")),
-                    lat=_parse_coord(item.get("mapy")),
                 )
             )
         return results
-
-
-def _parse_coord(raw: object) -> float | None:
-    """mapx/mapy come back as integer strings scaled by 1e7 (e.g. "1265785881"
-    -> 126.5785881) - confirmed live against a known real address, not
-    documented anywhere official that we could find."""
-    if raw is None:
-        return None
-    try:
-        return int(raw) / 1e7
-    except (TypeError, ValueError):
-        return None

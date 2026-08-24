@@ -72,8 +72,8 @@ export default function BusinessProfilePage() {
     if (!token || !naverCandidate) return;
     setNaverConnecting(true);
     try {
-      await api.updateProfile(token, id, { naver_place_url: naverCandidate.map_url });
-      setNaverPlaceUrl(naverCandidate.map_url);
+      await api.updateProfile(token, id, { naver_place_url: naverCandidate.naver_url });
+      setNaverPlaceUrl(naverCandidate.naver_url);
       setNaverCandidate(null);
     } catch (err) {
       setNaverError(err instanceof ApiError ? err.message : "저장 중 오류가 발생했습니다.");
@@ -209,7 +209,7 @@ export default function BusinessProfilePage() {
             </p>
             <div className="mt-3 flex gap-2">
               <a
-                href={naverCandidate.map_url}
+                href={naverCandidate.naver_url}
                 target="_blank"
                 rel="noreferrer"
                 className="rounded-md border border-black px-3 py-1.5"

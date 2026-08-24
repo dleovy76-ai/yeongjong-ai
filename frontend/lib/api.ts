@@ -99,7 +99,7 @@ export interface NaverLookupCandidate {
   title: string;
   road_address: string;
   category: string;
-  map_url: string;
+  naver_url: string;
   verified: boolean;
 }
 
