@@ -64,7 +64,7 @@ export default function MenusPage() {
     setDraftError(null);
     setDrafting(true);
     try {
-      const draft = await api.draftMenuDescription(token, id, name.trim());
+      const draft = await api.draftMenuDescription(token, id, name.trim(), isSignature);
       setDescription(draft.description);
     } catch (err) {
       setDraftError(err instanceof ApiError ? err.message : "초안 작성 중 오류가 발생했습니다.");

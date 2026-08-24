@@ -145,6 +145,7 @@ class MenuResponse(BaseModel):
 
 class MenuDraftRequest(BaseModel):
     name: ValidatedText = Field(min_length=1, max_length=200)
+    is_signature: bool = False
 
 
 class MenuDraftResponse(BaseModel):

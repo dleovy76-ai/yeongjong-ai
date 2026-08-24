@@ -38,6 +38,22 @@ def test_draft_returns_parsed_description(client, monkeypatch):
     assert response.json()["description"] == "얼큰한 김치와 돼지고기를 함께 끓인 찌개예요."
 
 
+def test_draft_signature_flag_reaches_the_prompt(client, monkeypatch):
+    headers = _register(client, "menu-draft-owner6@example.com")
+    business = _create_business(client, headers)
+
+    fake = FakeLLMProvider(response='{"description": "이 집 대표 메뉴예요."}')
+    monkeypatch.setattr(ai_common_module, "get_llm_provider", lambda: fake)
+
+    response = client.post(
+        f"/api/v1/businesses/{business['id']}/menus/draft-description",
+        headers=headers,
+        json={"name": "김치찌개", "is_signature": True},
+    )
+    assert response.status_code == 200
+    assert "대표 메뉴 여부: 예" in fake.calls[0]["system_prompt"]
+
+
 def test_draft_returns_empty_description_on_malformed_json(client, monkeypatch):
     headers = _register(client, "menu-draft-owner2@example.com")
     business = _create_business(client, headers)

@@ -109,7 +109,7 @@ describe("MenusPage (smoke)", () => {
     expect(draftButton).toBeEnabled();
     await user.click(draftButton);
 
-    expect(draftMenuDescriptionMock).toHaveBeenCalledWith("test-token", "biz-1", "김치찌개");
+    expect(draftMenuDescriptionMock).toHaveBeenCalledWith("test-token", "biz-1", "김치찌개", false);
     expect(await screen.findByDisplayValue("얼큰한 김치와 돼지고기를 함께 끓인 찌개예요.")).toBeInTheDocument();
   });
 });
