@@ -1,5 +1,7 @@
+from datetime import datetime, timezone
+
 from core.security import hash_password
-from models import AiInteraction, User, UserRole
+from models import AiInteraction, Transaction, TransactionAttribution, User, UserRole
 
 
 def _register(client, email, role="BUSINESS_OWNER"):
@@ -57,6 +59,60 @@ def test_stats_reflects_created_data(client, db_session):
     body = response.json()
     assert body["businesses_by_status"]["DRAFT"] >= 1
     assert body["ai_interactions_last_30d"] >= 1
+
+
+def test_stats_breaks_down_ai_interactions_by_agent_type(client, db_session):
+    admin_headers = _seed_admin(client, db_session, "admin-test-agenttype@example.com")
+    owner_headers = _register(client, "admin-test-owner-agenttype@example.com")
+    business = _create_business(client, owner_headers)
+
+    db_session.add_all(
+        [
+            AiInteraction(business_id=business["id"], agent_type="customer"),
+            AiInteraction(business_id=business["id"], agent_type="customer"),
+            AiInteraction(business_id=business["id"], agent_type="chef"),
+        ]
+    )
+    db_session.commit()
+
+    response = client.get("/api/v1/admin/stats", headers=admin_headers)
+    assert response.status_code == 200
+    body = response.json()
+    assert body["ai_interactions_by_agent_type"]["customer"] >= 2
+    assert body["ai_interactions_by_agent_type"]["chef"] >= 1
+
+
+def test_stats_reflects_confirmed_transactions_not_mere_recommendations(client, db_session):
+    admin_headers = _seed_admin(client, db_session, "admin-test-txn@example.com")
+    owner_headers = _register(client, "admin-test-owner-txn@example.com")
+    business = _create_business(client, owner_headers)
+
+    db_session.add(
+        Transaction(
+            business_id=business["id"],
+            amount="10000",
+            attribution=TransactionAttribution.DIRECT,
+            occurred_at=datetime.now(timezone.utc),
+        )
+    )
+    db_session.add(
+        Transaction(
+            business_id=business["id"],
+            amount="5000",
+            attribution=TransactionAttribution.NONE,
+            occurred_at=datetime.now(timezone.utc),
+        )
+    )
+    db_session.commit()
+
+    response = client.get("/api/v1/admin/stats", headers=admin_headers)
+    assert response.status_code == 200
+    body = response.json()
+    assert body["transactions_count"] >= 2
+    assert float(body["transactions_total_amount"]) >= 15000
+    # only the DIRECT-attributed transaction counts toward the AI-attributed figure -
+    # a mere recommendation with no confirmed link is never counted as AI revenue
+    assert float(body["transactions_direct_ai_attributed_amount"]) >= 10000
 
 
 def test_business_list_and_admin_can_force_status(client, db_session):

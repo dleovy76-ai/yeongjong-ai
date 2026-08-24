@@ -15,6 +15,10 @@ class AdminStatsResponse(BaseModel):
     coupons_redeemed: int
     partner_relationships_by_status: dict[str, int]
     ai_interactions_last_30d: int
+    ai_interactions_by_agent_type: dict[str, int]
+    transactions_count: int
+    transactions_total_amount: Decimal
+    transactions_direct_ai_attributed_amount: Decimal
 
 
 class AdminBusinessSummary(BaseModel):

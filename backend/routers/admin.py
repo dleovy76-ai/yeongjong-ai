@@ -16,6 +16,8 @@ from models import (
     Reservation,
     TouristPlace,
     TouristPlaceStatus,
+    Transaction,
+    TransactionAttribution,
     User,
     UserRole,
 )
@@ -59,6 +61,19 @@ def get_stats(db: Session = Depends(get_db), _admin: User = Depends(require_admi
         db.query(func.count(CouponIssue.id)).filter(CouponIssue.status == CouponIssueStatus.REDEEMED).scalar()
     )
 
+    # §29/기획서 10번 - "단순 추천을 매출로 계산하지 않는다": transactions_count/
+    # total_amount are every owner-confirmed sale (real, never a mere
+    # recommendation - see routers/transactions.py), while
+    # direct_ai_attributed further narrows to ones provably tied to an
+    # actually-redeemed coupon or actually-completed reservation.
+    transactions_count = db.query(func.count(Transaction.id)).scalar()
+    transactions_total_amount = db.query(func.coalesce(func.sum(Transaction.amount), 0)).scalar()
+    transactions_direct_ai_attributed_amount = (
+        db.query(func.coalesce(func.sum(Transaction.amount), 0))
+        .filter(Transaction.attribution == TransactionAttribution.DIRECT)
+        .scalar()
+    )
+
     return AdminStatsResponse(
         businesses_by_status=_count_by(db, Business, Business.status),
         users_by_role=_count_by(db, User, User.role),
@@ -67,6 +82,10 @@ def get_stats(db: Session = Depends(get_db), _admin: User = Depends(require_admi
         coupons_redeemed=coupons_redeemed or 0,
         partner_relationships_by_status=_count_by(db, BusinessRelationship, BusinessRelationship.status),
         ai_interactions_last_30d=ai_interactions_last_30d or 0,
+        ai_interactions_by_agent_type=_count_by(db, AiInteraction, AiInteraction.agent_type),
+        transactions_count=transactions_count or 0,
+        transactions_total_amount=transactions_total_amount,
+        transactions_direct_ai_attributed_amount=transactions_direct_ai_attributed_amount,
     )
 
 

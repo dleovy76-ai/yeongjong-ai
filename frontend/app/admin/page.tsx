@@ -157,6 +157,22 @@ export default function AdminPage() {
               쿠폰 발급 {stats.coupons_issued}건 · 사용 {stats.coupons_redeemed}건
             </p>
             <p className="text-gray-700">최근 30일 AI 응대 {stats.ai_interactions_last_30d}건</p>
+            <div>
+              <p className="mb-1 text-gray-500">AI 응대 유형별 (전체 기간)</p>
+              <CountTable counts={stats.ai_interactions_by_agent_type} />
+            </div>
+            <div className="rounded-md border border-gray-200 p-3">
+              <p className="font-semibold">확인된 거래</p>
+              <p className="mt-1 text-gray-700">
+                방문확인 {stats.transactions_count}건 · 확인 거래액{" "}
+                {Number(stats.transactions_total_amount).toLocaleString()}원
+              </p>
+              <p className="mt-1 text-gray-500">
+                그중 AI 연관(쿠폰 사용/예약 완료로 연결 확인된) 거래액{" "}
+                {Number(stats.transactions_direct_ai_attributed_amount).toLocaleString()}원 - 단순
+                추천은 매출로 계산하지 않아요.
+              </p>
+            </div>
           </div>
         )}
       </section>

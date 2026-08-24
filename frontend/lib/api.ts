@@ -380,6 +380,10 @@ export interface AdminStats {
   coupons_redeemed: number;
   partner_relationships_by_status: Record<string, number>;
   ai_interactions_last_30d: number;
+  ai_interactions_by_agent_type: Record<string, number>;
+  transactions_count: number;
+  transactions_total_amount: string;
+  transactions_direct_ai_attributed_amount: string;
 }
 
 export interface AdminBusiness {
