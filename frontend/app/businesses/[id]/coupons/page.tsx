@@ -26,6 +26,7 @@ export default function CouponsPage() {
   const [submitting, setSubmitting] = useState(false);
 
   const [redeemCode, setRedeemCode] = useState("");
+  const [redeemAmount, setRedeemAmount] = useState("");
   const [redeemResult, setRedeemResult] = useState<string | null>(null);
   const [redeemError, setRedeemError] = useState<string | null>(null);
 
@@ -75,8 +76,14 @@ export default function CouponsPage() {
     setRedeemResult(null);
     try {
       const claim = await api.redeemCoupon(token, id, redeemCode.trim());
-      setRedeemResult(`사용 처리 완료! (코드: ${claim.code})`);
+      let resultText = `사용 처리 완료! (코드: ${claim.code})`;
+      if (redeemAmount.trim()) {
+        await api.createTransaction(token, id, { amount: redeemAmount.trim(), coupon_issue_id: claim.id });
+        resultText += ` · 거래액 ${Number(redeemAmount).toLocaleString()}원 기록됨`;
+      }
+      setRedeemResult(resultText);
       setRedeemCode("");
+      setRedeemAmount("");
     } catch (err) {
       setRedeemError(err instanceof ApiError ? err.message : "쿠폰 사용 처리 중 오류가 발생했습니다.");
     }
@@ -184,6 +191,17 @@ export default function CouponsPage() {
           onChange={(e) => setRedeemCode(e.target.value)}
           required
         />
+        <label className="flex flex-col gap-1 text-sm">
+          실제 결제 금액 (선택 - 입력하면 이번 달 성과에 AI 연관 매출로 잡혀요)
+          <input
+            type="number"
+            min="0"
+            className="rounded-md border border-gray-300 px-3 py-2 normal-case"
+            placeholder="예: 15000"
+            value={redeemAmount}
+            onChange={(e) => setRedeemAmount(e.target.value)}
+          />
+        </label>
         {redeemError && <p className="text-sm text-red-600">{redeemError}</p>}
         {redeemResult && <p className="text-sm text-green-700">{redeemResult}</p>}
         <button type="submit" className="rounded-md border border-black px-4 py-2">

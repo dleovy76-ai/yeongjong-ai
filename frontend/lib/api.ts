@@ -287,6 +287,15 @@ export const api = {
   getPerformance: (token: string, businessId: string) =>
     request<Performance>(`/api/v1/businesses/${businessId}/performance`, { token }),
 
+  listTransactions: (token: string, businessId: string) =>
+    request<Transaction[]>(`/api/v1/businesses/${businessId}/transactions`, { token }),
+
+  createTransaction: (
+    token: string,
+    businessId: string,
+    body: { amount: string; memo?: string; coupon_issue_id?: string; reservation_id?: string }
+  ) => request<Transaction>(`/api/v1/businesses/${businessId}/transactions`, { method: "POST", body, token }),
+
   analyzeExpansion: (token: string, businessId: string) =>
     request<PartnerSuggestion[]>(`/api/v1/businesses/${businessId}/expansion/analyze`, {
       method: "POST",
@@ -426,6 +435,23 @@ export interface Performance {
   coupons_redeemed: number;
   estimated_time_saved_minutes: number;
   estimated_time_saved_note: string;
+  revenue_total: string;
+  revenue_direct_ai_attributed: string;
+  revenue_direct_ai_attributed_note: string;
+}
+
+export type TransactionAttribution = "DIRECT" | "NONE";
+
+export interface Transaction {
+  id: string;
+  business_id: string;
+  coupon_issue_id: string | null;
+  reservation_id: string | null;
+  amount: string;
+  attribution: TransactionAttribution;
+  memo: string | null;
+  occurred_at: string;
+  created_at: string;
 }
 
 export type PartnerRelationshipStatus = "SUGGESTED" | "INVITED" | "ACCEPTED" | "REJECTED";

@@ -64,6 +64,22 @@ class PartnerRelationshipStatus(str, enum.Enum):
     REJECTED = "REJECTED"
 
 
+class TransactionAttribution(str, enum.Enum):
+    """§18's DIRECT/ASSISTED/INFLUENCED attribution tiers, deliberately
+    reduced to just DIRECT/NONE here (not a full re-implementation of §18):
+    without any visitor/session identity anywhere in the product, there is
+    no honest, checkable way to link a specific past AiInteraction to a
+    later walk-in transaction - claiming ASSISTED/INFLUENCED would be a
+    guess dressed up as a metric, exactly what this project's fabrication
+    rules forbid. DIRECT is only ever set by the server (see
+    routers/transactions.py), never chosen freely by the owner, and only
+    when the transaction is provably tied to a coupon_issue that was
+    actually REDEEMED or a reservation that was actually COMPLETED."""
+
+    DIRECT = "DIRECT"
+    NONE = "NONE"
+
+
 class TouristPlaceStatus(str, enum.Enum):
     """Master plan §12 Info AI source-aware states. Info AI may only recommend
     VERIFIED entries (§29 - never invent 관광지 운영 여부); UNVERIFIED is the
@@ -355,6 +371,37 @@ class BusinessRelationship(Base):
 
     business_a: Mapped["Business"] = relationship(foreign_keys=[business_a_id])
     business_b: Mapped["Business"] = relationship(foreign_keys=[business_b_id])
+
+
+class Transaction(Base):
+    """Master plan §18/§27 - the first real money-amount record on the
+    platform (coupon_issues/reservations only ever tracked status, never an
+    amount). Owner-recorded at checkout, linked to at most one already-real
+    signal (a redeemed coupon claim or a completed reservation) - see
+    TransactionAttribution for why attribution is derived server-side, never
+    owner-chosen."""
+
+    __tablename__ = "transactions"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    business_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("businesses.id"), nullable=False, index=True)
+    coupon_issue_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("coupon_issues.id"), nullable=True
+    )
+    reservation_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("reservations.id"), nullable=True
+    )
+
+    amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    attribution: Mapped[TransactionAttribution] = mapped_column(
+        Enum(TransactionAttribution, name="transaction_attribution"), nullable=False
+    )
+    memo: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    occurred_at: Mapped[datetime] = mapped_column(nullable=False)
+
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
+
+    business: Mapped["Business"] = relationship()
 
 
 class TouristPlace(Base):

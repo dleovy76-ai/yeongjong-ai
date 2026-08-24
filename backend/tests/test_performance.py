@@ -44,6 +44,14 @@ def test_performance_counts_ai_responses_and_coupon_activity(client, monkeypatch
     client.post(f"/api/v1/businesses/{business_id}/coupons/{coupon['id']}/issue")
     client.post(f"/api/v1/businesses/{business_id}/coupons/redeem", headers=headers, json={"code": claim1["code"]})
 
+    # one direct-attributed transaction (linked to the redeemed claim), one unlinked
+    client.post(
+        f"/api/v1/businesses/{business_id}/transactions",
+        headers=headers,
+        json={"amount": "12000", "coupon_issue_id": claim1["id"]},
+    )
+    client.post(f"/api/v1/businesses/{business_id}/transactions", headers=headers, json={"amount": "5000"})
+
     response = client.get(f"/api/v1/businesses/{business_id}/performance", headers=headers)
     assert response.status_code == 200
     body = response.json()
@@ -52,6 +60,8 @@ def test_performance_counts_ai_responses_and_coupon_activity(client, monkeypatch
     assert body["coupons_redeemed"] == 1
     assert body["estimated_time_saved_minutes"] == 6
     assert "추정" in body["estimated_time_saved_note"]
+    assert body["revenue_total"] == "17000.00"
+    assert body["revenue_direct_ai_attributed"] == "12000.00"
 
 
 def test_performance_requires_owner(client):

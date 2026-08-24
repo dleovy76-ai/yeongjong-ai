@@ -51,6 +51,15 @@ export default function PerformancePage() {
             <StatCard label="쿠폰 사용" value={performance.coupons_redeemed} />
           </div>
 
+          <div className="mb-8 grid grid-cols-2 gap-3">
+            <StatCard label="이번 달 매출 기록" value={`${Number(performance.revenue_total).toLocaleString()}원`} />
+            <StatCard
+              label="AI 연관 매출"
+              value={`${Number(performance.revenue_direct_ai_attributed).toLocaleString()}원`}
+            />
+          </div>
+          <p className="mb-8 -mt-4 text-xs text-gray-500">{performance.revenue_direct_ai_attributed_note}</p>
+
           <div className="rounded-md border border-gray-200 p-4">
             <p className="text-lg font-semibold">
               예상 업무 절감: 약 {performance.estimated_time_saved_minutes}분

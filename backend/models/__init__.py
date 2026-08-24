@@ -18,6 +18,8 @@ from .models import (  # noqa: F401
     ReservationStatus,
     TouristPlace,
     TouristPlaceStatus,
+    Transaction,
+    TransactionAttribution,
     User,
     UserRole,
 )

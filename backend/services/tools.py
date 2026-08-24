@@ -5,8 +5,10 @@ LLM prompt."""
 
 import math
 from datetime import datetime, timezone
+from decimal import Decimal
 from uuid import UUID
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from models import (
@@ -22,6 +24,8 @@ from models import (
     PartnerRelationshipStatus,
     TouristPlace,
     TouristPlaceStatus,
+    Transaction,
+    TransactionAttribution,
 )
 
 
@@ -293,11 +297,33 @@ class PerformanceSummaryTool:
             .count()
         )
 
+        revenue_total = (
+            self.db.query(func.coalesce(func.sum(Transaction.amount), 0))
+            .filter(Transaction.business_id == business_id, Transaction.occurred_at >= month_start)
+            .scalar()
+        )
+        revenue_direct_ai_attributed = (
+            self.db.query(func.coalesce(func.sum(Transaction.amount), 0))
+            .filter(
+                Transaction.business_id == business_id,
+                Transaction.occurred_at >= month_start,
+                Transaction.attribution == TransactionAttribution.DIRECT,
+            )
+            .scalar()
+        )
+
         return {
             "period": month_start.strftime("%Y-%m"),
             "ai_response_count": ai_response_count,
             "coupons_issued": coupons_issued,
             "coupons_redeemed": coupons_redeemed,
+            # str, not Decimal - this dict also flows straight into
+            # ManagerDashboardTool's json.dumps() for the LLM prompt (see
+            # coupon_summary's str(discount_value) just below for the same
+            # convention); PerformanceResponse coerces the str back to
+            # Decimal for the API response.
+            "revenue_total": str(Decimal(revenue_total)),
+            "revenue_direct_ai_attributed": str(Decimal(revenue_direct_ai_attributed)),
         }
 
 
