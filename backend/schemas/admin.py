@@ -55,16 +55,22 @@ class AdminAiInteractionSummary(BaseModel):
 
 
 class BusinessGraphEdge(BaseModel):
-    """§21 Partner Graph (기획서 19번) - "누가 누구와 연결되어 있는가"를
-    운영자가 볼 수 있는 최소 형태. business_a가 제안한 쪽."""
+    """§21 Partner Graph (기획서 19/20번) - "누가 누구와 연결되어 있는가"를
+    운영자가 볼 수 있는 최소 형태. relationship_type="PARTNER_TRACK"는 실제
+    저장된 BusinessRelationship 행(business_a가 제안한 쪽, status/score
+    있음). "NEAR"는 저장된 관계가 없는 두 ACTIVE 업체가 실제 좌표 기준으로
+    가까울 때 그 자리에서 계산만 하는 것 - 별도 저장 없음(§29, 지어낸
+    근접성이 아니라 실제 좌표로만 계산)."""
 
     business_a_id: UUID
     business_a_name: str
     business_b_id: UUID
     business_b_name: str
-    status: PartnerRelationshipStatus
-    score: int
-    created_at: datetime
+    relationship_type: str
+    status: PartnerRelationshipStatus | None = None
+    score: int | None = None
+    distance_m: int | None = None
+    created_at: datetime | None = None
 
 
 class TouristPlaceCreateRequest(BaseModel):

@@ -10,6 +10,7 @@ from models import (
     AiInteraction,
     Business,
     BusinessRelationship,
+    BusinessStatus,
     Coupon,
     CouponIssue,
     CouponIssueStatus,
@@ -34,6 +35,7 @@ from schemas.admin import (
     TouristPlaceResponse,
     TouristPlaceUpdateRequest,
 )
+from services.tools import distance_meters
 
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 
@@ -139,26 +141,64 @@ def update_business_status(
     )
 
 
+_NEAR_THRESHOLD_METERS = 300
+_NEAR_CANDIDATE_LIMIT = 100
+
+
 @router.get("/business-graph", response_model=list[BusinessGraphEdge])
 def get_business_graph(
     db: Session = Depends(get_db), _admin: User = Depends(require_admin)
 ) -> list[BusinessGraphEdge]:
-    """§21 Partner Graph (기획서 19번) - "누가 누구와 연결되어 있는가"를 운영자가
-    한눈에 볼 수 있는 최소한의 형태. BusinessRelationship은 이미 계속
-    쌓이고 있었지만(§21), 이걸 보여주는 화면이 전혀 없었음."""
+    """§21 Partner Graph (기획서 19/20번) - "누가 누구와 연결되어 있는가"를
+    운영자가 한눈에 볼 수 있는 최소한의 형태. BusinessRelationship은 이미
+    계속 쌓이고 있었지만(§21), 이걸 보여주는 화면이 전혀 없었음.
+
+    기획서 20번의 관계 타입 6개(NEAR/RELATED/PARTNER/RECOMMENDS/DISCOUNT/
+    ROUTE_TO) 중 PARTNER_TRACK(=SUGGESTED~REJECTED)은 이미 저장돼 있고,
+    NEAR는 저장할 필요 없이 실제 좌표로 그 자리에서 계산 가능해서 함께
+    보여준다. DISCOUNT(쿠폰-제휴 연결)와 ROUTE_TO(순서 있는 동선)는 그런
+    데이터/연결 구조 자체가 아직 없어서 지어낼 수 없다 - 보류."""
     rows = db.query(BusinessRelationship).order_by(BusinessRelationship.created_at.desc()).limit(500).all()
-    return [
+    edges = [
         BusinessGraphEdge(
             business_a_id=r.business_a_id,
             business_a_name=r.business_a.name_ko,
             business_b_id=r.business_b_id,
             business_b_name=r.business_b.name_ko,
+            relationship_type="PARTNER_TRACK",
             status=r.status,
             score=r.score,
             created_at=r.created_at,
         )
         for r in rows
     ]
+
+    decided_pairs = {tuple(sorted((r.business_a_id, r.business_b_id))) for r in rows}
+    active_businesses = (
+        db.query(Business)
+        .filter(Business.status == BusinessStatus.ACTIVE, Business.lon.isnot(None), Business.lat.isnot(None))
+        .limit(_NEAR_CANDIDATE_LIMIT)
+        .all()
+    )
+    for i, a in enumerate(active_businesses):
+        for b in active_businesses[i + 1 :]:
+            pair = tuple(sorted((a.id, b.id)))
+            if pair in decided_pairs:
+                continue  # already a PARTNER_TRACK edge - don't show the same pair twice
+            dist = distance_meters(a.lon, a.lat, b.lon, b.lat)
+            if dist is not None and dist <= _NEAR_THRESHOLD_METERS:
+                edges.append(
+                    BusinessGraphEdge(
+                        business_a_id=a.id,
+                        business_a_name=a.name_ko,
+                        business_b_id=b.id,
+                        business_b_name=b.name_ko,
+                        relationship_type="NEAR",
+                        distance_m=round(dist),
+                    )
+                )
+
+    return edges
 
 
 @router.get("/users", response_model=list[AdminUserSummary])

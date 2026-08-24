@@ -234,10 +234,16 @@ export default function AdminPage() {
                 className="flex items-center justify-between rounded-md border border-gray-200 p-3"
               >
                 <span>
-                  {edge.business_a_name} → {edge.business_b_name}{" "}
-                  <span className="text-gray-500">(적합도 {edge.score})</span>
+                  {edge.business_a_name} {edge.relationship_type === "NEAR" ? "↔" : "→"} {edge.business_b_name}{" "}
+                  <span className="text-gray-500">
+                    {edge.relationship_type === "NEAR"
+                      ? `(약 ${edge.distance_m}m)`
+                      : `(적합도 ${edge.score})`}
+                  </span>
                 </span>
-                <span className="text-xs text-gray-500">{edge.status}</span>
+                <span className="text-xs text-gray-500">
+                  {edge.relationship_type === "NEAR" ? "NEAR" : edge.status}
+                </span>
               </li>
             ))}
             {businessGraph.length === 0 && <p className="text-gray-500">아직 연결 데이터가 없어요.</p>}

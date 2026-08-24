@@ -423,9 +423,11 @@ export interface BusinessGraphEdge {
   business_a_name: string;
   business_b_id: string;
   business_b_name: string;
-  status: PartnerRelationshipStatus;
-  score: number;
-  created_at: string;
+  relationship_type: "PARTNER_TRACK" | "NEAR";
+  status: PartnerRelationshipStatus | null;
+  score: number | null;
+  distance_m: number | null;
+  created_at: string | null;
 }
 
 export type TouristPlaceStatus = "VERIFIED" | "UNVERIFIED" | "EXPIRED" | "DISABLED";

@@ -172,8 +172,61 @@ def test_business_graph_lists_edges_platform_wide(client, db_session):
     assert len(body) == 1
     assert body[0]["business_a_name"] == "영종호텔"
     assert body[0]["business_b_name"] == "영종카페"
+    assert body[0]["relationship_type"] == "PARTNER_TRACK"
     assert body[0]["status"] == "SUGGESTED"
     assert body[0]["score"] == 88
+
+
+def test_business_graph_includes_near_pairs_without_stored_relationship(client, db_session):
+    from models import Business
+
+    admin_headers = _seed_admin(client, db_session, "admin-test-graph-near@example.com")
+    owner_headers = _register(client, "admin-test-owner-graph-near@example.com")
+    hotel = _create_business(client, owner_headers, "영종호텔")
+    cafe = _create_business(client, owner_headers, "영종카페")
+
+    hotel_business = db_session.get(Business, hotel["id"])
+    cafe_business = db_session.get(Business, cafe["id"])
+    hotel_business.status = "ACTIVE"
+    hotel_business.lon, hotel_business.lat = 126.5419, 37.4936
+    cafe_business.status = "ACTIVE"
+    cafe_business.lon, cafe_business.lat = 126.5421, 37.4937  # a few tens of meters away
+    db_session.commit()
+
+    response = client.get("/api/v1/admin/business-graph", headers=admin_headers)
+    assert response.status_code == 200
+    body = response.json()
+    near_edges = [e for e in body if e["relationship_type"] == "NEAR"]
+    assert len(near_edges) == 1
+    assert {near_edges[0]["business_a_name"], near_edges[0]["business_b_name"]} == {"영종호텔", "영종카페"}
+    assert near_edges[0]["distance_m"] is not None
+    assert near_edges[0]["status"] is None
+
+
+def test_business_graph_near_excludes_pairs_already_partner_track(client, db_session):
+    from models import Business
+
+    admin_headers = _seed_admin(client, db_session, "admin-test-graph-near2@example.com")
+    owner_headers = _register(client, "admin-test-owner-graph-near2@example.com")
+    hotel = _create_business(client, owner_headers, "영종호텔2")
+    cafe = _create_business(client, owner_headers, "영종카페2")
+
+    hotel_business = db_session.get(Business, hotel["id"])
+    cafe_business = db_session.get(Business, cafe["id"])
+    hotel_business.status = "ACTIVE"
+    hotel_business.lon, hotel_business.lat = 126.5419, 37.4936
+    cafe_business.status = "ACTIVE"
+    cafe_business.lon, cafe_business.lat = 126.5421, 37.4937
+    db_session.add(
+        BusinessRelationship(business_a_id=hotel["id"], business_b_id=cafe["id"], score=90, reason="근접")
+    )
+    db_session.commit()
+
+    response = client.get("/api/v1/admin/business-graph", headers=admin_headers)
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body) == 1
+    assert body[0]["relationship_type"] == "PARTNER_TRACK"
 
 
 def test_tourist_place_create_requires_admin(client):
