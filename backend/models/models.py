@@ -185,6 +185,7 @@ class BusinessProfile(Base):
     parking: Mapped[str | None] = mapped_column(String(500), nullable=True)
     pet_policy: Mapped[str | None] = mapped_column(String(500), nullable=True)
     reservation_policy: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    takeout_policy: Mapped[str | None] = mapped_column(String(500), nullable=True)
     payment_methods: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     faq: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 

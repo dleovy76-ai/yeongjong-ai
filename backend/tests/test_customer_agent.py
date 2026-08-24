@@ -69,6 +69,17 @@ def test_customer_agent_includes_brand_tone_as_a_style_instruction(db_session):
     assert "친근하고 정겨운 존댓말" in system_prompt
 
 
+def test_customer_agent_grounds_prompt_in_takeout_policy(db_session):
+    business = _make_business(db_session, takeout_policy="포장 가능, 전화 주문 후 방문 수령")
+
+    llm = FakeLLMProvider()
+    agent = CustomerAgent(db=db_session, llm=llm)
+    agent.respond({"business_id": business.id}, "포장 되나요?")
+
+    system_prompt = llm.calls[0]["system_prompt"]
+    assert "포장 가능, 전화 주문 후 방문 수령" in system_prompt
+
+
 def test_customer_agent_includes_accepted_partner_businesses(db_session):
     business = _make_business(db_session)
     partner = _make_business(db_session)

@@ -51,6 +51,7 @@ class BusinessProfileUpdateRequest(BaseModel):
     parking: str | None = Field(default=None, max_length=500)
     pet_policy: str | None = Field(default=None, max_length=500)
     reservation_policy: str | None = Field(default=None, max_length=500)
+    takeout_policy: str | None = Field(default=None, max_length=500)
     payment_methods: dict | None = None
     faq: dict | None = None
     naver_place_url: str | None = Field(default=None, max_length=500)
@@ -67,6 +68,7 @@ class BusinessProfileResponse(BaseModel):
     parking: str | None
     pet_policy: str | None
     reservation_policy: str | None
+    takeout_policy: str | None
     payment_methods: dict | None
     faq: dict | None
     naver_place_url: str | None

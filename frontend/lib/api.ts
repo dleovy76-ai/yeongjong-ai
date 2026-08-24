@@ -92,6 +92,7 @@ export interface BusinessProfile {
   parking: string | null;
   pet_policy: string | null;
   reservation_policy: string | null;
+  takeout_policy: string | null;
   payment_methods: Record<string, unknown> | null;
   faq: Record<string, unknown> | null;
   naver_place_url: string | null;

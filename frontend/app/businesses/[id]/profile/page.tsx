@@ -27,7 +27,9 @@ export default function BusinessProfilePage() {
   const [parking, setParking] = useState("");
   const [petPolicy, setPetPolicy] = useState("");
   const [reservationPolicy, setReservationPolicy] = useState("");
+  const [takeoutPolicy, setTakeoutPolicy] = useState("");
   const [paymentMethods, setPaymentMethods] = useState("");
+  const [faq, setFaq] = useState("");
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -54,7 +56,9 @@ export default function BusinessProfilePage() {
         setParking(profile.parking ?? "");
         setPetPolicy(profile.pet_policy ?? "");
         setReservationPolicy(profile.reservation_policy ?? "");
+        setTakeoutPolicy(profile.takeout_policy ?? "");
         setPaymentMethods(textOf(profile.payment_methods));
+        setFaq(textOf(profile.faq));
         setNaverPlaceUrl(profile.naver_place_url);
         setNaverMapUrl(profile.naver_map_url);
       })
@@ -124,7 +128,9 @@ export default function BusinessProfilePage() {
         parking: parking || undefined,
         pet_policy: petPolicy || undefined,
         reservation_policy: reservationPolicy || undefined,
+        takeout_policy: takeoutPolicy || undefined,
         payment_methods: paymentMethods ? { text: paymentMethods } : undefined,
+        faq: faq ? { text: faq } : undefined,
       });
       setSaved(true);
     } catch (err) {
@@ -222,12 +228,31 @@ export default function BusinessProfilePage() {
           />
         </label>
         <label className="flex flex-col gap-1 text-sm">
+          포장 안내
+          <input
+            className="rounded-md border border-gray-300 px-3 py-2"
+            placeholder="예: 포장 가능, 전화 주문 후 방문 수령"
+            value={takeoutPolicy}
+            onChange={(e) => setTakeoutPolicy(e.target.value)}
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
           결제 수단
           <input
             className="rounded-md border border-gray-300 px-3 py-2"
             placeholder="예: 카드, 현금, 카카오페이"
             value={paymentMethods}
             onChange={(e) => setPaymentMethods(e.target.value)}
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          자주 묻는 질문
+          <textarea
+            className="rounded-md border border-gray-300 px-3 py-2"
+            placeholder="예: Q. 단체석 있나요? A. 8인석 룸이 하나 있어요, 미리 전화 주세요."
+            rows={3}
+            value={faq}
+            onChange={(e) => setFaq(e.target.value)}
           />
         </label>
         {error && <p className="text-sm text-red-600">{error}</p>}

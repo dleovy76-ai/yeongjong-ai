@@ -88,6 +88,7 @@ class BusinessSearchTool:
             "parking": profile.parking,
             "pet_policy": profile.pet_policy,
             "reservation_policy": profile.reservation_policy,
+            "takeout_policy": profile.takeout_policy,
             "payment_methods": profile.payment_methods,
             "faq": profile.faq,
         }
