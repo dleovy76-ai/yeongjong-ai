@@ -9,6 +9,7 @@ import {
   type AdminAiInteractionSummary,
   type AdminAiMessageDetail,
   type AdminBusiness,
+  type AdminKpi,
   type AdminStats,
   type AdminUser,
   type BusinessGraphEdge,
@@ -40,6 +41,7 @@ export default function AdminPage() {
   const { token, user, loading: authLoading } = useAuth();
   const router = useRouter();
 
+  const [kpi, setKpi] = useState<AdminKpi | null>(null);
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [businesses, setBusinesses] = useState<AdminBusiness[] | null>(null);
   const [users, setUsers] = useState<AdminUser[] | null>(null);
@@ -67,6 +69,7 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (!token || user?.role !== "ADMIN") return;
+    api.adminKpi(token).then(setKpi).catch(() => setKpi(null));
     api.adminStats(token).then(setStats).catch(() => setStats(null));
     api.adminListBusinesses(token).then(setBusinesses).catch(() => setBusinesses([]));
     api.adminListUsers(token).then(setUsers).catch(() => setUsers([]));
@@ -138,7 +141,60 @@ export default function AdminPage() {
       {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
 
       <section className="mb-10">
-        <h2 className="mb-3 font-semibold">현황</h2>
+        <h2 className="mb-1 font-semibold">핵심 KPI</h2>
+        <p className="mb-3 text-sm text-gray-600">
+          많은 숫자를 다 보지 않고, 이 7개만 본다. 가장 중요한 숫자는 맨 아래 강조된 값이에요.
+        </p>
+        {kpi === null ? (
+          <p className="text-gray-500">불러오는 중...</p>
+        ) : (
+          <div className="flex flex-col gap-3">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <div className="rounded-md border border-gray-200 p-3 text-center">
+                <p className="text-xl font-bold">{kpi.signed_up_businesses.toLocaleString()}</p>
+                <p className="mt-1 text-xs text-gray-500">가입 업체 수</p>
+              </div>
+              <div className="rounded-md border border-gray-200 p-3 text-center">
+                <p className="text-xl font-bold">{kpi.active_owner_ai_last_30d.toLocaleString()}</p>
+                <p className="mt-1 text-xs text-gray-500">활성 사장님 AI (30일)</p>
+              </div>
+              <div className="rounded-md border border-gray-200 p-3 text-center">
+                <p className="text-xl font-bold">{kpi.ai_response_count_last_30d.toLocaleString()}</p>
+                <p className="mt-1 text-xs text-gray-500">AI 응대 건수 (30일)</p>
+              </div>
+              <div className="rounded-md border border-gray-200 p-3 text-center">
+                <p className="text-xl font-bold">{kpi.ai_recommendation_count_last_30d.toLocaleString()}</p>
+                <p className="mt-1 text-xs text-gray-500">AI 추천 건수 (30일)</p>
+              </div>
+              <div className="rounded-md border border-gray-200 p-3 text-center">
+                <p className="text-xl font-bold">
+                  {kpi.coupon_conversion_rate !== null
+                    ? `${(kpi.coupon_conversion_rate * 100).toFixed(0)}%`
+                    : "-"}{" "}
+                  /{" "}
+                  {kpi.reservation_conversion_rate !== null
+                    ? `${(kpi.reservation_conversion_rate * 100).toFixed(0)}%`
+                    : "-"}
+                </p>
+                <p className="mt-1 text-xs text-gray-500">쿠폰 / 예약 전환율</p>
+              </div>
+              <div className="rounded-md border border-gray-200 p-3 text-center">
+                <p className="text-xl font-bold">{kpi.actual_visits.toLocaleString()}</p>
+                <p className="mt-1 text-xs text-gray-500">실제 방문 수</p>
+              </div>
+            </div>
+            <div className="rounded-md border-2 border-black p-4 text-center">
+              <p className="text-3xl font-bold">{Number(kpi.ai_connected_revenue).toLocaleString()}원</p>
+              <p className="mt-1 text-sm text-gray-600">
+                AI 연결 거래액 — AI가 실제로 만들어낸 확인 가능한 거래액
+              </p>
+            </div>
+          </div>
+        )}
+      </section>
+
+      <section className="mb-10">
+        <h2 className="mb-3 font-semibold">현황 (상세)</h2>
         {stats === null ? (
           <p className="text-gray-500">불러오는 중...</p>
         ) : (

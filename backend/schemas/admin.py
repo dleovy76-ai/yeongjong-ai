@@ -7,6 +7,22 @@ from pydantic import BaseModel, Field
 from models import BusinessCategory, BusinessStatus, PartnerRelationshipStatus, TouristPlaceStatus, UserRole
 
 
+class AdminKpiResponse(BaseModel):
+    """기획서 26번 - "많은 숫자를 보지 않는다": 핵심 KPI 7개만. 전부 /stats에
+    이미 있던 원시 데이터를 재계산/재라벨링한 것 - 새 데이터 수집은 없음.
+    ai_connected_revenue가 "가장 중요한 숫자"(§40과 동일 원칙: AI가 실제로
+    만들어낸 확인 가능한 거래액)라 프론트에서 강조 표시한다."""
+
+    signed_up_businesses: int
+    active_owner_ai_last_30d: int
+    ai_response_count_last_30d: int
+    ai_recommendation_count_last_30d: int
+    coupon_conversion_rate: float | None
+    reservation_conversion_rate: float | None
+    actual_visits: int
+    ai_connected_revenue: Decimal
+
+
 class AdminStatsResponse(BaseModel):
     businesses_by_status: dict[str, int]
     users_by_role: dict[str, int]

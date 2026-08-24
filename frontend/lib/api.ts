@@ -344,6 +344,8 @@ export const api = {
       token,
     }),
 
+  adminKpi: (token: string) => request<AdminKpi>("/api/v1/admin/kpi", { token }),
+
   adminStats: (token: string) => request<AdminStats>("/api/v1/admin/stats", { token }),
 
   adminListBusinesses: (token: string) =>
@@ -378,6 +380,17 @@ export const api = {
   adminUpdateTouristPlace: (token: string, id: string, body: Partial<TouristPlace>) =>
     request<TouristPlace>(`/api/v1/admin/tourist-places/${id}`, { method: "PATCH", body, token }),
 };
+
+export interface AdminKpi {
+  signed_up_businesses: number;
+  active_owner_ai_last_30d: number;
+  ai_response_count_last_30d: number;
+  ai_recommendation_count_last_30d: number;
+  coupon_conversion_rate: number | null;
+  reservation_conversion_rate: number | null;
+  actual_visits: number;
+  ai_connected_revenue: string;
+}
 
 export interface AdminStats {
   businesses_by_status: Record<string, number>;

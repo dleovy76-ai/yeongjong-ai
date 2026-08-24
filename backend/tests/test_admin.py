@@ -35,6 +35,56 @@ def _create_business(client, headers, name_ko="영종 식당"):
     return response.json()
 
 
+def test_kpi_requires_admin(client):
+    owner_headers = _register(client, "admin-test-kpi-owner1@example.com")
+    response = client.get("/api/v1/admin/kpi", headers=owner_headers)
+    assert response.status_code == 403
+
+
+def test_kpi_reflects_real_data(client, db_session):
+    from models import Coupon, CouponDiscountType, CouponIssue, CouponIssueStatus
+
+    admin_headers = _seed_admin(client, db_session, "admin-test-kpi@example.com")
+    owner_headers = _register(client, "admin-test-kpi-owner2@example.com")
+    business = _create_business(client, owner_headers, "KPI테스트업체")
+
+    db_session.add(AiInteraction(business_id=business["id"], agent_type="customer"))
+    db_session.add(AiInteraction(business_id=business["id"], agent_type="info"))
+    db_session.add(AiInteraction(business_id=business["id"], agent_type="info"))
+
+    coupon = Coupon(
+        business_id=business["id"],
+        title="할인",
+        discount_type=CouponDiscountType.PERCENTAGE,
+        discount_value="10",
+    )
+    db_session.add(coupon)
+    db_session.flush()
+    db_session.add(CouponIssue(coupon_id=coupon.id, code="KPITEST1", status=CouponIssueStatus.ISSUED))
+    db_session.add(CouponIssue(coupon_id=coupon.id, code="KPITEST2", status=CouponIssueStatus.REDEEMED))
+
+    db_session.add(
+        Transaction(
+            business_id=business["id"],
+            amount="10000",
+            attribution=TransactionAttribution.DIRECT,
+            occurred_at=datetime.now(timezone.utc),
+        )
+    )
+    db_session.commit()
+
+    response = client.get("/api/v1/admin/kpi", headers=admin_headers)
+    assert response.status_code == 200
+    body = response.json()
+    assert body["signed_up_businesses"] >= 1
+    assert body["active_owner_ai_last_30d"] >= 1
+    assert body["ai_response_count_last_30d"] >= 3
+    assert body["ai_recommendation_count_last_30d"] >= 2
+    assert body["coupon_conversion_rate"] == 0.5
+    assert body["actual_visits"] >= 1
+    assert float(body["ai_connected_revenue"]) >= 10000
+
+
 def test_stats_requires_admin(client):
     owner_headers = _register(client, "admin-test-owner1@example.com")
     response = client.get("/api/v1/admin/stats", headers=owner_headers)

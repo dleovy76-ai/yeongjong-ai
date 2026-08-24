@@ -15,6 +15,7 @@ from models import (
     CouponIssue,
     CouponIssueStatus,
     Reservation,
+    ReservationStatus,
     TouristPlace,
     TouristPlaceStatus,
     Transaction,
@@ -28,6 +29,7 @@ from schemas.admin import (
     AdminAiMessageDetail,
     AdminBusinessStatusUpdateRequest,
     AdminBusinessSummary,
+    AdminKpiResponse,
     AdminStatsResponse,
     AdminUserSummary,
     BusinessGraphEdge,
@@ -49,6 +51,63 @@ def require_admin(current_user: User = Depends(get_current_user)) -> User:
 def _count_by(db: Session, model, column) -> dict[str, int]:
     rows = db.query(column, func.count()).group_by(column).all()
     return {value.value if hasattr(value, "value") else str(value): count for value, count in rows}
+
+
+@router.get("/kpi", response_model=AdminKpiResponse)
+def get_kpi(db: Session = Depends(get_db), _admin: User = Depends(require_admin)) -> AdminKpiResponse:
+    """기획서 26번 - 핵심 KPI 7개만. 전부 /stats의 원시 데이터를 재계산한
+    것으로 새로 수집하는 데이터는 없다."""
+    thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
+
+    signed_up_businesses = db.query(func.count(Business.id)).filter(Business.owner_user_id.isnot(None)).scalar()
+
+    active_owner_ai_last_30d = (
+        db.query(func.count(func.distinct(AiInteraction.business_id)))
+        .filter(AiInteraction.business_id.isnot(None), AiInteraction.created_at >= thirty_days_ago)
+        .scalar()
+    )
+
+    ai_response_count_last_30d = (
+        db.query(func.count(AiInteraction.id)).filter(AiInteraction.created_at >= thirty_days_ago).scalar()
+    )
+    ai_recommendation_count_last_30d = (
+        db.query(func.count(AiInteraction.id))
+        .filter(AiInteraction.agent_type == "info", AiInteraction.created_at >= thirty_days_ago)
+        .scalar()
+    )
+
+    coupons_issued = db.query(func.count(CouponIssue.id)).scalar() or 0
+    coupons_redeemed = (
+        db.query(func.count(CouponIssue.id)).filter(CouponIssue.status == CouponIssueStatus.REDEEMED).scalar() or 0
+    )
+    coupon_conversion_rate = round(coupons_redeemed / coupons_issued, 4) if coupons_issued else None
+
+    reservations_total = db.query(func.count(Reservation.id)).scalar() or 0
+    reservations_completed = (
+        db.query(func.count(Reservation.id)).filter(Reservation.status == ReservationStatus.COMPLETED).scalar() or 0
+    )
+    reservation_conversion_rate = round(reservations_completed / reservations_total, 4) if reservations_total else None
+
+    actual_visits = db.query(func.count(Transaction.id)).scalar() or 0
+
+    ai_connected_amount_rows = (
+        db.query(func.coalesce(func.sum(Transaction.amount), 0))
+        .filter(
+            Transaction.attribution.in_([TransactionAttribution.DIRECT, TransactionAttribution.ASSISTED])
+        )
+        .scalar()
+    )
+
+    return AdminKpiResponse(
+        signed_up_businesses=signed_up_businesses or 0,
+        active_owner_ai_last_30d=active_owner_ai_last_30d or 0,
+        ai_response_count_last_30d=ai_response_count_last_30d or 0,
+        ai_recommendation_count_last_30d=ai_recommendation_count_last_30d or 0,
+        coupon_conversion_rate=coupon_conversion_rate,
+        reservation_conversion_rate=reservation_conversion_rate,
+        actual_visits=actual_visits,
+        ai_connected_revenue=ai_connected_amount_rows,
+    )
 
 
 @router.get("/stats", response_model=AdminStatsResponse)
