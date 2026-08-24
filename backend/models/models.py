@@ -289,7 +289,14 @@ class CouponIssue(Base):
     issued_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
     redeemed_at: Mapped[datetime | None] = mapped_column(nullable=True)
 
+    # 기획서 28번 "개인에게 나의 AI" 첫 단추: 로그인한 손님이면 누구 발급인지
+    # 남긴다. nullable - 비로그인 발급(기존 흐름)을 계속 허용해야 하므로.
+    customer_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id"), nullable=True, index=True
+    )
+
     coupon: Mapped["Coupon"] = relationship(back_populates="issues")
+    customer: Mapped["User | None"] = relationship()
 
 
 class Reservation(Base):
@@ -316,12 +323,18 @@ class Reservation(Base):
         default=ReservationStatus.REQUESTED,
     )
 
+    # 기획서 28번 - CouponIssue.customer_user_id와 같은 이유로 동일하게 추가.
+    customer_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id"), nullable=True, index=True
+    )
+
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
         server_default=func.now(), onupdate=func.now(), nullable=False
     )
 
     business: Mapped["Business"] = relationship(back_populates="reservations")
+    customer: Mapped["User | None"] = relationship()
 
 
 class AiInteraction(Base):

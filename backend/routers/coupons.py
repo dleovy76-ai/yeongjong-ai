@@ -93,15 +93,26 @@ def update_coupon(
 
 
 @router.post("/{coupon_id}/issue", response_model=CouponIssueResponse, status_code=status.HTTP_201_CREATED)
-def issue_coupon(business_id: UUID, coupon_id: UUID, db: Session = Depends(get_db)) -> CouponIssueResponse:
+def issue_coupon(
+    business_id: UUID,
+    coupon_id: UUID,
+    current_user: User | None = Depends(get_current_user_optional),
+    db: Session = Depends(get_db),
+) -> CouponIssueResponse:
     """Public - a visitor claims a coupon and gets a redemption code to show at
-    the business. No visitor account needed for MVP."""
+    the business. No visitor account needed for MVP; if they happen to be
+    logged in (기획서 28번), the claim is linked to their account so it shows
+    up in their "내 이력" - purely additive, claiming without login still works."""
     get_business_or_404(db, business_id)
     coupon = _get_coupon_or_404(db, business_id, coupon_id)
     if not is_coupon_currently_claimable(coupon):
         raise HTTPException(status.HTTP_409_CONFLICT, "지금은 받을 수 없는 쿠폰입니다.")
 
-    claim = CouponIssue(coupon_id=coupon.id, code=_generate_code(db))
+    claim = CouponIssue(
+        coupon_id=coupon.id,
+        code=_generate_code(db),
+        customer_user_id=current_user.id if current_user else None,
+    )
     db.add(claim)
     db.commit()
     db.refresh(claim)

@@ -337,6 +337,8 @@ export const api = {
   getReferralJoinInfo: (referralToken: string) =>
     request<ReferralJoinInfo>(`/api/v1/referral/${referralToken}`),
 
+  getMyHistory: (token: string) => request<MyHistory>("/api/v1/me/history", { token }),
+
   managerChat: (token: string, businessId: string, message: string) =>
     request<ChatResponse>(`/api/v1/businesses/${businessId}/manager/chat`, {
       method: "POST",
@@ -555,4 +557,30 @@ export interface IncomingPartnerInvite {
   status: PartnerRelationshipStatus;
   invite_message: string | null;
   effect_estimate: PartnershipEffectEstimate | null;
+}
+
+export interface MyCouponHistoryItem {
+  id: string;
+  business_id: string;
+  business_name: string;
+  coupon_title: string;
+  code: string;
+  status: CouponIssueStatus;
+  issued_at: string;
+  redeemed_at: string | null;
+}
+
+export interface MyReservationHistoryItem {
+  id: string;
+  business_id: string;
+  business_name: string;
+  reservation_time: string;
+  party_size: number;
+  status: ReservationStatus;
+  created_at: string;
+}
+
+export interface MyHistory {
+  coupons: MyCouponHistoryItem[];
+  reservations: MyReservationHistoryItem[];
 }

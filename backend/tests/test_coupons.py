@@ -145,6 +145,31 @@ def test_redeem_rejects_code_from_another_business(client):
     assert response.status_code == 404
 
 
+def test_issue_links_to_logged_in_customer(client):
+    headers = _register(client, "coupon-owner11@example.com")
+    business = _create_business(client, headers)
+    coupon = _create_coupon(client, headers, business["id"])
+    client.patch(
+        f"/api/v1/businesses/{business['id']}/coupons/{coupon['id']}", headers=headers, json={"status": "ACTIVE"}
+    )
+
+    customer_headers = _register(client, "coupon-customer1@example.com", role="CUSTOMER")
+
+    logged_in = client.post(
+        f"/api/v1/businesses/{business['id']}/coupons/{coupon['id']}/issue", headers=customer_headers
+    )
+    assert logged_in.status_code == 201
+
+    anonymous = client.post(f"/api/v1/businesses/{business['id']}/coupons/{coupon['id']}/issue")
+    assert anonymous.status_code == 201
+
+    history = client.get("/api/v1/me/history", headers=customer_headers)
+    assert history.status_code == 200
+    codes = {c["code"] for c in history.json()["coupons"]}
+    assert codes == {logged_in.json()["code"]}
+    assert anonymous.json()["code"] not in codes
+
+
 def test_redeem_requires_owner_auth(client):
     headers = _register(client, "coupon-owner10@example.com")
     business = _create_business(client, headers)

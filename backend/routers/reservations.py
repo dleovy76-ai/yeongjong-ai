@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from core.database import get_db
 from models import Reservation, User
 from routers._business_common import get_business_or_404, require_owner
-from routers.auth import get_current_user
+from routers.auth import get_current_user, get_current_user_optional
 from schemas.reservations import ReservationCreateRequest, ReservationResponse, ReservationUpdateRequest
 
 router = APIRouter(prefix="/api/v1/businesses/{business_id}/reservations", tags=["reservations"])
@@ -22,11 +22,16 @@ def _get_reservation_or_404(db: Session, business_id: UUID, reservation_id: UUID
 
 @router.post("", response_model=ReservationResponse, status_code=status.HTTP_201_CREATED)
 def create_reservation(
-    business_id: UUID, body: ReservationCreateRequest, db: Session = Depends(get_db)
+    business_id: UUID,
+    body: ReservationCreateRequest,
+    current_user: User | None = Depends(get_current_user_optional),
+    db: Session = Depends(get_db),
 ) -> ReservationResponse:
     """Public - a visitor requests a reservation, no account needed (same
     no-visitor-account pattern as coupon claims). Starts REQUESTED; the owner
-    confirms or cancels it themselves (§16)."""
+    confirms or cancels it themselves (§16). If logged in (기획서 28번), the
+    reservation is linked to their account for "내 이력" - still fully usable
+    without login."""
     get_business_or_404(db, business_id)
 
     reservation_time = body.reservation_time
@@ -42,6 +47,7 @@ def create_reservation(
         reservation_time=body.reservation_time,
         party_size=body.party_size,
         notes=body.notes,
+        customer_user_id=current_user.id if current_user else None,
     )
     db.add(reservation)
     db.commit()

@@ -1,10 +1,10 @@
 from datetime import datetime, timedelta, timezone
 
 
-def _register(client, email):
+def _register(client, email, role="BUSINESS_OWNER"):
     response = client.post(
         "/api/v1/auth/register",
-        json={"email": email, "password": "password123", "name": "사장", "role": "BUSINESS_OWNER"},
+        json={"email": email, "password": "password123", "name": "사장", "role": role},
     )
     assert response.status_code == 201, response.text
     token = response.json()["access_token"]
@@ -42,6 +42,41 @@ def test_visitor_can_create_reservation_without_auth(client):
     body = response.json()
     assert body["status"] == "REQUESTED"
     assert body["party_size"] == 4
+
+
+def test_reservation_links_to_logged_in_customer(client):
+    headers = _register(client, "resv-owner-linked@example.com")
+    business = _create_business(client, headers)
+    customer_headers = _register(client, "resv-customer1@example.com", role="CUSTOMER")
+
+    logged_in = client.post(
+        f"/api/v1/businesses/{business['id']}/reservations",
+        headers=customer_headers,
+        json={
+            "customer_name": "김방문",
+            "customer_phone": "010-1234-5678",
+            "reservation_time": _future_time(),
+            "party_size": 2,
+        },
+    )
+    assert logged_in.status_code == 201
+
+    anonymous = client.post(
+        f"/api/v1/businesses/{business['id']}/reservations",
+        json={
+            "customer_name": "이방문",
+            "customer_phone": "010-9999-8888",
+            "reservation_time": _future_time(),
+            "party_size": 3,
+        },
+    )
+    assert anonymous.status_code == 201
+
+    history = client.get("/api/v1/me/history", headers=customer_headers)
+    assert history.status_code == 200
+    reservation_ids = {r["id"] for r in history.json()["reservations"]}
+    assert reservation_ids == {logged_in.json()["id"]}
+    assert anonymous.json()["id"] not in reservation_ids
 
 
 def test_cannot_reserve_a_past_time(client):
