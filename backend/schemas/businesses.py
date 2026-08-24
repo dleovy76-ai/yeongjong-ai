@@ -4,24 +4,25 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
+from core.text_validation import ValidatedText
 from models import BusinessCategory, BusinessStatus
 
 
 class BusinessCreateRequest(BaseModel):
-    name_ko: str = Field(min_length=1, max_length=200)
-    name_en: str | None = Field(default=None, max_length=200)
-    name_zh: str | None = Field(default=None, max_length=200)
+    name_ko: ValidatedText = Field(min_length=1, max_length=200)
+    name_en: ValidatedText | None = Field(default=None, max_length=200)
+    name_zh: ValidatedText | None = Field(default=None, max_length=200)
     category: BusinessCategory
-    address: str = Field(min_length=1, max_length=300)
+    address: ValidatedText = Field(min_length=1, max_length=300)
     phone: str | None = Field(default=None, max_length=30)
 
 
 class BusinessUpdateRequest(BaseModel):
-    name_ko: str | None = Field(default=None, min_length=1, max_length=200)
-    name_en: str | None = Field(default=None, max_length=200)
-    name_zh: str | None = Field(default=None, max_length=200)
+    name_ko: ValidatedText | None = Field(default=None, min_length=1, max_length=200)
+    name_en: ValidatedText | None = Field(default=None, max_length=200)
+    name_zh: ValidatedText | None = Field(default=None, max_length=200)
     category: BusinessCategory | None = None
-    address: str | None = Field(default=None, min_length=1, max_length=300)
+    address: ValidatedText | None = Field(default=None, min_length=1, max_length=300)
     phone: str | None = Field(default=None, max_length=30)
     status: BusinessStatus | None = None
 
@@ -44,14 +45,14 @@ class BusinessResponse(BaseModel):
 
 
 class BusinessProfileUpdateRequest(BaseModel):
-    description: str | None = Field(default=None, max_length=2000)
-    brand_tone: str | None = Field(default=None, max_length=500)
+    description: ValidatedText | None = Field(default=None, max_length=2000)
+    brand_tone: ValidatedText | None = Field(default=None, max_length=500)
     opening_hours: dict | None = None
-    holiday: str | None = Field(default=None, max_length=200)
-    parking: str | None = Field(default=None, max_length=500)
-    pet_policy: str | None = Field(default=None, max_length=500)
-    reservation_policy: str | None = Field(default=None, max_length=500)
-    takeout_policy: str | None = Field(default=None, max_length=500)
+    holiday: ValidatedText | None = Field(default=None, max_length=200)
+    parking: ValidatedText | None = Field(default=None, max_length=500)
+    pet_policy: ValidatedText | None = Field(default=None, max_length=500)
+    reservation_policy: ValidatedText | None = Field(default=None, max_length=500)
+    takeout_policy: ValidatedText | None = Field(default=None, max_length=500)
     payment_methods: dict | None = None
     faq: dict | None = None
     naver_place_url: str | None = Field(default=None, max_length=500)
@@ -109,22 +110,22 @@ class NaverLookupCandidate(BaseModel):
 
 
 class MenuCreateRequest(BaseModel):
-    name: str = Field(min_length=1, max_length=200)
-    description: str | None = Field(default=None, max_length=1000)
+    name: ValidatedText = Field(min_length=1, max_length=200)
+    description: ValidatedText | None = Field(default=None, max_length=1000)
     price: Decimal = Field(gt=0)
     image_url: str | None = Field(default=None, max_length=500)
     is_signature: bool = False
-    allergy_info: str | None = Field(default=None, max_length=500)
+    allergy_info: ValidatedText | None = Field(default=None, max_length=500)
     options: dict | None = None
 
 
 class MenuUpdateRequest(BaseModel):
-    name: str | None = Field(default=None, min_length=1, max_length=200)
-    description: str | None = Field(default=None, max_length=1000)
+    name: ValidatedText | None = Field(default=None, min_length=1, max_length=200)
+    description: ValidatedText | None = Field(default=None, max_length=1000)
     price: Decimal | None = Field(default=None, gt=0)
     image_url: str | None = Field(default=None, max_length=500)
     is_signature: bool | None = None
-    allergy_info: str | None = Field(default=None, max_length=500)
+    allergy_info: ValidatedText | None = Field(default=None, max_length=500)
     options: dict | None = None
 
 

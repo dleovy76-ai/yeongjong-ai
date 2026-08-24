@@ -9,6 +9,7 @@ Info AI (recommends across the whole directory) needs none at all. Each agent
 subclass documents what keys it reads from context."""
 
 import logging
+import uuid
 from abc import ABC, abstractmethod
 from decimal import Decimal
 
@@ -30,6 +31,11 @@ class BaseAgent(ABC):
         self.db = db
         self.llm = llm
         self._last_usage: LLMResponse | None = None
+        # PILOT AUDIT TASK 3 - the AiInteraction row this respond() call just
+        # logged, so a caller (e.g. the recommendations router) can hand the
+        # id back to the frontend as a stable reference for a later
+        # "recommendation was clicked" event. None until log() runs once.
+        self.last_interaction_id: uuid.UUID | None = None
 
     def _call_llm(self, *, system_prompt: str, user_message: str, max_output_tokens: int = 1024) -> str:
         """Every agent's execute() should call this instead of self.llm.generate()
@@ -103,7 +109,8 @@ class BaseAgent(ABC):
             estimated_cost_usd=self._estimate_cost(),
             prompt_version=self.prompt_version,
         )
-        self.db.add(AiInteraction(business_id=business_id, **row_kwargs))
+        interaction = AiInteraction(business_id=business_id, **row_kwargs)
+        self.db.add(interaction)
         try:
             self.db.commit()
         except IntegrityError:
@@ -112,5 +119,8 @@ class BaseAgent(ABC):
             # actual response. Record it without the business association instead
             # of dropping the interaction entirely.
             self.db.rollback()
-            self.db.add(AiInteraction(business_id=None, **row_kwargs))
+            interaction = AiInteraction(business_id=None, **row_kwargs)
+            self.db.add(interaction)
             self.db.commit()
+        self.db.refresh(interaction)
+        self.last_interaction_id = interaction.id

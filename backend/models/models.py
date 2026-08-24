@@ -465,6 +465,35 @@ class Transaction(Base):
     business: Mapped["Business"] = relationship()
 
 
+class RecommendationClick(Base):
+    """PILOT AUDIT TASK 3 - 추천→클릭 연결의 최소 기반.
+
+    현재 이 하나만 실제로 빠져 있던 연결고리다: RECOMMENDATION_SHOWN은 이미
+    AiInteraction(agent_type="info") 행으로 기록되고, COUPON_ISSUED/
+    RESERVATION_CREATED/TRANSACTION_CREATED는 각각 CouponIssue/Reservation/
+    Transaction으로 이미 기록되며, VISIT_CONFIRMED는 CouponIssue.redeemed_at
+    /Reservation.status=COMPLETED로 이미 표현된다 - 전부 business_id로
+    연결되어 있어 새 테이블이 필요 없다. 하지만 "이 추천 응답에서 손님이 그
+    중 어떤 걸 실제로 클릭했는지"는 어디에도 남지 않았다 - 그 한 칸만 채운다.
+
+    entity_id는 Business 또는 TouristPlace를 가리킬 수 있어(entity_type으로
+    구분) 단일 FK를 걸지 않는다 - InfoAgent가 둘 다 추천할 수 있기 때문
+    (services/agents/info.py의 "source" 필드와 동일한 구분)."""
+
+    __tablename__ = "recommendation_clicks"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    ai_interaction_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("ai_interactions.id"), nullable=False, index=True
+    )
+    entity_id: Mapped[uuid.UUID] = mapped_column(nullable=False, index=True)
+    entity_type: Mapped[str] = mapped_column(String(20), nullable=False)
+
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
+
+    ai_interaction: Mapped["AiInteraction"] = relationship()
+
+
 class TouristPlace(Base):
     """Master plan §12/§13/§27/§28 - Info AI's regional-knowledge counterpart
     to registered businesses (attractions, beaches, festivals, etc. that

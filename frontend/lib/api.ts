@@ -247,7 +247,15 @@ export const api = {
     request<ChatResponse>(`/api/v1/businesses/${businessId}/chef/chat`, { method: "POST", body: { message } }),
 
   recommend: (query: string) =>
-    request<ChatResponse>("/api/v1/recommendations", { method: "POST", body: { query } }),
+    request<RecommendationResponse>("/api/v1/recommendations", { method: "POST", body: { query } }),
+
+  // PILOT AUDIT TASK 3 - 추천→클릭 연결 기반. interaction_id는 recommend()
+  // 응답의 interaction_id를 그대로 넘긴다.
+  recordRecommendationClick: (interactionId: string, entityId: string, entityType: "business" | "tourist_place") =>
+    request<RecommendationClickResponse>(`/api/v1/recommendations/${interactionId}/click`, {
+      method: "POST",
+      body: { entity_id: entityId, entity_type: entityType },
+    }),
 
   listCoupons: (businessId: string, token?: string | null) =>
     request<Coupon[]>(`/api/v1/businesses/${businessId}/coupons`, { token }),
@@ -498,6 +506,28 @@ export interface AdminAiMessageDetail {
 export interface ChatResponse {
   agent_type: string;
   reply: string;
+}
+
+export interface RecommendationItem {
+  id: string;
+  name: string;
+  category: string;
+  source: "business" | "tourist_place";
+  reason: string;
+}
+
+export interface RecommendationResponse {
+  agent_type: string;
+  reply: string;
+  interaction_id: string | null;
+  recommendations: RecommendationItem[];
+}
+
+export interface RecommendationClickResponse {
+  id: string;
+  ai_interaction_id: string;
+  entity_id: string;
+  entity_type: "business" | "tourist_place";
 }
 
 export interface Performance {
