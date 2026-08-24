@@ -4,7 +4,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
-import { api, ApiError, type NaverLookupCandidate } from "@/lib/api";
+import { api, ApiError, CATEGORY_LABELS, type NaverLookupCandidate, type PartnerSuggestion } from "@/lib/api";
 
 function textOf(value: Record<string, unknown> | null): string {
   if (!value) return "";
@@ -40,6 +40,9 @@ export default function BusinessProfilePage() {
   const [naverLoading, setNaverLoading] = useState(false);
   const [naverConnecting, setNaverConnecting] = useState(false);
   const [naverError, setNaverError] = useState<string | null>(null);
+
+  const [expansionSuggestions, setExpansionSuggestions] = useState<PartnerSuggestion[] | null>(null);
+  const [expansionLoading, setExpansionLoading] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !token) router.push("/login");
@@ -133,10 +136,25 @@ export default function BusinessProfilePage() {
         faq: faq ? { text: faq } : undefined,
       });
       setSaved(true);
+      if (expansionSuggestions === null) onAutoAnalyzeExpansion();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "저장 중 오류가 발생했습니다.");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const onAutoAnalyzeExpansion = async () => {
+    if (!token) return;
+    setExpansionLoading(true);
+    try {
+      const results = await api.analyzeExpansion(token, id);
+      setExpansionSuggestions(results.slice(0, 4));
+    } catch {
+      // background convenience feature - a failure here shouldn't block onboarding
+      setExpansionSuggestions([]);
+    } finally {
+      setExpansionLoading(false);
     }
   };
 
@@ -321,6 +339,29 @@ export default function BusinessProfilePage() {
         )}
         {naverError && <p className="mt-2 text-red-600">{naverError}</p>}
       </div>
+
+      {saved && expansionLoading && (
+        <p className="mt-6 text-sm text-gray-500">사장님과 연계 가능성이 높은 업체를 찾는 중...</p>
+      )}
+
+      {saved && !expansionLoading && expansionSuggestions && expansionSuggestions.length > 0 && (
+        <div className="mt-6 rounded-md border border-gray-200 p-4 text-sm">
+          <p className="mb-3 font-semibold">사장님과 연계 가능성이 높은 업체를 찾았습니다</p>
+          <ol className="flex flex-col gap-2">
+            {expansionSuggestions.map((s, i) => (
+              <li key={s.business_b_id} className="flex justify-between">
+                <span>
+                  {i + 1}. {s.name_ko} <span className="text-gray-500">({CATEGORY_LABELS[s.category]})</span>
+                </span>
+                <span className="text-gray-500">연관성 {s.score}점</span>
+              </li>
+            ))}
+          </ol>
+          <Link href={`/businesses/${id}/expansion`} className="mt-3 inline-block text-xs underline">
+            자세히 보고 제휴 제안하기 →
+          </Link>
+        </div>
+      )}
 
       {saved && (
         <Link
