@@ -10,6 +10,11 @@ class PerformanceResponse(BaseModel):
     coupons_issued: int
     coupons_redeemed: int
     reservations_this_month: int
+    successful_referrals: int
+    successful_referrals_note: str = (
+        "우리 가게가 보낸 초대 링크로 실제 새 업체가 가입한 누적 건수입니다 (전체 기간 기준). "
+        "아직 할인/포인트 같은 보상은 없어요 - 결제·포인트 시스템이 생기면 추가될 예정입니다."
+    )
     estimated_time_saved_minutes: int
     estimated_time_saved_note: str = (
         "AI 응대 1건당 약 3분 절감을 가정한 추정치입니다 (검증된 값이 아닙니다)."

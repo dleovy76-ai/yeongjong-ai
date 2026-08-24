@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import { api, ApiError, type Performance } from "@/lib/api";
 
@@ -106,6 +107,16 @@ export default function PerformancePage() {
             <StatCard label="UNKNOWN (연결 불명)" value={`${Number(performance.revenue_unknown).toLocaleString()}원`} />
           </div>
           <p className="mb-8 -mt-4 text-xs text-gray-500">{performance.revenue_ai_connected_note}</p>
+
+          <div className="mb-8 rounded-md border border-gray-200 p-4 text-sm">
+            <p className="font-semibold">
+              내 추천으로 실제 가입한 업체: {performance.successful_referrals.toLocaleString()}곳
+            </p>
+            <p className="mt-1 text-gray-500">{performance.successful_referrals_note}</p>
+            <Link href={`/businesses/${id}/expansion`} className="mt-2 inline-block text-xs underline">
+              초대 링크 보내러 가기 →
+            </Link>
+          </div>
 
           <div className="rounded-md border border-gray-200 p-4 text-sm text-gray-500">
             {performance.estimated_time_saved_note}

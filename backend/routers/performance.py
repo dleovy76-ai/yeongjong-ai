@@ -37,6 +37,7 @@ def get_performance(
         coupons_issued=summary["coupons_issued"],
         coupons_redeemed=summary["coupons_redeemed"],
         reservations_this_month=summary["reservations_this_month"],
+        successful_referrals=summary["successful_referrals"],
         estimated_time_saved_minutes=summary["ai_response_count"] * _MINUTES_SAVED_PER_AI_RESPONSE,
         revenue_total=summary["revenue_total"],
         revenue_direct=summary["revenue_direct"],

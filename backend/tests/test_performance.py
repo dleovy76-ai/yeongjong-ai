@@ -88,6 +88,32 @@ def test_performance_counts_ai_responses_and_coupon_activity(client, monkeypatch
     assert body["revenue_ai_connected"] == "32000.00"
 
 
+def test_performance_counts_successful_referrals(client, db_session):
+    from datetime import datetime, timezone
+
+    from models import BusinessRelationship
+
+    headers = _register(client, "perf-owner-referral@example.com")
+    business = _create_business(client, headers)
+    recruited = _create_business(client, headers)  # any second business row is enough as business_b
+
+    db_session.add(
+        BusinessRelationship(
+            business_a_id=business["id"],
+            business_b_id=recruited["id"],
+            score=80,
+            reason="추천",
+            referral_clicked_at=datetime.now(timezone.utc),
+            referral_signup_confirmed_at=datetime.now(timezone.utc),
+        )
+    )
+    db_session.commit()
+
+    response = client.get(f"/api/v1/businesses/{business['id']}/performance", headers=headers)
+    assert response.status_code == 200
+    assert response.json()["successful_referrals"] == 1
+
+
 def test_performance_requires_owner(client):
     headers = _register(client, "perf-owner2@example.com")
     business = _create_business(client, headers)

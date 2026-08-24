@@ -377,6 +377,19 @@ class PerformanceSummaryTool:
             .filter(Reservation.business_id == business_id, Reservation.created_at >= month_start)
             .count()
         )
+        # 기획서 21번 (추천 보상 시스템) - 실제 보상(할인/포인트)을 지급하려면
+        # 결제·포인트 인프라가 필요한데 아직 없음(§29 - 지어낼 수 없음).
+        # 대신 검증 가능한 실적만: 이 업체가 보낸 초대 링크로 실제 새 업체가
+        # 가입한 횟수(전체 기간 누적 - referral_signup_confirmed_at은 §14에서
+        # 구축한, 이 업체가 보낸 링크를 통해 실제 claim까지 이어진 것만 기록됨).
+        successful_referrals = (
+            self.db.query(BusinessRelationship)
+            .filter(
+                BusinessRelationship.business_a_id == business_id,
+                BusinessRelationship.referral_signup_confirmed_at.isnot(None),
+            )
+            .count()
+        )
         # 기획서 12번 "가장 성과가 좋았던 기능" - 매출 인과관계까지 증명할 방법은
         # 없으니(§29), 정직하게 "가장 많이 쓰인 기능"(응대 건수 기준)으로 제한한다.
         ai_response_count_by_agent_type = dict(
@@ -411,6 +424,7 @@ class PerformanceSummaryTool:
             "coupons_issued": coupons_issued,
             "coupons_redeemed": coupons_redeemed,
             "reservations_this_month": reservations_this_month,
+            "successful_referrals": successful_referrals,
             # str, not Decimal - this dict also flows straight into
             # ManagerDashboardTool's json.dumps() for the LLM prompt (see
             # coupon_summary's str(discount_value) just below for the same
