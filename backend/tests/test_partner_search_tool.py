@@ -4,6 +4,7 @@ from models import (
     Business,
     BusinessCategory,
     BusinessRelationship,
+    BusinessStatus,
     PartnerRelationshipStatus,
     User,
     UserRole,
@@ -130,3 +131,65 @@ def test_decided_relationship_ids_includes_invited_and_rejected(db_session):
 
     ids = PartnerSearchTool(db_session).decided_relationship_ids(business_a.id)
     assert ids == {invited.id, rejected.id}
+
+
+def test_list_accepted_partners_includes_both_directions(db_session):
+    business_a = _make_business(db_session, name="가게A", category=BusinessCategory.RESTAURANT)
+    business_b = _make_business(db_session, name="가게B", category=BusinessCategory.CAFE)
+    business_c = _make_business(db_session, name="가게C", category=BusinessCategory.LODGING)
+    business_b.status = BusinessStatus.ACTIVE
+    business_c.status = BusinessStatus.ACTIVE
+
+    db_session.add(
+        BusinessRelationship(
+            business_a_id=business_a.id,
+            business_b_id=business_b.id,
+            score=80,
+            reason="근접",
+            status=PartnerRelationshipStatus.ACCEPTED,
+        )
+    )
+    db_session.add(
+        BusinessRelationship(
+            business_a_id=business_c.id,
+            business_b_id=business_a.id,
+            score=70,
+            reason="동선",
+            status=PartnerRelationshipStatus.ACCEPTED,
+        )
+    )
+    db_session.flush()
+
+    partners = PartnerSearchTool(db_session).list_accepted_partners(business_a.id)
+    names = {p["name"] for p in partners}
+    assert names == {"가게B", "가게C"}
+
+
+def test_list_accepted_partners_excludes_non_accepted_and_disabled(db_session):
+    business_a = _make_business(db_session, name="가게A", category=BusinessCategory.RESTAURANT)
+    invited_only = _make_business(db_session, name="초대만됨", category=BusinessCategory.CAFE)
+    disabled = _make_business(db_session, name="비활성화됨", category=BusinessCategory.LODGING)
+    disabled.status = BusinessStatus.DISABLED
+
+    db_session.add(
+        BusinessRelationship(
+            business_a_id=business_a.id,
+            business_b_id=invited_only.id,
+            score=80,
+            reason="근접",
+            status=PartnerRelationshipStatus.INVITED,
+        )
+    )
+    db_session.add(
+        BusinessRelationship(
+            business_a_id=business_a.id,
+            business_b_id=disabled.id,
+            score=60,
+            reason="근접",
+            status=PartnerRelationshipStatus.ACCEPTED,
+        )
+    )
+    db_session.flush()
+
+    partners = PartnerSearchTool(db_session).list_accepted_partners(business_a.id)
+    assert partners == []

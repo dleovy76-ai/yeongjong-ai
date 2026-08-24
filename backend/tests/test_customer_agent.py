@@ -4,10 +4,13 @@ from models import (
     Business,
     BusinessCategory,
     BusinessProfile,
+    BusinessRelationship,
+    BusinessStatus,
     Coupon,
     CouponDiscountType,
     CouponStatus,
     Menu,
+    PartnerRelationshipStatus,
     User,
     UserRole,
 )
@@ -64,6 +67,40 @@ def test_customer_agent_includes_brand_tone_as_a_style_instruction(db_session):
 
     system_prompt = llm.calls[0]["system_prompt"]
     assert "친근하고 정겨운 존댓말" in system_prompt
+
+
+def test_customer_agent_includes_accepted_partner_businesses(db_session):
+    business = _make_business(db_session)
+    partner = _make_business(db_session)
+    partner.status = BusinessStatus.ACTIVE
+    not_yet_accepted = _make_business(db_session)
+    db_session.add(
+        BusinessRelationship(
+            business_a_id=business.id,
+            business_b_id=partner.id,
+            score=80,
+            reason="근접",
+            status=PartnerRelationshipStatus.ACCEPTED,
+        )
+    )
+    db_session.add(
+        BusinessRelationship(
+            business_a_id=business.id,
+            business_b_id=not_yet_accepted.id,
+            score=60,
+            reason="근접",
+            status=PartnerRelationshipStatus.INVITED,
+        )
+    )
+    db_session.flush()
+
+    llm = FakeLLMProvider()
+    agent = CustomerAgent(db=db_session, llm=llm)
+    agent.respond({"business_id": business.id}, "근처에 다른 곳도 있어요?")
+
+    system_prompt = llm.calls[0]["system_prompt"]
+    assert str(partner.id) in system_prompt
+    assert str(not_yet_accepted.id) not in system_prompt
 
 
 def test_customer_agent_never_invents_facts_the_llm_wasnt_given(db_session):

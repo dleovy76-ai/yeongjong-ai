@@ -11,7 +11,7 @@ from models import Business, BusinessRelationship, PartnerRelationshipStatus, Us
 from routers._ai_common import resolve_llm_provider, run_agent
 from routers._business_common import get_business_or_404, require_owner
 from routers.auth import get_current_user
-from schemas.expansion import PartnerSuggestionResponse
+from schemas.expansion import IncomingPartnerInviteResponse, PartnerSuggestionResponse
 from services.agents.expansion import ExpansionAgent
 from services.agents.referral_message import ReferralMessageAgent
 
@@ -123,6 +123,111 @@ def list_expansion_suggestions(
         .all()
     )
     return [_to_response(r, r.business_b) for r in relationships]
+
+
+@router.get("/incoming", response_model=list[IncomingPartnerInviteResponse])
+def list_incoming_invites(
+    business_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[IncomingPartnerInviteResponse]:
+    """The other side of /invite - this business's own outgoing suggestions
+    only ever populate business_a_id (see list_expansion_suggestions), so
+    without this endpoint a recipient had no way to even see an invite aimed
+    at them, let alone accept it."""
+    business = get_business_or_404(db, business_id)
+    require_owner(business, current_user)
+
+    relationships = (
+        db.query(BusinessRelationship)
+        .filter(
+            BusinessRelationship.business_b_id == business_id,
+            BusinessRelationship.status == PartnerRelationshipStatus.INVITED,
+        )
+        .order_by(BusinessRelationship.score.desc())
+        .all()
+    )
+    return [
+        IncomingPartnerInviteResponse(
+            business_a_id=r.business_a_id,
+            name_ko=r.business_a.name_ko,
+            category=r.business_a.category,
+            score=r.score,
+            reason=r.reason,
+            status=r.status,
+            invite_message=r.invite_message,
+        )
+        for r in relationships
+    ]
+
+
+def _get_incoming_invite_or_404(db: Session, business_id: UUID, sender_business_id: UUID) -> BusinessRelationship:
+    relationship = (
+        db.query(BusinessRelationship)
+        .filter(
+            BusinessRelationship.business_a_id == sender_business_id,
+            BusinessRelationship.business_b_id == business_id,
+        )
+        .first()
+    )
+    if relationship is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "받은 제휴 제안을 찾을 수 없습니다.")
+    if relationship.status != PartnerRelationshipStatus.INVITED:
+        raise HTTPException(status.HTTP_409_CONFLICT, "이미 응답한 제안입니다.")
+    return relationship
+
+
+@router.post("/{sender_business_id}/accept", response_model=IncomingPartnerInviteResponse)
+def accept_incoming_invite(
+    business_id: UUID,
+    sender_business_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> IncomingPartnerInviteResponse:
+    """Only an ACCEPTED relationship (mutual, not just one owner's intent)
+    ever gets surfaced to the OTHER business's customers - see
+    PartnerSearchTool.list_accepted_partners and Customer/Chef AI."""
+    business = get_business_or_404(db, business_id)
+    require_owner(business, current_user)
+    relationship = _get_incoming_invite_or_404(db, business_id, sender_business_id)
+
+    relationship.status = PartnerRelationshipStatus.ACCEPTED
+    db.commit()
+    db.refresh(relationship)
+    return IncomingPartnerInviteResponse(
+        business_a_id=relationship.business_a_id,
+        name_ko=relationship.business_a.name_ko,
+        category=relationship.business_a.category,
+        score=relationship.score,
+        reason=relationship.reason,
+        status=relationship.status,
+        invite_message=relationship.invite_message,
+    )
+
+
+@router.post("/{sender_business_id}/reject", response_model=IncomingPartnerInviteResponse)
+def reject_incoming_invite(
+    business_id: UUID,
+    sender_business_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> IncomingPartnerInviteResponse:
+    business = get_business_or_404(db, business_id)
+    require_owner(business, current_user)
+    relationship = _get_incoming_invite_or_404(db, business_id, sender_business_id)
+
+    relationship.status = PartnerRelationshipStatus.REJECTED
+    db.commit()
+    db.refresh(relationship)
+    return IncomingPartnerInviteResponse(
+        business_a_id=relationship.business_a_id,
+        name_ko=relationship.business_a.name_ko,
+        category=relationship.business_a.category,
+        score=relationship.score,
+        reason=relationship.reason,
+        status=relationship.status,
+        invite_message=relationship.invite_message,
+    )
 
 
 @router.post("/{relationship_business_id}/invite", response_model=PartnerSuggestionResponse)

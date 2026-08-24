@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
-import { api, ApiError, CATEGORY_LABELS, type PartnerSuggestion } from "@/lib/api";
+import { api, ApiError, CATEGORY_LABELS, type IncomingPartnerInvite, type PartnerSuggestion } from "@/lib/api";
 
 const STATUS_LABEL: Record<PartnerSuggestion["status"], string> = {
   SUGGESTED: "제안됨",
@@ -24,6 +24,9 @@ export default function ExpansionPage() {
   const [messagingId, setMessagingId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
+  const [incoming, setIncoming] = useState<IncomingPartnerInvite[] | null>(null);
+  const [respondingId, setRespondingId] = useState<string | null>(null);
+
   useEffect(() => {
     if (!authLoading && !token) router.push("/login");
   }, [authLoading, token, router]);
@@ -34,7 +37,26 @@ export default function ExpansionPage() {
       .listExpansion(token, id)
       .then(setSuggestions)
       .catch(() => setSuggestions([]));
+    api
+      .listIncomingExpansionInvites(token, id)
+      .then(setIncoming)
+      .catch(() => setIncoming([]));
   }, [id, token]);
+
+  const onRespond = async (senderId: string, accept: boolean) => {
+    if (!token) return;
+    setRespondingId(senderId);
+    try {
+      accept
+        ? await api.acceptExpansionInvite(token, id, senderId)
+        : await api.rejectExpansionInvite(token, id, senderId);
+      setIncoming((prev) => prev?.filter((i) => i.business_a_id !== senderId) ?? null);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "제휴 제안 응답 중 오류가 발생했습니다.");
+    } finally {
+      setRespondingId(null);
+    }
+  };
 
   const updateSuggestion = (updated: PartnerSuggestion) => {
     setSuggestions((prev) => prev?.map((s) => (s.business_b_id === updated.business_b_id ? updated : s)) ?? null);
@@ -94,6 +116,49 @@ export default function ExpansionPage() {
         AI가 실제 등록된 업체 중에서 우리 가게와 함께하면 좋을 곳을 찾아드려요. 손님 동선이 자연스럽게
         이어지는 다른 업종의 가게를 추천해요.
       </p>
+
+      {incoming && incoming.length > 0 && (
+        <section className="mb-8 rounded-md border border-gray-200 p-4">
+          <h2 className="mb-3 font-semibold">받은 제휴 제안</h2>
+          <p className="mb-3 text-sm text-gray-600">
+            수락하면 서로의 손님 AI 대화에서 자연스럽게 서로를 추천해줘요.
+          </p>
+          <ul className="flex flex-col gap-3">
+            {incoming.map((invite) => (
+              <li key={invite.business_a_id} className="rounded-md bg-gray-50 p-3 text-sm">
+                <p className="font-semibold">
+                  {invite.name_ko}{" "}
+                  <span className="font-normal text-gray-500">
+                    · {CATEGORY_LABELS[invite.category]} · 적합도 {invite.score}
+                  </span>
+                </p>
+                <p className="mt-1 text-gray-600">{invite.reason}</p>
+                {invite.invite_message && (
+                  <p className="mt-2 whitespace-pre-wrap rounded-md bg-white p-2 text-gray-700">
+                    {invite.invite_message}
+                  </p>
+                )}
+                <div className="mt-3 flex gap-2">
+                  <button
+                    onClick={() => onRespond(invite.business_a_id, true)}
+                    disabled={respondingId === invite.business_a_id}
+                    className="rounded-md bg-black px-3 py-1.5 text-white disabled:opacity-50"
+                  >
+                    수락하기
+                  </button>
+                  <button
+                    onClick={() => onRespond(invite.business_a_id, false)}
+                    disabled={respondingId === invite.business_a_id}
+                    className="rounded-md border border-black px-3 py-1.5 disabled:opacity-50"
+                  >
+                    보류하기
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <button
         onClick={onAnalyze}

@@ -317,6 +317,21 @@ export const api = {
       token,
     }),
 
+  listIncomingExpansionInvites: (token: string, businessId: string) =>
+    request<IncomingPartnerInvite[]>(`/api/v1/businesses/${businessId}/expansion/incoming`, { token }),
+
+  acceptExpansionInvite: (token: string, businessId: string, senderBusinessId: string) =>
+    request<IncomingPartnerInvite>(`/api/v1/businesses/${businessId}/expansion/${senderBusinessId}/accept`, {
+      method: "POST",
+      token,
+    }),
+
+  rejectExpansionInvite: (token: string, businessId: string, senderBusinessId: string) =>
+    request<IncomingPartnerInvite>(`/api/v1/businesses/${businessId}/expansion/${senderBusinessId}/reject`, {
+      method: "POST",
+      token,
+    }),
+
   managerChat: (token: string, businessId: string, message: string) =>
     request<ChatResponse>(`/api/v1/businesses/${businessId}/manager/chat`, {
       method: "POST",
@@ -461,6 +476,16 @@ export interface PartnerSuggestion {
   name_ko: string;
   category: BusinessCategory;
   is_claimed: boolean;
+  score: number;
+  reason: string;
+  status: PartnerRelationshipStatus;
+  invite_message: string | null;
+}
+
+export interface IncomingPartnerInvite {
+  business_a_id: string;
+  name_ko: string;
+  category: BusinessCategory;
   score: number;
   reason: string;
   status: PartnerRelationshipStatus;

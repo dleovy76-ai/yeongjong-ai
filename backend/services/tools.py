@@ -262,6 +262,38 @@ class PartnerSearchTool:
         )
         return {row[0] for row in rows}
 
+    def list_accepted_partners(self, business_id: UUID) -> list[dict]:
+        """Master plan's "지역 업체" problem (호텔 손님이 카페를 찾는데 연결이
+        안 됨) - the fix: Customer/Chef AI may mention these to a VISITOR
+        mid-conversation, not just the owner. Only ACCEPTED (mutual, both
+        owners agreed - see routers/expansion.py's accept endpoint)
+        relationships qualify, in either direction, and only when the other
+        business is still ACTIVE - an INVITED-only or now-DISABLED business
+        never gets surfaced to someone else's customers."""
+        rows = (
+            self.db.query(BusinessRelationship)
+            .filter(
+                BusinessRelationship.status == PartnerRelationshipStatus.ACCEPTED,
+                (BusinessRelationship.business_a_id == business_id)
+                | (BusinessRelationship.business_b_id == business_id),
+            )
+            .all()
+        )
+        partners = []
+        for r in rows:
+            other = r.business_b if r.business_a_id == business_id else r.business_a
+            if other.status != BusinessStatus.ACTIVE:
+                continue
+            partners.append(
+                {
+                    "id": str(other.id),
+                    "name": other.name_ko,
+                    "category": other.category.value,
+                    "address": other.address,
+                }
+            )
+        return partners
+
 
 class PerformanceSummaryTool:
     """§19 - the same real, countable-this-month signals the Performance

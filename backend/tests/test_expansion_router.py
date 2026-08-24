@@ -162,3 +162,89 @@ def test_generate_message_requires_owner(client, monkeypatch):
         f"/api/v1/businesses/{target['id']}/expansion/{cafe['id']}/message", headers=other_headers
     )
     assert response.status_code == 403
+
+
+def _invite(client, monkeypatch, headers, target, other):
+    reply = json.dumps([{"business_id": other["id"], "score": 70, "reason": "테스트"}])
+    monkeypatch.setattr(ai_common_module, "get_llm_provider", lambda: FakeLLMProvider(response=reply))
+    client.post(f"/api/v1/businesses/{target['id']}/expansion/analyze", headers=headers)
+    client.post(f"/api/v1/businesses/{target['id']}/expansion/{other['id']}/invite", headers=headers)
+
+
+def test_incoming_lists_only_invited_pairs_directed_at_this_business(client, monkeypatch):
+    sender_headers = _register(client, "expansion-owner11@example.com")
+    recipient_headers = _register(client, "expansion-owner12@example.com")
+    sender = _create_business(client, sender_headers, "영종식당", "RESTAURANT")
+    recipient = _create_business(client, recipient_headers, "영종카페", "CAFE")
+    _invite(client, monkeypatch, sender_headers, sender, recipient)
+
+    incoming = client.get(f"/api/v1/businesses/{recipient['id']}/expansion/incoming", headers=recipient_headers)
+    assert incoming.status_code == 200
+    body = incoming.json()
+    assert len(body) == 1
+    assert body[0]["business_a_id"] == sender["id"]
+    assert body[0]["name_ko"] == "영종식당"
+    assert body[0]["status"] == "INVITED"
+
+    # the sender's own outgoing view never shows up in the recipient's incoming list
+    sender_incoming = client.get(f"/api/v1/businesses/{sender['id']}/expansion/incoming", headers=sender_headers)
+    assert sender_incoming.json() == []
+
+
+def test_incoming_requires_owner(client, monkeypatch):
+    sender_headers = _register(client, "expansion-owner13@example.com")
+    recipient_headers = _register(client, "expansion-owner14@example.com")
+    sender = _create_business(client, sender_headers, "영종식당", "RESTAURANT")
+    recipient = _create_business(client, recipient_headers, "영종카페", "CAFE")
+    _invite(client, monkeypatch, sender_headers, sender, recipient)
+
+    forbidden = client.get(f"/api/v1/businesses/{recipient['id']}/expansion/incoming", headers=sender_headers)
+    assert forbidden.status_code == 403
+
+
+def test_accept_marks_accepted_and_requires_recipient_owner(client, monkeypatch):
+    sender_headers = _register(client, "expansion-owner15@example.com")
+    recipient_headers = _register(client, "expansion-owner16@example.com")
+    sender = _create_business(client, sender_headers, "영종식당", "RESTAURANT")
+    recipient = _create_business(client, recipient_headers, "영종카페", "CAFE")
+    _invite(client, monkeypatch, sender_headers, sender, recipient)
+
+    forbidden = client.post(
+        f"/api/v1/businesses/{recipient['id']}/expansion/{sender['id']}/accept", headers=sender_headers
+    )
+    assert forbidden.status_code == 403
+
+    accepted = client.post(
+        f"/api/v1/businesses/{recipient['id']}/expansion/{sender['id']}/accept", headers=recipient_headers
+    )
+    assert accepted.status_code == 200
+    assert accepted.json()["status"] == "ACCEPTED"
+
+    already_responded = client.post(
+        f"/api/v1/businesses/{recipient['id']}/expansion/{sender['id']}/accept", headers=recipient_headers
+    )
+    assert already_responded.status_code == 409
+
+
+def test_reject_marks_rejected(client, monkeypatch):
+    sender_headers = _register(client, "expansion-owner17@example.com")
+    recipient_headers = _register(client, "expansion-owner18@example.com")
+    sender = _create_business(client, sender_headers, "영종식당", "RESTAURANT")
+    recipient = _create_business(client, recipient_headers, "영종카페", "CAFE")
+    _invite(client, monkeypatch, sender_headers, sender, recipient)
+
+    rejected = client.post(
+        f"/api/v1/businesses/{recipient['id']}/expansion/{sender['id']}/reject", headers=recipient_headers
+    )
+    assert rejected.status_code == 200
+    assert rejected.json()["status"] == "REJECTED"
+
+
+def test_accept_nonexistent_invite_404(client):
+    recipient_headers = _register(client, "expansion-owner19@example.com")
+    recipient = _create_business(client, recipient_headers, "영종카페", "CAFE")
+
+    response = client.post(
+        f"/api/v1/businesses/{recipient['id']}/expansion/{uuid.uuid4()}/accept", headers=recipient_headers
+    )
+    assert response.status_code == 404
