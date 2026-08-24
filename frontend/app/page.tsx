@@ -10,7 +10,8 @@ export default function Home() {
       </h1>
       <p className="max-w-xl text-base text-gray-600 sm:text-lg">
         AI 직원이 고객을 응대하고, 메뉴를 추천하고, 관광객을 연결하고, 가게의
-        성과까지 알려드립니다.
+        성과까지 알려드립니다. 근처 업체와는 AI가 서로의 손님을 자연스럽게
+        연결해드려요.
       </p>
       <div className="flex flex-col gap-3 sm:flex-row">
         <Link href="/register" className="rounded-md bg-black px-6 py-3 text-white">
