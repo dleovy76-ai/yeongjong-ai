@@ -44,11 +44,30 @@ def test_performance_counts_ai_responses_and_coupon_activity(client, monkeypatch
     client.post(f"/api/v1/businesses/{business_id}/coupons/{coupon['id']}/issue")
     client.post(f"/api/v1/businesses/{business_id}/coupons/redeem", headers=headers, json={"code": claim1["code"]})
 
-    # one direct-attributed transaction (linked to the redeemed claim), one unlinked
+    # a completed reservation, for the ASSISTED-attributed transaction below
+    from datetime import datetime, timedelta, timezone
+
+    future = (datetime.now(timezone.utc) + timedelta(hours=24)).isoformat()
+    reservation = client.post(
+        f"/api/v1/businesses/{business_id}/reservations",
+        json={"customer_name": "김방문", "customer_phone": "010-1234-5678", "reservation_time": future, "party_size": 2},
+    ).json()
+    client.patch(
+        f"/api/v1/businesses/{business_id}/reservations/{reservation['id']}",
+        headers=headers,
+        json={"status": "COMPLETED"},
+    )
+
+    # DIRECT (coupon-linked), ASSISTED (reservation-linked), UNKNOWN (unlinked)
     client.post(
         f"/api/v1/businesses/{business_id}/transactions",
         headers=headers,
         json={"amount": "12000", "coupon_issue_id": claim1["id"]},
+    )
+    client.post(
+        f"/api/v1/businesses/{business_id}/transactions",
+        headers=headers,
+        json={"amount": "20000", "reservation_id": reservation["id"]},
     )
     client.post(f"/api/v1/businesses/{business_id}/transactions", headers=headers, json={"amount": "5000"})
 
@@ -60,8 +79,11 @@ def test_performance_counts_ai_responses_and_coupon_activity(client, monkeypatch
     assert body["coupons_redeemed"] == 1
     assert body["estimated_time_saved_minutes"] == 6
     assert "추정" in body["estimated_time_saved_note"]
-    assert body["revenue_total"] == "17000.00"
-    assert body["revenue_direct_ai_attributed"] == "12000.00"
+    assert body["revenue_total"] == "37000.00"
+    assert body["revenue_direct"] == "12000.00"
+    assert body["revenue_assisted"] == "20000.00"
+    assert body["revenue_unknown"] == "5000.00"
+    assert body["revenue_ai_connected"] == "32000.00"
 
 
 def test_performance_requires_owner(client):

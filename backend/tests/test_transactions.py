@@ -78,7 +78,7 @@ def test_transaction_with_unredeemed_coupon_is_rejected(client):
     assert response.status_code == 409
 
 
-def test_transaction_with_completed_reservation_is_direct(client):
+def test_transaction_with_completed_reservation_is_assisted(client):
     headers = _register(client, "txn-owner3@example.com")
     business = _create_business(client, headers)
     reservation = _create_reservation(client, business["id"])
@@ -94,7 +94,7 @@ def test_transaction_with_completed_reservation_is_direct(client):
         json={"amount": "50000", "reservation_id": reservation["id"]},
     )
     assert response.status_code == 201, response.text
-    assert response.json()["attribution"] == "DIRECT"
+    assert response.json()["attribution"] == "ASSISTED"
 
 
 def test_transaction_with_uncompleted_reservation_is_rejected(client):
@@ -110,7 +110,7 @@ def test_transaction_with_uncompleted_reservation_is_rejected(client):
     assert response.status_code == 409
 
 
-def test_transaction_without_any_link_is_none_attribution(client):
+def test_transaction_without_any_link_is_unknown_attribution(client):
     headers = _register(client, "txn-owner5@example.com")
     business = _create_business(client, headers)
 
@@ -120,7 +120,7 @@ def test_transaction_without_any_link_is_none_attribution(client):
         json={"amount": "8000"},
     )
     assert response.status_code == 201, response.text
-    assert response.json()["attribution"] == "NONE"
+    assert response.json()["attribution"] == "UNKNOWN"
 
 
 def test_transaction_requires_owner(client):

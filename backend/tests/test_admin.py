@@ -99,7 +99,7 @@ def test_stats_reflects_confirmed_transactions_not_mere_recommendations(client, 
         Transaction(
             business_id=business["id"],
             amount="5000",
-            attribution=TransactionAttribution.NONE,
+            attribution=TransactionAttribution.UNKNOWN,
             occurred_at=datetime.now(timezone.utc),
         )
     )
@@ -110,9 +110,11 @@ def test_stats_reflects_confirmed_transactions_not_mere_recommendations(client, 
     body = response.json()
     assert body["transactions_count"] >= 2
     assert float(body["transactions_total_amount"]) >= 15000
-    # only the DIRECT-attributed transaction counts toward the AI-attributed figure -
-    # a mere recommendation with no confirmed link is never counted as AI revenue
-    assert float(body["transactions_direct_ai_attributed_amount"]) >= 10000
+    # only DIRECT+ASSISTED counts toward the AI-connected figure - a mere
+    # recommendation with no confirmed link (UNKNOWN) is never counted as AI revenue
+    assert float(body["transactions_ai_connected_amount"]) >= 10000
+    assert float(body["transactions_amount_by_attribution"]["DIRECT"]) >= 10000
+    assert float(body["transactions_amount_by_attribution"]["UNKNOWN"]) >= 5000
 
 
 def test_business_list_and_admin_can_force_status(client, db_session):

@@ -383,7 +383,8 @@ export interface AdminStats {
   ai_interactions_by_agent_type: Record<string, number>;
   transactions_count: number;
   transactions_total_amount: string;
-  transactions_direct_ai_attributed_amount: string;
+  transactions_amount_by_attribution: Record<string, string>;
+  transactions_ai_connected_amount: string;
 }
 
 export interface AdminBusiness {
@@ -456,8 +457,11 @@ export interface Performance {
   estimated_time_saved_minutes: number;
   estimated_time_saved_note: string;
   revenue_total: string;
-  revenue_direct_ai_attributed: string;
-  revenue_direct_ai_attributed_note: string;
+  revenue_direct: string;
+  revenue_assisted: string;
+  revenue_unknown: string;
+  revenue_ai_connected: string;
+  revenue_ai_connected_note: string;
 }
 
 export type TransactionAttribution = "DIRECT" | "NONE";

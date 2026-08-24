@@ -18,7 +18,8 @@ class AdminStatsResponse(BaseModel):
     ai_interactions_by_agent_type: dict[str, int]
     transactions_count: int
     transactions_total_amount: Decimal
-    transactions_direct_ai_attributed_amount: Decimal
+    transactions_amount_by_attribution: dict[str, Decimal]
+    transactions_ai_connected_amount: Decimal
 
 
 class AdminBusinessSummary(BaseModel):

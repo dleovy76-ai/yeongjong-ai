@@ -61,18 +61,23 @@ def get_stats(db: Session = Depends(get_db), _admin: User = Depends(require_admi
         db.query(func.count(CouponIssue.id)).filter(CouponIssue.status == CouponIssueStatus.REDEEMED).scalar()
     )
 
-    # §29/기획서 10번 - "단순 추천을 매출로 계산하지 않는다": transactions_count/
+    # §29/기획서 10-11번 - "단순 추천을 매출로 계산하지 않는다": transactions_count/
     # total_amount are every owner-confirmed sale (real, never a mere
-    # recommendation - see routers/transactions.py), while
-    # direct_ai_attributed further narrows to ones provably tied to an
-    # actually-redeemed coupon or actually-completed reservation.
+    # recommendation - see routers/transactions.py). transactions_amount_by_
+    # attribution breaks that total down by DIRECT/ASSISTED/UNKNOWN so the
+    # calculation basis is always checkable, never one opaque number (§18/
+    # 기획서 11번); ai_connected sums only DIRECT+ASSISTED.
     transactions_count = db.query(func.count(Transaction.id)).scalar()
     transactions_total_amount = db.query(func.coalesce(func.sum(Transaction.amount), 0)).scalar()
-    transactions_direct_ai_attributed_amount = (
-        db.query(func.coalesce(func.sum(Transaction.amount), 0))
-        .filter(Transaction.attribution == TransactionAttribution.DIRECT)
-        .scalar()
+    transactions_amount_rows = (
+        db.query(Transaction.attribution, func.coalesce(func.sum(Transaction.amount), 0))
+        .group_by(Transaction.attribution)
+        .all()
     )
+    transactions_amount_by_attribution = {a.value: amt for a, amt in transactions_amount_rows}
+    transactions_ai_connected_amount = transactions_amount_by_attribution.get(
+        TransactionAttribution.DIRECT.value, 0
+    ) + transactions_amount_by_attribution.get(TransactionAttribution.ASSISTED.value, 0)
 
     return AdminStatsResponse(
         businesses_by_status=_count_by(db, Business, Business.status),
@@ -85,7 +90,8 @@ def get_stats(db: Session = Depends(get_db), _admin: User = Depends(require_admi
         ai_interactions_by_agent_type=_count_by(db, AiInteraction, AiInteraction.agent_type),
         transactions_count=transactions_count or 0,
         transactions_total_amount=transactions_total_amount,
-        transactions_direct_ai_attributed_amount=transactions_direct_ai_attributed_amount,
+        transactions_amount_by_attribution=transactions_amount_by_attribution,
+        transactions_ai_connected_amount=transactions_ai_connected_amount,
     )
 
 

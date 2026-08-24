@@ -13,8 +13,12 @@ class PerformanceResponse(BaseModel):
         "AI 응대 1건당 약 3분 절감을 가정한 추정치입니다 (검증된 값이 아닙니다)."
     )
     revenue_total: Decimal
-    revenue_direct_ai_attributed: Decimal
-    revenue_direct_ai_attributed_note: str = (
-        "AI가 추천한 쿠폰이 실제 사용되었거나, AI로 예약이 실제 완료된 거래만 집계한 값입니다 - "
-        "매장에 다녀갔지만 링크가 없는 거래는 포함되지 않습니다."
+    revenue_direct: Decimal
+    revenue_assisted: Decimal
+    revenue_unknown: Decimal
+    revenue_ai_connected: Decimal
+    revenue_ai_connected_note: str = (
+        "DIRECT(AI 추천→쿠폰→결제로 실제 연결 확인)와 ASSISTED(AI가 예약을 지원했고 실제 방문·"
+        "거래가 확인됨)만 합산한 값입니다. 링크 없이 기록된 거래(UNKNOWN)는 실제 매출이지만 "
+        "AI 연결 여부를 확인할 수 없어 이 합계에서 제외됩니다 - 단순 추천을 매출로 계산하지 않습니다."
     )

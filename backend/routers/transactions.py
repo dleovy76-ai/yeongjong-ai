@@ -25,8 +25,10 @@ router = APIRouter(prefix="/api/v1/businesses/{business_id}/transactions", tags=
 def _resolve_attribution(
     db: Session, business_id: UUID, body: TransactionCreateRequest
 ) -> TransactionAttribution:
-    """DIRECT only when provably tied to a real, already-verified action -
-    never inferred, never owner-chosen (see TransactionAttribution)."""
+    """§18/기획서 11번 - DIRECT는 "AI 추천 -> 쿠폰 -> 결제"만, ASSISTED는
+    "AI가 예약/방문을 지원했고 실제 거래가 확인됨"만. 둘 다 provably tied to
+    a real, already-verified action - never inferred, never owner-chosen
+    (see TransactionAttribution)."""
     if body.coupon_issue_id is not None:
         claim = (
             db.query(CouponIssue)
@@ -50,9 +52,9 @@ def _resolve_attribution(
             raise HTTPException(status.HTTP_404_NOT_FOUND, "연결하려는 예약을 찾을 수 없습니다.")
         if reservation.status != ReservationStatus.COMPLETED:
             raise HTTPException(status.HTTP_409_CONFLICT, "완료 처리되지 않은 예약은 연결할 수 없습니다.")
-        return TransactionAttribution.DIRECT
+        return TransactionAttribution.ASSISTED
 
-    return TransactionAttribution.NONE
+    return TransactionAttribution.UNKNOWN
 
 
 @router.post("", response_model=TransactionResponse, status_code=status.HTTP_201_CREATED)

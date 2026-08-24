@@ -65,19 +65,23 @@ class PartnerRelationshipStatus(str, enum.Enum):
 
 
 class TransactionAttribution(str, enum.Enum):
-    """§18's DIRECT/ASSISTED/INFLUENCED attribution tiers, deliberately
-    reduced to just DIRECT/NONE here (not a full re-implementation of §18):
-    without any visitor/session identity anywhere in the product, there is
-    no honest, checkable way to link a specific past AiInteraction to a
-    later walk-in transaction - claiming ASSISTED/INFLUENCED would be a
-    guess dressed up as a metric, exactly what this project's fabrication
-    rules forbid. DIRECT is only ever set by the server (see
-    routers/transactions.py), never chosen freely by the owner, and only
-    when the transaction is provably tied to a coupon_issue that was
-    actually REDEEMED or a reservation that was actually COMPLETED."""
+    """§18's four attribution tiers, minus INFLUENCED: without any
+    visitor/session identity anywhere in the product, there is no honest,
+    checkable way to link a specific past AiInteraction to a later walk-in
+    transaction - claiming INFLUENCED would be a guess dressed up as a
+    metric, exactly what this project's fabrication rules forbid (§29).
+    Always set by the server (see routers/transactions.py), never chosen
+    freely by the owner:
+      DIRECT   - AI 추천 -> 쿠폰 -> 결제: tied to a coupon_issue that was
+                 actually REDEEMED.
+      ASSISTED - AI가 예약/방문 지원 + 실제 거래 확인: tied to a reservation
+                 that was actually COMPLETED.
+      UNKNOWN  - no such link; a real, owner-confirmed sale, but the AI's
+                 role in it (if any) can't be verified."""
 
     DIRECT = "DIRECT"
-    NONE = "NONE"
+    ASSISTED = "ASSISTED"
+    UNKNOWN = "UNKNOWN"
 
 
 class TouristPlaceStatus(str, enum.Enum):

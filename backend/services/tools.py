@@ -337,15 +337,18 @@ class PerformanceSummaryTool:
             .filter(Transaction.business_id == business_id, Transaction.occurred_at >= month_start)
             .scalar()
         )
-        revenue_direct_ai_attributed = (
-            self.db.query(func.coalesce(func.sum(Transaction.amount), 0))
-            .filter(
-                Transaction.business_id == business_id,
-                Transaction.occurred_at >= month_start,
-                Transaction.attribution == TransactionAttribution.DIRECT,
-            )
-            .scalar()
+        # §18/기획서 11번 - "AI 연결 매출"이라는 한 숫자로 뭉개지 않고, 어떤
+        # 기준(DIRECT/ASSISTED/UNKNOWN)으로 계산했는지 항상 함께 보여준다.
+        revenue_rows = (
+            self.db.query(Transaction.attribution, func.coalesce(func.sum(Transaction.amount), 0))
+            .filter(Transaction.business_id == business_id, Transaction.occurred_at >= month_start)
+            .group_by(Transaction.attribution)
+            .all()
         )
+        revenue_by_attribution = {a.value: Decimal(amt) for a, amt in revenue_rows}
+        revenue_direct = revenue_by_attribution.get(TransactionAttribution.DIRECT.value, Decimal(0))
+        revenue_assisted = revenue_by_attribution.get(TransactionAttribution.ASSISTED.value, Decimal(0))
+        revenue_unknown = revenue_by_attribution.get(TransactionAttribution.UNKNOWN.value, Decimal(0))
 
         return {
             "period": month_start.strftime("%Y-%m"),
@@ -358,7 +361,10 @@ class PerformanceSummaryTool:
             # convention); PerformanceResponse coerces the str back to
             # Decimal for the API response.
             "revenue_total": str(Decimal(revenue_total)),
-            "revenue_direct_ai_attributed": str(Decimal(revenue_direct_ai_attributed)),
+            "revenue_direct": str(revenue_direct),
+            "revenue_assisted": str(revenue_assisted),
+            "revenue_unknown": str(revenue_unknown),
+            "revenue_ai_connected": str(revenue_direct + revenue_assisted),
         }
 
 

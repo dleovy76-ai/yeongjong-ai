@@ -36,7 +36,15 @@ def run_migrations_online() -> None:
         poolclass=pool.NullPool,
     )
     with connectable.connect() as connection:
-        context.configure(connection=connection, target_metadata=target_metadata)
+        # transaction_per_migration - a migration that adds a Postgres enum
+        # value and a later one that uses it (see c77fdd93bcb5) MUST run in
+        # separate transactions: Postgres refuses to use a newly-added enum
+        # value inside the same transaction that added it, and this project
+        # runs the whole pending set via one `alembic upgrade head` at
+        # deploy time (backend/Procfile), not one invocation per revision.
+        context.configure(
+            connection=connection, target_metadata=target_metadata, transaction_per_migration=True
+        )
         with context.begin_transaction():
             context.run_migrations()
 

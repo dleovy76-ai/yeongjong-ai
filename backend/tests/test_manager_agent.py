@@ -56,7 +56,7 @@ def test_manager_agent_prompt_includes_real_revenue_figures(db_session):
         Transaction(
             business_id=business.id,
             amount="12000",
-            attribution=TransactionAttribution.NONE,
+            attribution=TransactionAttribution.UNKNOWN,
             occurred_at=business.created_at,
         )
     )

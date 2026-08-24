@@ -167,10 +167,19 @@ export default function AdminPage() {
                 방문확인 {stats.transactions_count}건 · 확인 거래액{" "}
                 {Number(stats.transactions_total_amount).toLocaleString()}원
               </p>
-              <p className="mt-1 text-gray-500">
-                그중 AI 연관(쿠폰 사용/예약 완료로 연결 확인된) 거래액{" "}
-                {Number(stats.transactions_direct_ai_attributed_amount).toLocaleString()}원 - 단순
-                추천은 매출로 계산하지 않아요.
+              <p className="mt-1 text-gray-700">
+                AI 연결 매출(DIRECT+ASSISTED) {Number(stats.transactions_ai_connected_amount).toLocaleString()}원
+              </p>
+              <ul className="mt-1 flex flex-wrap gap-3 text-xs text-gray-500">
+                {Object.entries(stats.transactions_amount_by_attribution).map(([attribution, amount]) => (
+                  <li key={attribution}>
+                    {attribution} {Number(amount).toLocaleString()}원
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-2 text-xs text-gray-500">
+                DIRECT=쿠폰 사용으로 연결 확인, ASSISTED=예약 완료로 연결 확인, UNKNOWN=실제 거래이나
+                AI 연결 확인 불가 - 단순 추천은 매출로 계산하지 않아요.
               </p>
             </div>
           </div>

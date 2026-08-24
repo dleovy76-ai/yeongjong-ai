@@ -22,9 +22,9 @@ def get_performance(
     db: Session = Depends(get_db),
 ) -> PerformanceResponse:
     """§19 - real, countable signals (AI 응대, 쿠폰 발급/사용, 실제 거래액).
-    revenue_direct_ai_attributed only counts transactions provably linked to
-    a redeemed coupon or completed reservation (see TransactionAttribution) -
-    never an estimate."""
+    §18/기획서 11번 - revenue_ai_connected is DIRECT+ASSISTED only, always
+    shown alongside the DIRECT/ASSISTED/UNKNOWN breakdown so the basis is
+    checkable, never just one opaque number."""
     business = get_business_or_404(db, business_id)
     require_owner(business, current_user)
 
@@ -37,5 +37,8 @@ def get_performance(
         coupons_redeemed=summary["coupons_redeemed"],
         estimated_time_saved_minutes=summary["ai_response_count"] * _MINUTES_SAVED_PER_AI_RESPONSE,
         revenue_total=summary["revenue_total"],
-        revenue_direct_ai_attributed=summary["revenue_direct_ai_attributed"],
+        revenue_direct=summary["revenue_direct"],
+        revenue_assisted=summary["revenue_assisted"],
+        revenue_unknown=summary["revenue_unknown"],
+        revenue_ai_connected=summary["revenue_ai_connected"],
     )
