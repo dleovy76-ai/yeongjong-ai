@@ -56,6 +56,7 @@ class BusinessProfileUpdateRequest(BaseModel):
     faq: dict | None = None
     naver_place_url: str | None = Field(default=None, max_length=500)
     naver_map_url: str | None = Field(default=None, max_length=500)
+    monthly_visitor_estimate: int | None = Field(default=None, ge=0)
 
 
 class BusinessProfileResponse(BaseModel):
@@ -73,6 +74,7 @@ class BusinessProfileResponse(BaseModel):
     faq: dict | None
     naver_place_url: str | None
     naver_map_url: str | None
+    monthly_visitor_estimate: int | None
 
     model_config = {"from_attributes": True}
 

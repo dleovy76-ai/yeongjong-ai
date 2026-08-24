@@ -30,6 +30,7 @@ export default function BusinessProfilePage() {
   const [takeoutPolicy, setTakeoutPolicy] = useState("");
   const [paymentMethods, setPaymentMethods] = useState("");
   const [faq, setFaq] = useState("");
+  const [monthlyVisitorEstimate, setMonthlyVisitorEstimate] = useState("");
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -62,6 +63,9 @@ export default function BusinessProfilePage() {
         setTakeoutPolicy(profile.takeout_policy ?? "");
         setPaymentMethods(textOf(profile.payment_methods));
         setFaq(textOf(profile.faq));
+        setMonthlyVisitorEstimate(
+          profile.monthly_visitor_estimate != null ? String(profile.monthly_visitor_estimate) : ""
+        );
         setNaverPlaceUrl(profile.naver_place_url);
         setNaverMapUrl(profile.naver_map_url);
       })
@@ -134,6 +138,7 @@ export default function BusinessProfilePage() {
         takeout_policy: takeoutPolicy || undefined,
         payment_methods: paymentMethods ? { text: paymentMethods } : undefined,
         faq: faq ? { text: faq } : undefined,
+        monthly_visitor_estimate: monthlyVisitorEstimate ? Number(monthlyVisitorEstimate) : undefined,
       });
       setSaved(true);
       if (expansionSuggestions === null) onAutoAnalyzeExpansion();
@@ -272,6 +277,20 @@ export default function BusinessProfilePage() {
             value={faq}
             onChange={(e) => setFaq(e.target.value)}
           />
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          예상 월 방문객 수 (선택)
+          <input
+            type="number"
+            min="0"
+            className="rounded-md border border-gray-300 px-3 py-2"
+            placeholder="예: 2000"
+            value={monthlyVisitorEstimate}
+            onChange={(e) => setMonthlyVisitorEstimate(e.target.value)}
+          />
+          <span className="text-xs text-gray-500">
+            입력해두면 다른 업체가 우리 가게와 제휴할 때 예상 효과(예상 매출 등)를 계산해드려요.
+          </span>
         </label>
         {error && <p className="text-sm text-red-600">{error}</p>}
         {saved && <p className="text-sm text-green-700">저장했어요.</p>}

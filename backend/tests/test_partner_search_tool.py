@@ -3,8 +3,10 @@ import uuid
 from models import (
     Business,
     BusinessCategory,
+    BusinessProfile,
     BusinessRelationship,
     BusinessStatus,
+    Menu,
     PartnerRelationshipStatus,
     User,
     UserRole,
@@ -193,3 +195,43 @@ def test_list_accepted_partners_excludes_non_accepted_and_disabled(db_session):
 
     partners = PartnerSearchTool(db_session).list_accepted_partners(business_a.id)
     assert partners == []
+
+
+def test_estimate_partnership_effect_computes_from_real_inputs(db_session):
+    target = _make_business(db_session, name="카페A", category=BusinessCategory.CAFE)
+    db_session.add(Menu(business_id=target.id, name="아메리카노", price="4000"))
+    db_session.add(Menu(business_id=target.id, name="라떼", price="5000"))
+    candidate = _make_business(db_session, name="OO호텔", category=BusinessCategory.LODGING)
+    db_session.add(BusinessProfile(business_id=candidate.id, monthly_visitor_estimate=2000))
+    db_session.flush()
+
+    estimate = PartnerSearchTool(db_session).estimate_partnership_effect(target.id, candidate.id)
+
+    assert estimate is not None
+    assert estimate["candidate_monthly_visitors"] == 2000
+    assert estimate["estimated_interested_customers"] == 400  # 2000 * 0.20
+    assert estimate["estimated_converted_visits"] == 160  # 400 * 0.40
+    # avg menu price = 4500 -> 160 * 4500 = 720000
+    assert estimate["estimated_additional_revenue"] == "720000"
+    assert "예측치" in estimate["note"]
+
+
+def test_estimate_partnership_effect_none_when_candidate_has_no_visitor_estimate(db_session):
+    target = _make_business(db_session, name="카페A", category=BusinessCategory.CAFE)
+    db_session.add(Menu(business_id=target.id, name="아메리카노", price="4000"))
+    candidate = _make_business(db_session, name="OO호텔", category=BusinessCategory.LODGING)
+    db_session.add(BusinessProfile(business_id=candidate.id))
+    db_session.flush()
+
+    estimate = PartnerSearchTool(db_session).estimate_partnership_effect(target.id, candidate.id)
+    assert estimate is None
+
+
+def test_estimate_partnership_effect_none_when_target_has_no_menu(db_session):
+    target = _make_business(db_session, name="카페A", category=BusinessCategory.CAFE)
+    candidate = _make_business(db_session, name="OO호텔", category=BusinessCategory.LODGING)
+    db_session.add(BusinessProfile(business_id=candidate.id, monthly_visitor_estimate=2000))
+    db_session.flush()
+
+    estimate = PartnerSearchTool(db_session).estimate_partnership_effect(target.id, candidate.id)
+    assert estimate is None

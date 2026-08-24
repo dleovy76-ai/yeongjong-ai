@@ -297,6 +297,47 @@ class PartnerSearchTool:
             )
         return partners
 
+    # 기획서 16번 - "초기에는 예측치임을 명확히 표시한다"는 마스터플랜 자체의
+    # 지시를 따름: 두 상수(관심 전환율/방문 전환율)는 검증된 값이 아니라
+    # 업계 평균 수준의 가정일 뿐이고, ESTIMATE_NOTE로 항상 함께 표시된다.
+    # 절대 LLM이 만들어내지 않음 - 결정론적 계산이라 재현·검증 가능함
+    # (§29/기획서 11번의 "기준을 확인 가능해야 한다"와 동일한 원칙).
+    _ESTIMATE_INTEREST_RATE = Decimal("0.20")
+    _ESTIMATE_CONVERSION_RATE = Decimal("0.40")
+    ESTIMATE_NOTE = (
+        "예측치입니다 - 상대 업체가 입력한 월 방문객 수에 관심 전환율 20%, 방문 전환율 40%라는 "
+        "업계 평균 수준의 가정을 곱해 계산한 값으로, 검증된 실적이 아닙니다. 실제 제휴 데이터가 "
+        "쌓이면 이 가정을 개선할 예정입니다."
+    )
+
+    def _average_menu_price(self, business_id: UUID) -> Decimal | None:
+        result = self.db.query(func.avg(Menu.price)).filter(Menu.business_id == business_id).scalar()
+        return Decimal(result) if result is not None else None
+
+    def estimate_partnership_effect(self, target_business_id: UUID, candidate_business_id: UUID) -> dict | None:
+        """None whenever a required real input is missing - the candidate's
+        self-reported monthly_visitor_estimate, or the target's own menu
+        prices to estimate spend per visit. Never fills a gap with a guess."""
+        candidate = self.db.get(Business, candidate_business_id)
+        if candidate is None or candidate.profile is None or candidate.profile.monthly_visitor_estimate is None:
+            return None
+        avg_price = self._average_menu_price(target_business_id)
+        if avg_price is None:
+            return None
+
+        monthly_visitors = candidate.profile.monthly_visitor_estimate
+        interested = int(monthly_visitors * self._ESTIMATE_INTEREST_RATE)
+        converted = int(interested * self._ESTIMATE_CONVERSION_RATE)
+        revenue = (Decimal(converted) * avg_price).quantize(Decimal("1"))
+
+        return {
+            "candidate_monthly_visitors": monthly_visitors,
+            "estimated_interested_customers": interested,
+            "estimated_converted_visits": converted,
+            "estimated_additional_revenue": str(revenue),
+            "note": self.ESTIMATE_NOTE,
+        }
+
 
 class PerformanceSummaryTool:
     """§19 - the same real, countable-this-month signals the Performance

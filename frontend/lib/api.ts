@@ -97,6 +97,7 @@ export interface BusinessProfile {
   faq: Record<string, unknown> | null;
   naver_place_url: string | null;
   naver_map_url: string | null;
+  monthly_visitor_estimate: number | null;
 }
 
 export interface ProfileDraft {
@@ -485,6 +486,14 @@ export interface Transaction {
 
 export type PartnerRelationshipStatus = "SUGGESTED" | "INVITED" | "ACCEPTED" | "REJECTED";
 
+export interface PartnershipEffectEstimate {
+  candidate_monthly_visitors: number;
+  estimated_interested_customers: number;
+  estimated_converted_visits: number;
+  estimated_additional_revenue: string;
+  note: string;
+}
+
 export interface PartnerSuggestion {
   business_b_id: string;
   name_ko: string;
@@ -495,6 +504,7 @@ export interface PartnerSuggestion {
   status: PartnerRelationshipStatus;
   invite_message: string | null;
   referral_token: string | null;
+  effect_estimate: PartnershipEffectEstimate | null;
 }
 
 export interface ReferralJoinInfo {
@@ -514,4 +524,5 @@ export interface IncomingPartnerInvite {
   reason: string;
   status: PartnerRelationshipStatus;
   invite_message: string | null;
+  effect_estimate: PartnershipEffectEstimate | null;
 }

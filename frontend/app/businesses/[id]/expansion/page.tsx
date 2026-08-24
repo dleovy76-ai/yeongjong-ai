@@ -3,7 +3,14 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
-import { api, ApiError, CATEGORY_LABELS, type IncomingPartnerInvite, type PartnerSuggestion } from "@/lib/api";
+import {
+  api,
+  ApiError,
+  CATEGORY_LABELS,
+  type IncomingPartnerInvite,
+  type PartnerSuggestion,
+  type PartnershipEffectEstimate,
+} from "@/lib/api";
 
 const STATUS_LABEL: Record<PartnerSuggestion["status"], string> = {
   SUGGESTED: "제안됨",
@@ -11,6 +18,19 @@ const STATUS_LABEL: Record<PartnerSuggestion["status"], string> = {
   ACCEPTED: "제휴 성사",
   REJECTED: "보류",
 };
+
+function EffectEstimateCard({ estimate }: { estimate: PartnershipEffectEstimate }) {
+  return (
+    <div className="mt-2 rounded-md bg-amber-50 p-3 text-xs text-gray-700">
+      <p className="mb-1 font-semibold">예상 제휴 효과 (예측치)</p>
+      <p>월 예상 방문객 {estimate.candidate_monthly_visitors.toLocaleString()}명</p>
+      <p>→ 예상 관심 고객 {estimate.estimated_interested_customers.toLocaleString()}명</p>
+      <p>→ 예상 방문 전환 {estimate.estimated_converted_visits.toLocaleString()}명</p>
+      <p>→ 예상 추가 매출 약 {Number(estimate.estimated_additional_revenue).toLocaleString()}원</p>
+      <p className="mt-1 text-gray-500">{estimate.note}</p>
+    </div>
+  );
+}
 
 export default function ExpansionPage() {
   const { id } = useParams<{ id: string }>();
@@ -145,6 +165,7 @@ export default function ExpansionPage() {
                   </span>
                 </p>
                 <p className="mt-1 text-gray-600">{invite.reason}</p>
+                {invite.effect_estimate && <EffectEstimateCard estimate={invite.effect_estimate} />}
                 {invite.invite_message && (
                   <p className="mt-2 whitespace-pre-wrap rounded-md bg-white p-2 text-gray-700">
                     {invite.invite_message}
@@ -215,6 +236,8 @@ export default function ExpansionPage() {
                   </button>
                 )}
               </div>
+
+              {s.effect_estimate && <EffectEstimateCard estimate={s.effect_estimate} />}
 
               {s.referral_token && (
                 <button

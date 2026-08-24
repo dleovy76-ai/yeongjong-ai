@@ -196,6 +196,13 @@ class BusinessProfile(Base):
     naver_place_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     naver_map_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
+    # 기획서 16번 (제휴 효과 예측) - owner-self-reported, never AI-guessed
+    # (§29: no real traffic/booking data exists anywhere in this platform for
+    # any business, so a number here would be fabricated unless the owner
+    # supplies it themselves). Only used as an input to
+    # PartnerSearchTool.estimate_partnership_effect() when present.
+    monthly_visitor_estimate: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
         server_default=func.now(), onupdate=func.now(), nullable=False

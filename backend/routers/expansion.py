@@ -12,9 +12,14 @@ from models import Business, BusinessRelationship, PartnerRelationshipStatus, Us
 from routers._ai_common import resolve_llm_provider, run_agent
 from routers._business_common import get_business_or_404, require_owner
 from routers.auth import get_current_user
-from schemas.expansion import IncomingPartnerInviteResponse, PartnerSuggestionResponse
+from schemas.expansion import (
+    IncomingPartnerInviteResponse,
+    PartnershipEffectEstimate,
+    PartnerSuggestionResponse,
+)
 from services.agents.expansion import ExpansionAgent
 from services.agents.referral_message import ReferralMessageAgent
+from services.tools import PartnerSearchTool
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +44,12 @@ def _parse_suggestions(raw_reply: str) -> list[dict]:
     return [item for item in parsed if isinstance(item, dict) and "business_id" in item]
 
 
-def _to_response(relationship: BusinessRelationship, business_b: Business) -> PartnerSuggestionResponse:
+def _effect_estimate(db: Session, target_id: UUID, candidate_id: UUID) -> PartnershipEffectEstimate | None:
+    estimate = PartnerSearchTool(db).estimate_partnership_effect(target_id, candidate_id)
+    return PartnershipEffectEstimate(**estimate) if estimate is not None else None
+
+
+def _to_response(db: Session, relationship: BusinessRelationship, business_b: Business) -> PartnerSuggestionResponse:
     return PartnerSuggestionResponse(
         business_b_id=business_b.id,
         name_ko=business_b.name_ko,
@@ -50,6 +60,7 @@ def _to_response(relationship: BusinessRelationship, business_b: Business) -> Pa
         status=relationship.status,
         invite_message=relationship.invite_message,
         referral_token=relationship.referral_token,
+        effect_estimate=_effect_estimate(db, relationship.business_a_id, business_b.id),
     )
 
 
@@ -110,7 +121,7 @@ def analyze_expansion(
         db.refresh(relationship)
 
     ordered = sorted(results, key=lambda pair: pair[0].score, reverse=True)
-    return [_to_response(relationship, candidate) for relationship, candidate in ordered]
+    return [_to_response(db, relationship, candidate) for relationship, candidate in ordered]
 
 
 @router.get("", response_model=list[PartnerSuggestionResponse])
@@ -128,7 +139,7 @@ def list_expansion_suggestions(
         .order_by(BusinessRelationship.score.desc())
         .all()
     )
-    return [_to_response(r, r.business_b) for r in relationships]
+    return [_to_response(db, r, r.business_b) for r in relationships]
 
 
 @router.get("/incoming", response_model=list[IncomingPartnerInviteResponse])
@@ -153,18 +164,22 @@ def list_incoming_invites(
         .order_by(BusinessRelationship.score.desc())
         .all()
     )
-    return [
-        IncomingPartnerInviteResponse(
-            business_a_id=r.business_a_id,
-            name_ko=r.business_a.name_ko,
-            category=r.business_a.category,
-            score=r.score,
-            reason=r.reason,
-            status=r.status,
-            invite_message=r.invite_message,
-        )
-        for r in relationships
-    ]
+    return [_to_incoming_response(db, business_id, r) for r in relationships]
+
+
+def _to_incoming_response(
+    db: Session, business_id: UUID, relationship: BusinessRelationship
+) -> IncomingPartnerInviteResponse:
+    return IncomingPartnerInviteResponse(
+        business_a_id=relationship.business_a_id,
+        name_ko=relationship.business_a.name_ko,
+        category=relationship.business_a.category,
+        score=relationship.score,
+        reason=relationship.reason,
+        status=relationship.status,
+        invite_message=relationship.invite_message,
+        effect_estimate=_effect_estimate(db, business_id, relationship.business_a_id),
+    )
 
 
 def _get_incoming_invite_or_404(db: Session, business_id: UUID, sender_business_id: UUID) -> BusinessRelationship:
@@ -200,15 +215,7 @@ def accept_incoming_invite(
     relationship.status = PartnerRelationshipStatus.ACCEPTED
     db.commit()
     db.refresh(relationship)
-    return IncomingPartnerInviteResponse(
-        business_a_id=relationship.business_a_id,
-        name_ko=relationship.business_a.name_ko,
-        category=relationship.business_a.category,
-        score=relationship.score,
-        reason=relationship.reason,
-        status=relationship.status,
-        invite_message=relationship.invite_message,
-    )
+    return _to_incoming_response(db, business_id, relationship)
 
 
 @router.post("/{sender_business_id}/reject", response_model=IncomingPartnerInviteResponse)
@@ -225,15 +232,7 @@ def reject_incoming_invite(
     relationship.status = PartnerRelationshipStatus.REJECTED
     db.commit()
     db.refresh(relationship)
-    return IncomingPartnerInviteResponse(
-        business_a_id=relationship.business_a_id,
-        name_ko=relationship.business_a.name_ko,
-        category=relationship.business_a.category,
-        score=relationship.score,
-        reason=relationship.reason,
-        status=relationship.status,
-        invite_message=relationship.invite_message,
-    )
+    return _to_incoming_response(db, business_id, relationship)
 
 
 @router.post("/{relationship_business_id}/invite", response_model=PartnerSuggestionResponse)
@@ -264,7 +263,7 @@ def mark_invited(
     relationship.status = PartnerRelationshipStatus.INVITED
     db.commit()
     db.refresh(relationship)
-    return _to_response(relationship, relationship.business_b)
+    return _to_response(db, relationship, relationship.business_b)
 
 
 @router.post("/{relationship_business_id}/message", response_model=PartnerSuggestionResponse)
@@ -301,4 +300,4 @@ def generate_invite_message(
     relationship.invite_message = message[:1000]
     db.commit()
     db.refresh(relationship)
-    return _to_response(relationship, relationship.business_b)
+    return _to_response(db, relationship, relationship.business_b)

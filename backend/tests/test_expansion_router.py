@@ -51,6 +51,40 @@ def test_analyze_persists_valid_suggestions_and_drops_hallucinated_id(client, mo
     assert join.json()["name_ko"] == "영종카페"
 
 
+def test_analyze_includes_effect_estimate_when_candidate_has_visitor_estimate(client, monkeypatch, db_session):
+    from models import Business, BusinessProfile
+
+    headers = _register(client, "expansion-owner-estimate@example.com")
+    target = _create_business(client, headers, "영종카페", "CAFE")
+    hotel = _create_business(client, headers, "영종호텔", "LODGING")
+
+    client.post(
+        f"/api/v1/businesses/{target['id']}/menus",
+        headers=headers,
+        json={"name": "아메리카노", "price": "4000"},
+    )
+    client.post(
+        f"/api/v1/businesses/{target['id']}/menus",
+        headers=headers,
+        json={"name": "라떼", "price": "5000"},
+    )
+
+    hotel_business = db_session.get(Business, hotel["id"])
+    hotel_business.profile.monthly_visitor_estimate = 2000
+    db_session.commit()
+
+    fake_reply = json.dumps([{"business_id": hotel["id"], "score": 92, "reason": "숙박 연계"}])
+    monkeypatch.setattr(ai_common_module, "get_llm_provider", lambda: FakeLLMProvider(response=fake_reply))
+
+    response = client.post(f"/api/v1/businesses/{target['id']}/expansion/analyze", headers=headers)
+    assert response.status_code == 200
+    body = response.json()
+    estimate = body[0]["effect_estimate"]
+    assert estimate is not None
+    assert estimate["candidate_monthly_visitors"] == 2000
+    assert estimate["estimated_additional_revenue"] == "720000"
+
+
 def test_analyze_rerun_updates_instead_of_duplicating(client, monkeypatch):
     headers = _register(client, "expansion-owner2@example.com")
     target = _create_business(client, headers, "영종식당", "RESTAURANT")
