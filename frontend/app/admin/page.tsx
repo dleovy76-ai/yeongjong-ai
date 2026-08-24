@@ -39,14 +39,46 @@ const ATTRIBUTION_LABEL: Record<string, string> = {
   UNKNOWN: "확인 안 됨",
 };
 
-function CountTable({ counts }: { counts: Record<string, number> }) {
+const USER_ROLE_LABEL: Record<string, string> = {
+  BUSINESS_OWNER: "사장님",
+  CUSTOMER: "손님",
+  ADMIN: "관리자",
+  PARTNER_MANAGER: "제휴 담당자",
+};
+
+const RESERVATION_STATUS_LABEL: Record<string, string> = {
+  REQUESTED: "요청됨",
+  CONFIRMED: "확정됨",
+  CANCELLED: "취소됨",
+  COMPLETED: "방문 완료",
+  NO_SHOW: "노쇼",
+};
+
+const PARTNER_RELATIONSHIP_STATUS_LABEL: Record<string, string> = {
+  SUGGESTED: "제안됨",
+  INVITED: "제휴 제안함",
+  ACCEPTED: "제휴 성사",
+  REJECTED: "보류",
+};
+
+const AGENT_TYPE_LABEL: Record<string, string> = {
+  manager: "Manager AI",
+  customer: "Customer AI",
+  chef: "Chef AI",
+  info: "Info AI",
+  expansion: "Expansion AI",
+  profile_draft: "소개글 초안 AI",
+  referral_message: "제휴 메시지 AI",
+};
+
+function CountTable({ counts, labels }: { counts: Record<string, number>; labels?: Record<string, string> }) {
   const entries = Object.entries(counts);
   if (entries.length === 0) return <p className="text-gray-500">데이터 없음</p>;
   return (
     <ul className="flex flex-wrap gap-3 text-sm">
       {entries.map(([key, value]) => (
         <li key={key} className="rounded-md bg-gray-100 px-3 py-1">
-          {key} <span className="font-semibold">{value}</span>
+          {labels?.[key] ?? key} <span className="font-semibold">{value}</span>
         </li>
       ))}
     </ul>
@@ -236,19 +268,19 @@ export default function AdminPage() {
           <div className="flex flex-col gap-3 text-sm">
             <div>
               <p className="mb-1 text-gray-500">업체 상태</p>
-              <CountTable counts={stats.businesses_by_status} />
+              <CountTable counts={stats.businesses_by_status} labels={STATUS_LABEL} />
             </div>
             <div>
               <p className="mb-1 text-gray-500">유저 역할</p>
-              <CountTable counts={stats.users_by_role} />
+              <CountTable counts={stats.users_by_role} labels={USER_ROLE_LABEL} />
             </div>
             <div>
               <p className="mb-1 text-gray-500">예약 상태</p>
-              <CountTable counts={stats.reservations_by_status} />
+              <CountTable counts={stats.reservations_by_status} labels={RESERVATION_STATUS_LABEL} />
             </div>
             <div>
               <p className="mb-1 text-gray-500">업체 간 협력 현황</p>
-              <CountTable counts={stats.partner_relationships_by_status} />
+              <CountTable counts={stats.partner_relationships_by_status} labels={PARTNER_RELATIONSHIP_STATUS_LABEL} />
             </div>
             <p className="text-gray-700">
               쿠폰 발급 {stats.coupons_issued}건 · 사용 {stats.coupons_redeemed}건
@@ -256,7 +288,7 @@ export default function AdminPage() {
             <p className="text-gray-700">최근 30일 AI가 답한 횟수 {stats.ai_interactions_last_30d}건</p>
             <div>
               <p className="mb-1 text-gray-500">AI별 응대 현황 (전체 기간)</p>
-              <CountTable counts={stats.ai_interactions_by_agent_type} />
+              <CountTable counts={stats.ai_interactions_by_agent_type} labels={AGENT_TYPE_LABEL} />
             </div>
             <div className="rounded-md border border-gray-200 p-3">
               <p className="font-semibold">확인된 거래</p>
