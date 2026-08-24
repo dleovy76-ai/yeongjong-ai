@@ -7,6 +7,7 @@ Usage (from backend/):
     venv/Scripts/python.exe scripts/import_yeongjong_businesses.py [--dry-run]
         [--cx 126.5419] [--cy 37.4936] [--radius 5000]
         [--restaurant-n 10] [--cafe-n 10] [--lodging-n 5] [--experience-n 5]
+        [--shopping-n 0] [--leisure-n 0]
 
 Defaults to master plan §39's exact pilot composition (10 음식점/10 카페/
 5 숙박/5 체험·관광 = 30), picking the N closest-to-center stores per category
@@ -60,6 +61,10 @@ def main() -> None:
     parser.add_argument("--cafe-n", type=int, default=10)
     parser.add_argument("--lodging-n", type=int, default=5)
     parser.add_argument("--experience-n", type=int, default=5)
+    parser.add_argument("--shopping-n", type=int, default=0, help="§3 확장: 소매(G2) - 기본값 0(옵트인)")
+    parser.add_argument(
+        "--leisure-n", type=int, default=0, help="§3 확장: 스포츠서비스·유원지오락(R103/R104) - 기본값 0(옵트인)"
+    )
     parser.add_argument("--dry-run", action="store_true", help="DB에 저장하지 않고 결과만 출력")
     args = parser.parse_args()
 
@@ -68,6 +73,8 @@ def main() -> None:
         BusinessCategory.CAFE: args.cafe_n,
         BusinessCategory.LODGING: args.lodging_n,
         BusinessCategory.EXPERIENCE: args.experience_n,
+        BusinessCategory.SHOPPING: args.shopping_n,
+        BusinessCategory.LEISURE: args.leisure_n,
     }
 
     client = SanggaApiClient()

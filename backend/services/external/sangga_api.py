@@ -6,12 +6,16 @@ claim flow) rather than fabricating a business directory.
 Category mapping below was derived from actually calling largeUpjongList /
 middleUpjongList against the live API and reading the real code table, not
 guessed:
-  I1 (숙박, all mid-categories)         -> LODGING
-  I2 (음식) except I212 (비알코올)       -> RESTAURANT
-  I2 mid-category I212 (비알코올/카페)   -> CAFE
-  R1 (예술·스포츠, all mid-categories)   -> EXPERIENCE
-Anything else (의료, 소매, 교육, 금융...) is out of scope for this platform's
-initial target categories (master plan §3) and is skipped, not force-mapped.
+  I1 (숙박, all mid-categories)                    -> LODGING
+  I2 (음식) except I212 (비알코올)                  -> RESTAURANT
+  I2 mid-category I212 (비알코올/카페)              -> CAFE
+  G2 (소매, all mid-categories)                     -> SHOPPING
+  R1 mid-category R103 (스포츠 서비스), R104 (유원지·오락) -> LEISURE
+  R1 mid-category R101 (창작·예술), R102 (도서관·사적지), \
+or any other/unknown R1 mid-code                    -> EXPERIENCE
+Anything else (의료, 교육, 금융...) is out of scope for this platform's
+target categories (master plan §3, expanded with SHOPPING/LEISURE) and is
+skipped, not force-mapped.
 """
 
 from dataclasses import dataclass
@@ -27,7 +31,9 @@ _TIMEOUT_SECONDS = 30.0
 _CAFE_MIDDLE_CODE = "I212"
 _LODGING_LARGE_CODE = "I1"
 _FOOD_LARGE_CODE = "I2"
-_EXPERIENCE_LARGE_CODE = "R1"
+_SHOPPING_LARGE_CODE = "G2"
+_ARTS_SPORTS_LARGE_CODE = "R1"
+_LEISURE_MIDDLE_CODES = {"R103", "R104"}
 
 
 class SanggaApiConfigurationError(RuntimeError):
@@ -39,14 +45,16 @@ class SanggaApiError(RuntimeError):
 
 
 def map_category(inds_lcls_cd: str, inds_mcls_cd: str) -> BusinessCategory | None:
-    """Returns None for anything outside this platform's four target
-    categories - callers should skip the row, not force a mapping."""
+    """Returns None for anything outside this platform's target categories -
+    callers should skip the row, not force a mapping."""
     if inds_lcls_cd == _LODGING_LARGE_CODE:
         return BusinessCategory.LODGING
     if inds_lcls_cd == _FOOD_LARGE_CODE:
         return BusinessCategory.CAFE if inds_mcls_cd == _CAFE_MIDDLE_CODE else BusinessCategory.RESTAURANT
-    if inds_lcls_cd == _EXPERIENCE_LARGE_CODE:
-        return BusinessCategory.EXPERIENCE
+    if inds_lcls_cd == _SHOPPING_LARGE_CODE:
+        return BusinessCategory.SHOPPING
+    if inds_lcls_cd == _ARTS_SPORTS_LARGE_CODE:
+        return BusinessCategory.LEISURE if inds_mcls_cd in _LEISURE_MIDDLE_CODES else BusinessCategory.EXPERIENCE
     return None
 
 

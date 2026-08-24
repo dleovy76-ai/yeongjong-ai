@@ -15,13 +15,23 @@ def test_map_category_other_food_mid_categories_are_restaurant():
     assert map_category("I2", "I211") == BusinessCategory.RESTAURANT
 
 
-def test_map_category_arts_sports_is_experience():
-    assert map_category("R1", "R104") == BusinessCategory.EXPERIENCE
+def test_map_category_arts_and_culture_mid_categories_are_experience():
+    assert map_category("R1", "R101") == BusinessCategory.EXPERIENCE
+    assert map_category("R1", "R102") == BusinessCategory.EXPERIENCE
+
+
+def test_map_category_sports_and_amusement_mid_categories_are_leisure():
+    assert map_category("R1", "R103") == BusinessCategory.LEISURE
+    assert map_category("R1", "R104") == BusinessCategory.LEISURE
+
+
+def test_map_category_retail_is_shopping():
+    assert map_category("G2", "G208") == BusinessCategory.SHOPPING
 
 
 def test_map_category_out_of_scope_categories_return_none():
     assert map_category("Q1", "Q102") is None
-    assert map_category("G2", "G208") is None
+    assert map_category("P1", "P101") is None
 
 
 def test_to_imported_store_combines_name_and_branch():

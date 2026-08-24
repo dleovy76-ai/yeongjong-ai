@@ -55,7 +55,7 @@ export interface TokenResponse {
   user: AuthUser;
 }
 
-export type BusinessCategory = "RESTAURANT" | "CAFE" | "LODGING" | "EXPERIENCE";
+export type BusinessCategory = "RESTAURANT" | "CAFE" | "LODGING" | "EXPERIENCE" | "SHOPPING" | "LEISURE";
 export type BusinessStatus = "DRAFT" | "ACTIVE" | "DISABLED";
 
 export const CATEGORY_LABELS: Record<BusinessCategory, string> = {
@@ -63,6 +63,8 @@ export const CATEGORY_LABELS: Record<BusinessCategory, string> = {
   CAFE: "카페",
   LODGING: "숙박",
   EXPERIENCE: "체험/관광",
+  SHOPPING: "쇼핑",
+  LEISURE: "레저",
 };
 
 export interface Business {

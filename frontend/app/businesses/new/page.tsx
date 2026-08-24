@@ -10,6 +10,8 @@ const CATEGORY_OPTIONS: { value: BusinessCategory; label: string }[] = [
   { value: "CAFE", label: "카페" },
   { value: "LODGING", label: "숙박" },
   { value: "EXPERIENCE", label: "체험/관광" },
+  { value: "SHOPPING", label: "쇼핑" },
+  { value: "LEISURE", label: "레저" },
 ];
 
 export default function NewBusinessPage() {

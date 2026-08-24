@@ -28,6 +28,8 @@ class BusinessCategory(str, enum.Enum):
     CAFE = "CAFE"
     LODGING = "LODGING"
     EXPERIENCE = "EXPERIENCE"
+    SHOPPING = "SHOPPING"
+    LEISURE = "LEISURE"
 
 
 class CouponStatus(str, enum.Enum):
