@@ -160,6 +160,7 @@ function buildTodo(params: {
 const QUICK_LINKS = (id: string) => [
   { label: "AI에게 물어보기", href: `/businesses/${id}/manager` },
   { label: "우리 가게 성과", href: `/businesses/${id}/performance` },
+  { label: "메뉴 관리", href: `/businesses/${id}/menus` },
   { label: "쿠폰 관리", href: `/businesses/${id}/coupons` },
   { label: "예약 관리", href: `/businesses/${id}/reservations` },
   { label: "매출 기록", href: `/businesses/${id}/coupons` },
