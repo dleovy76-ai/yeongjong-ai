@@ -217,7 +217,7 @@ class PartnerSearchTool:
     def __init__(self, db: Session) -> None:
         self.db = db
 
-    def find_candidates(self, business_id: UUID, limit: int = 15) -> list[dict]:
+    def find_candidates(self, business_id: UUID, limit: int = 20) -> list[dict]:
         target = self.db.get(Business, business_id)
         if target is None:
             return []
