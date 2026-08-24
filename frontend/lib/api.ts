@@ -265,12 +265,6 @@ export const api = {
   chat: (businessId: string, message: string) =>
     request<ChatResponse>("/api/v1/ai/chat", { method: "POST", body: { business_id: businessId, message } }),
 
-  chefChat: (businessId: string, message: string) =>
-    request<ChefChatResponse>(`/api/v1/businesses/${businessId}/chef/chat`, {
-      method: "POST",
-      body: { message },
-    }),
-
   recommend: (query: string) =>
     request<RecommendationResponse>("/api/v1/recommendations", { method: "POST", body: { query } }),
 
@@ -665,18 +659,15 @@ export interface AdminAiMessageDetail {
   created_at: string;
 }
 
-export interface ChatResponse {
-  agent_type: string;
-  reply: string;
-}
-
 export interface MenuImageItem {
   id: string;
   name: string;
   image_url: string;
 }
 
-export interface ChefChatResponse extends ChatResponse {
+export interface ChatResponse {
+  agent_type: string;
+  reply: string;
   menu_images: MenuImageItem[];
 }
 

@@ -10,7 +10,6 @@ from routers.admin import router as admin_router
 from routers.ai import router as ai_router
 from routers.auth import router as auth_router
 from routers.businesses import router as businesses_router
-from routers.chef import router as chef_router
 from routers.coupons import router as coupons_router
 from routers.expansion import router as expansion_router
 from routers.manager import router as manager_router
@@ -44,7 +43,6 @@ app.include_router(ai_router)
 app.include_router(recommendations_router)
 app.include_router(reservations_router)
 app.include_router(admin_router)
-app.include_router(chef_router)
 app.include_router(transactions_router)
 app.include_router(referral_router)
 app.include_router(me_router)

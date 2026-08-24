@@ -142,6 +142,79 @@ def test_customer_agent_returns_not_found_without_calling_llm_when_business_miss
     assert llm.calls == []
 
 
+def test_customer_agent_recommends_menu_with_price_in_prompt(db_session):
+    business = _make_business(db_session)
+    db_session.add(Menu(business_id=business.id, name="김치찌개", price="9000", is_signature=True))
+    db_session.flush()
+
+    llm = FakeLLMProvider(response="매운 걸 좋아하시면 김치찌개(9,000원)를 추천드려요!")
+    agent = CustomerAgent(db=db_session, llm=llm)
+    reply = agent.respond({"business_id": business.id}, "매운 거 추천해주세요")
+
+    assert "김치찌개" in reply
+    system_prompt = llm.calls[0]["system_prompt"]
+    assert "김치찌개" in system_prompt
+    assert "9000" in system_prompt
+
+
+def test_customer_agent_mentions_allergy_info_when_present(db_session):
+    business = _make_business(db_session)
+    db_session.add(
+        Menu(business_id=business.id, name="새우튀김", price="7000", allergy_info="새우, 밀가루 함유")
+    )
+    db_session.flush()
+
+    llm = FakeLLMProvider()
+    agent = CustomerAgent(db=db_session, llm=llm)
+    agent.respond({"business_id": business.id}, "알레르기 있어요")
+
+    assert "새우, 밀가루 함유" in llm.calls[0]["system_prompt"]
+
+
+def test_customer_agent_mentions_origin_info_when_present(db_session):
+    business = _make_business(db_session)
+    db_session.add(
+        Menu(business_id=business.id, name="백합칼국수", price="13000", origin_info="인천 앞바다산 백합 사용")
+    )
+    db_session.flush()
+
+    llm = FakeLLMProvider()
+    agent = CustomerAgent(db=db_session, llm=llm)
+    agent.respond({"business_id": business.id}, "재료가 뭐예요?")
+
+    assert "인천 앞바다산 백합 사용" in llm.calls[0]["system_prompt"]
+
+
+def test_customer_agent_attaches_image_for_menu_named_in_the_reply(db_session):
+    business = _make_business(db_session)
+    menu = Menu(
+        business_id=business.id, name="김치찌개", price="9000", image_url="https://example.com/kimchi.jpg"
+    )
+    db_session.add(menu)
+    db_session.add(Menu(business_id=business.id, name="된장찌개", price="8000", image_url="https://example.com/doenjang.jpg"))
+    db_session.flush()
+
+    llm = FakeLLMProvider(response="매운 걸 좋아하시면 김치찌개(9,000원)를 추천드려요!")
+    agent = CustomerAgent(db=db_session, llm=llm)
+    agent.respond({"business_id": business.id}, "매운 거 추천해주세요")
+
+    assert agent.last_recommended_menus == [
+        {"id": str(menu.id), "name": "김치찌개", "image_url": "https://example.com/kimchi.jpg"}
+    ]
+
+
+def test_customer_agent_omits_image_when_menu_has_no_photo(db_session):
+    business = _make_business(db_session)
+    db_session.add(Menu(business_id=business.id, name="김치찌개", price="9000"))
+    db_session.flush()
+
+    llm = FakeLLMProvider(response="김치찌개(9,000원) 어떠세요?")
+    agent = CustomerAgent(db=db_session, llm=llm)
+    agent.respond({"business_id": business.id}, "추천해줘")
+
+    assert agent.last_recommended_menus == []
+
+
 def test_customer_agent_includes_only_currently_claimable_coupons(db_session):
     business = _make_business(db_session)
     db_session.add(

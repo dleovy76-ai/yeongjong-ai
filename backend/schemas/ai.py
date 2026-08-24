@@ -8,6 +8,13 @@ class ChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=2000)
 
 
+class MenuImageItem(BaseModel):
+    id: UUID
+    name: str
+    image_url: str
+
+
 class ChatResponse(BaseModel):
     agent_type: str
     reply: str
+    menu_images: list[MenuImageItem] = []

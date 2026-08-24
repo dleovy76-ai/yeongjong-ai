@@ -14,4 +14,4 @@ def chat(body: ChatRequest, db: Session = Depends(get_db)) -> ChatResponse:
     llm = resolve_llm_provider()
     agent = CustomerAgent(db=db, llm=llm)
     reply = run_agent(agent, {"business_id": body.business_id}, body.message)
-    return ChatResponse(agent_type=agent.agent_type, reply=reply)
+    return ChatResponse(agent_type=agent.agent_type, reply=reply, menu_images=agent.last_recommended_menus)
