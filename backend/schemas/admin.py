@@ -4,7 +4,14 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from models import BusinessCategory, BusinessStatus, PartnerRelationshipStatus, TouristPlaceStatus, UserRole
+from models import (
+    BusinessCategory,
+    BusinessStatus,
+    PartnerRelationshipStatus,
+    PilotStatus,
+    TouristPlaceStatus,
+    UserRole,
+)
 
 
 class AdminKpiResponse(BaseModel):
@@ -43,6 +50,7 @@ class AdminBusinessSummary(BaseModel):
     name_ko: str
     category: BusinessCategory
     status: BusinessStatus
+    pilot_status: PilotStatus | None = None
     owner_email: str | None
     created_at: datetime
 

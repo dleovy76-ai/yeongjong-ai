@@ -16,6 +16,7 @@ from routers.expansion import router as expansion_router
 from routers.manager import router as manager_router
 from routers.me import router as me_router
 from routers.performance import router as performance_router
+from routers.pilot import router as pilot_router
 from routers.recommendations import router as recommendations_router
 from routers.referral import router as referral_router
 from routers.reservations import router as reservations_router
@@ -47,6 +48,7 @@ app.include_router(chef_router)
 app.include_router(transactions_router)
 app.include_router(referral_router)
 app.include_router(me_router)
+app.include_router(pilot_router)
 
 
 def _strip_unencodable(value: object) -> object:

@@ -247,6 +247,13 @@ class TestIdorAcrossTwoBusinesses:
         response = client.post(f"/api/v1/businesses/{business_b['id']}/profile/draft", headers=headers_a)
         assert response.status_code == 403
 
+    def test_pilot_dashboard(self, client):
+        """PILOT OPERATIONS DASHBOARD 추가 - 기존 authorization 구조
+        (require_owner)를 그대로 재사용했는지 새 엔드포인트로도 재검증한다."""
+        headers_a, business_a, headers_b, business_b = self.setup_business_pair(client, "pilotdash")
+        response = client.get(f"/api/v1/businesses/{business_b['id']}/pilot/dashboard?period=all", headers=headers_a)
+        assert response.status_code == 403
+
     def test_legitimate_owner_still_works(self, client):
         """대조군 - 위 테스트들이 전부 403을 내는 게 "뭘 해도 403"인 버그가
         아니라 실제 소유권 검증이라는 걸 확인한다: 자기 업체에 대해서는
@@ -256,3 +263,30 @@ class TestIdorAcrossTwoBusinesses:
         assert response.status_code == 200
         response2 = client.get(f"/api/v1/businesses/{business_a['id']}/performance", headers=headers_a)
         assert response2.status_code == 200
+        response3 = client.get(f"/api/v1/businesses/{business_a['id']}/pilot/dashboard?period=all", headers=headers_a)
+        assert response3.status_code == 200
+
+
+class TestAdminPilotEndpointsRequireAdmin:
+    """관리자 전용 Pilot 엔드포인트는 일반 사업자로는 절대 접근할 수 없어야
+    한다 - require_admin을 그대로 재사용했는지 확인."""
+
+    def test_pilot_overview_requires_admin(self, client):
+        headers = _register(client, "idor-pilot-overview@example.com")
+        response = client.get("/api/v1/admin/pilot/overview?period=all", headers=headers)
+        assert response.status_code == 403
+
+    def test_pilot_status_update_requires_admin(self, client):
+        headers = _register(client, "idor-pilot-status@example.com")
+        business = _create_business(client, headers, "IDOR파일럿상태업체")
+        response = client.patch(
+            f"/api/v1/admin/businesses/{business['id']}/pilot-status",
+            headers=headers,
+            json={"pilot_status": "PILOT_ACTIVE"},
+        )
+        assert response.status_code == 403
+
+    def test_pilot_csv_export_requires_admin(self, client):
+        headers = _register(client, "idor-pilot-csv@example.com")
+        response = client.get("/api/v1/admin/pilot/export.csv?period=all", headers=headers)
+        assert response.status_code == 403

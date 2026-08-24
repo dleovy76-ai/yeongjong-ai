@@ -105,6 +105,9 @@ export default function DashboardPage() {
                 <Link href={`/businesses/${business.id}/performance`} className="underline">
                   성과 보기
                 </Link>
+                <Link href={`/businesses/${business.id}/pilot`} className="underline">
+                  Pilot 대시보드
+                </Link>
                 <Link href={`/businesses/${business.id}/expansion`} className="underline">
                   연관업체 추천
                 </Link>

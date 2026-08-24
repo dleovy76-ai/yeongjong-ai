@@ -14,6 +14,7 @@ from .models import (  # noqa: F401
     CouponStatus,
     Menu,
     PartnerRelationshipStatus,
+    PilotStatus,
     RecommendationClick,
     Reservation,
     ReservationStatus,

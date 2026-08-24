@@ -23,6 +23,18 @@ class BusinessStatus(str, enum.Enum):
     DISABLED = "DISABLED"
 
 
+class PilotStatus(str, enum.Enum):
+    """PILOT OPERATIONS - 파일럿 운영 관리용 상태. BusinessStatus(공개 여부)와
+    완전히 별개 축이다 - ACTIVE(공개됨)이면서 PILOT_PAUSED(파일럿 관찰
+    대상에서는 잠시 제외)인 것도 가능해야 하므로 같은 컬럼을 재사용하지
+    않는다. nullable - 파일럿 대상으로 지정되지 않은 업체(예: 그냥 가입만
+    한 곳)는 None으로 둔다."""
+
+    PILOT_ACTIVE = "PILOT_ACTIVE"
+    PILOT_PAUSED = "PILOT_PAUSED"
+    PILOT_COMPLETED = "PILOT_COMPLETED"
+
+
 class BusinessCategory(str, enum.Enum):
     RESTAURANT = "RESTAURANT"
     CAFE = "CAFE"
@@ -146,6 +158,10 @@ class Business(Base):
     phone: Mapped[str | None] = mapped_column(String(30), nullable=True)
     status: Mapped[BusinessStatus] = mapped_column(
         Enum(BusinessStatus, name="business_status"), nullable=False, default=BusinessStatus.DRAFT
+    )
+    # PILOT OPERATIONS - BusinessStatus와 별개 축(위 PilotStatus 참고).
+    pilot_status: Mapped[PilotStatus | None] = mapped_column(
+        Enum(PilotStatus, name="pilot_status"), nullable=True
     )
 
     data_source: Mapped[str | None] = mapped_column(String(100), nullable=True)

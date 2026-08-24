@@ -1,7 +1,10 @@
+import csv
+import io
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -14,6 +17,7 @@ from models import (
     Coupon,
     CouponIssue,
     CouponIssueStatus,
+    PilotStatus,
     Reservation,
     ReservationStatus,
     TouristPlace,
@@ -37,6 +41,14 @@ from schemas.admin import (
     TouristPlaceResponse,
     TouristPlaceUpdateRequest,
 )
+from schemas.pilot import (
+    AdminPilotOverviewResponse,
+    BusinessComparisonRowResponse,
+    FunnelStepResponse,
+    PilotStatusUpdateRequest,
+    RevenueBreakdownResponse,
+)
+from services.pilot_analytics import VALID_PERIODS, compute_pilot_overview
 from services.tools import distance_meters
 
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
@@ -166,6 +178,7 @@ def list_businesses(db: Session = Depends(get_db), _admin: User = Depends(requir
             name_ko=b.name_ko,
             category=b.category,
             status=b.status,
+            pilot_status=b.pilot_status,
             owner_email=b.owner.email if b.owner else None,
             created_at=b.created_at,
         )
@@ -195,6 +208,7 @@ def update_business_status(
         name_ko=business.name_ko,
         category=business.category,
         status=business.status,
+        pilot_status=business.pilot_status,
         owner_email=business.owner.email if business.owner else None,
         created_at=business.created_at,
     )
@@ -367,3 +381,170 @@ def recent_ai_interactions(
         )
         for r in rows
     ]
+
+
+def _validate_period(period: str) -> None:
+    if period not in VALID_PERIODS:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT, f"period는 {', '.join(VALID_PERIODS)} 중 하나여야 합니다."
+        )
+
+
+@router.patch("/businesses/{business_id}/pilot-status", response_model=AdminBusinessSummary)
+def update_pilot_status(
+    business_id: UUID,
+    body: PilotStatusUpdateRequest,
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_admin),
+) -> AdminBusinessSummary:
+    """PILOT OPERATIONS - 기존 BusinessStatus(공개 여부)는 절대 건드리지
+    않는다. pilot_status는 완전히 별개 축 - 관리자가 어떤 업체를 파일럿
+    관찰 대상으로 넣고 뺄지만 정한다."""
+    business = db.get(Business, business_id)
+    if business is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "업체를 찾을 수 없습니다.")
+
+    business.pilot_status = body.pilot_status
+    db.commit()
+    db.refresh(business)
+    return AdminBusinessSummary(
+        id=business.id,
+        name_ko=business.name_ko,
+        category=business.category,
+        status=business.status,
+        pilot_status=business.pilot_status,
+        owner_email=business.owner.email if business.owner else None,
+        created_at=business.created_at,
+    )
+
+
+def _overview_to_response(overview) -> AdminPilotOverviewResponse:
+    return AdminPilotOverviewResponse(
+        period=overview.period,
+        pilot_business_count=overview.pilot_business_count,
+        active_business_count=overview.active_business_count,
+        daily_active_businesses=overview.daily_active_businesses,
+        weekly_active_businesses=overview.weekly_active_businesses,
+        businesses_using_ai=overview.businesses_using_ai,
+        customer_ai_questions=overview.customer_ai_questions,
+        chef_ai_questions=overview.chef_ai_questions,
+        info_ai_questions=overview.info_ai_questions,
+        recommendation_impressions=overview.recommendation_impressions,
+        recommendation_clicks=overview.recommendation_clicks,
+        coupons_issued=overview.coupons_issued,
+        coupons_redeemed=overview.coupons_redeemed,
+        reservations_created=overview.reservations_created,
+        reservations_completed=overview.reservations_completed,
+        visits_confirmed=overview.visits_confirmed,
+        transactions_created=overview.transactions_created,
+        revenue=RevenueBreakdownResponse(
+            total_revenue=overview.revenue.total_revenue,
+            ai_connected_revenue=overview.revenue.ai_connected_revenue,
+            direct_revenue=overview.revenue.direct_revenue,
+            assisted_revenue=overview.revenue.assisted_revenue,
+            unknown_revenue=overview.revenue.unknown_revenue,
+            ai_connected_transaction_count=overview.revenue.ai_connected_transaction_count,
+        ),
+        revenue_by_business={k: v for k, v in overview.revenue_by_business.items()},
+        expansion_runs=overview.expansion_runs,
+        partner_candidates=overview.partner_candidates,
+        partner_invites=overview.partner_invites,
+        referral_clicks=overview.referral_clicks,
+        new_businesses_via_referral=overview.new_businesses_via_referral,
+        funnel=[
+            FunnelStepResponse(
+                key=s.key, label=s.label, count=s.count, conversion_rate_from_previous=s.conversion_rate_from_previous
+            )
+            for s in overview.funnel
+        ],
+        businesses=[
+            BusinessComparisonRowResponse(
+                business_id=r.business_id,
+                business_name=r.business_name,
+                pilot_status=r.pilot_status,
+                ai_interactions=r.ai_interactions,
+                recommendation_clicks=r.recommendation_clicks,
+                coupons_issued=r.coupons_issued,
+                reservations_created=r.reservations_created,
+                visits_confirmed=r.visits_confirmed,
+                transactions=r.transactions,
+                direct_revenue=r.direct_revenue,
+                assisted_revenue=r.assisted_revenue,
+                unknown_revenue=r.unknown_revenue,
+                ai_connected_revenue=r.ai_connected_revenue,
+            )
+            for r in overview.businesses
+        ],
+    )
+
+
+@router.get("/pilot/overview", response_model=AdminPilotOverviewResponse)
+def get_pilot_overview(
+    period: str = "30d", db: Session = Depends(get_db), _admin: User = Depends(require_admin)
+) -> AdminPilotOverviewResponse:
+    """PILOT OPERATIONS DASHBOARD - pilot_status가 지정된 업체만 대상으로
+    한다(관리자가 /pilot-status로 지정해야 여기 잡힌다) - 그냥 가입만 하고
+    파일럿에 넣지 않은 업체까지 섞이면 파일럿 결과가 흐려진다."""
+    _validate_period(period)
+    overview = compute_pilot_overview(db, period)
+    return _overview_to_response(overview)
+
+
+@router.get("/pilot/export.csv")
+def export_pilot_csv(
+    period: str = "30d", db: Session = Depends(get_db), _admin: User = Depends(require_admin)
+) -> StreamingResponse:
+    """업체별 1행 - 개인정보(손님 이름/연락처 등)는 담지 않는다, 업체 단위
+    집계치만."""
+    _validate_period(period)
+    overview = compute_pilot_overview(db, period)
+
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow(
+        [
+            "business_id",
+            "business_name",
+            "date",
+            "ai_interactions",
+            "recommendations",
+            "clicks",
+            "coupons",
+            "reservations",
+            "visits",
+            "transactions",
+            "direct_revenue",
+            "assisted_revenue",
+            "unknown_revenue",
+        ]
+    )
+    today = datetime.now(timezone.utc).date().isoformat()
+    for row in overview.businesses:
+        writer.writerow(
+            [
+                str(row.business_id),
+                row.business_name,
+                today,
+                row.ai_interactions,
+                # 업체별 추천 "노출" 수는 집계 불가(Info AI는 업체에 종속되지
+                # 않음, services/pilot_analytics.py 모듈 docstring 참고) -
+                # 과대표시하지 않도록 클릭 수를 최소값으로 그대로 쓴다.
+                row.recommendation_clicks,
+                row.recommendation_clicks,
+                row.coupons_issued,
+                row.reservations_created,
+                row.visits_confirmed,
+                row.transactions,
+                row.direct_revenue,
+                row.assisted_revenue,
+                row.unknown_revenue,
+            ]
+        )
+
+    buffer.seek(0)
+    filename = f"pilot-{period}-{today}.csv"
+    return StreamingResponse(
+        iter([buffer.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )

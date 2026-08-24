@@ -406,7 +406,143 @@ export const api = {
 
   adminUpdateTouristPlace: (token: string, id: string, body: Partial<TouristPlace>) =>
     request<TouristPlace>(`/api/v1/admin/tourist-places/${id}`, { method: "PATCH", body, token }),
+
+  // PILOT OPERATIONS DASHBOARD
+  getBusinessPilotDashboard: (token: string, businessId: string, period: PilotPeriod) =>
+    request<BusinessPilotDashboard>(`/api/v1/businesses/${businessId}/pilot/dashboard?period=${period}`, { token }),
+
+  getAdminPilotOverview: (token: string, period: PilotPeriod) =>
+    request<AdminPilotOverview>(`/api/v1/admin/pilot/overview?period=${period}`, { token }),
+
+  updatePilotStatus: (token: string, businessId: string, pilotStatus: PilotStatus | null) =>
+    request<AdminBusiness>(`/api/v1/admin/businesses/${businessId}/pilot-status`, {
+      method: "PATCH",
+      body: { pilot_status: pilotStatus },
+      token,
+    }),
+
+  // CSV는 JSON이 아니라서 request<T>를 안 쓰고 직접 fetch해서 blob으로
+  // 내려받는다 - 다운로드는 브라우저가 직접 트리거하도록 임시 링크를 쓴다.
+  downloadPilotCsv: async (token: string, period: PilotPeriod): Promise<void> => {
+    const response = await fetch(`${API_URL}/api/v1/admin/pilot/export.csv?period=${period}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!response.ok) {
+      const data = await response.json().catch(() => null);
+      throw new ApiError(response.status, typeof data?.detail === "string" ? data.detail : "다운로드에 실패했습니다.");
+    }
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `pilot-${period}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  },
 };
+
+export type PilotPeriod = "today" | "yesterday" | "7d" | "30d" | "all";
+export const PILOT_PERIOD_LABELS: Record<PilotPeriod, string> = {
+  today: "오늘",
+  yesterday: "어제",
+  "7d": "최근 7일",
+  "30d": "최근 30일",
+  all: "전체",
+};
+
+export type PilotStatus = "PILOT_ACTIVE" | "PILOT_PAUSED" | "PILOT_COMPLETED";
+export const PILOT_STATUS_LABELS: Record<PilotStatus, string> = {
+  PILOT_ACTIVE: "파일럿 진행 중",
+  PILOT_PAUSED: "파일럿 일시중지",
+  PILOT_COMPLETED: "파일럿 종료",
+};
+
+export interface FunnelStep {
+  key: string;
+  label: string;
+  count: number;
+  conversion_rate_from_previous: number | null;
+}
+
+export interface RevenueBreakdown {
+  total_revenue: string;
+  ai_connected_revenue: string;
+  direct_revenue: string;
+  assisted_revenue: string;
+  unknown_revenue: string;
+  ai_connected_transaction_count: number;
+}
+
+export interface AgentBreakdownRow {
+  agent_type: string;
+  interactions: number | null;
+  recommendation_clicks: number | null;
+  note: string | null;
+}
+
+export interface BusinessPilotDashboard {
+  business_id: string;
+  business_name: string;
+  period: string;
+  ai_interactions_total: number;
+  ai_interactions_by_agent: Record<string, number>;
+  coupons_issued: number;
+  coupons_redeemed: number;
+  reservations_created: number;
+  reservations_completed: number;
+  visits_confirmed: number;
+  recommendation_clicks: number;
+  funnel: FunnelStep[];
+  revenue: RevenueBreakdown;
+  agents: AgentBreakdownRow[];
+}
+
+export interface BusinessComparisonRow {
+  business_id: string;
+  business_name: string;
+  pilot_status: PilotStatus | null;
+  ai_interactions: number;
+  recommendation_clicks: number;
+  coupons_issued: number;
+  reservations_created: number;
+  visits_confirmed: number;
+  transactions: number;
+  direct_revenue: string;
+  assisted_revenue: string;
+  unknown_revenue: string;
+  ai_connected_revenue: string;
+}
+
+export interface AdminPilotOverview {
+  period: string;
+  pilot_business_count: number;
+  active_business_count: number;
+  daily_active_businesses: number;
+  weekly_active_businesses: number;
+  businesses_using_ai: number;
+  customer_ai_questions: number;
+  chef_ai_questions: number;
+  info_ai_questions: number;
+  recommendation_impressions: number;
+  recommendation_clicks: number;
+  coupons_issued: number;
+  coupons_redeemed: number;
+  reservations_created: number;
+  reservations_completed: number;
+  visits_confirmed: number;
+  transactions_created: number;
+  revenue: RevenueBreakdown;
+  revenue_by_business: Record<string, string>;
+  expansion_runs: number;
+  partner_candidates: number;
+  partner_invites: number;
+  referral_clicks: number;
+  new_businesses_via_referral: number;
+  funnel: FunnelStep[];
+  businesses: BusinessComparisonRow[];
+}
 
 export interface AdminKpi {
   signed_up_businesses: number;
@@ -439,6 +575,7 @@ export interface AdminBusiness {
   name_ko: string;
   category: BusinessCategory;
   status: BusinessStatus;
+  pilot_status: PilotStatus | null;
   owner_email: string | null;
   created_at: string;
 }

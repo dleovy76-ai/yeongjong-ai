@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import {
   api,
   ApiError,
+  PILOT_STATUS_LABELS,
   type AdminAiInteractionSummary,
   type AdminAiMessageDetail,
   type AdminBusiness,
@@ -14,6 +16,7 @@ import {
   type AdminUser,
   type BusinessGraphEdge,
   type BusinessStatus,
+  type PilotStatus,
   type TouristPlace,
 } from "@/lib/api";
 
@@ -133,11 +136,30 @@ export default function AdminPage() {
   const toggleDisabled = (business: AdminBusiness) =>
     setBusinessStatus(business, business.status === "DISABLED" ? "ACTIVE" : "DISABLED");
 
+  const onChangePilotStatus = async (business: AdminBusiness, pilotStatus: PilotStatus | null) => {
+    if (!token) return;
+    setError(null);
+    setTogglingId(business.id);
+    try {
+      const updated = await api.updatePilotStatus(token, business.id, pilotStatus);
+      setBusinesses((prev) => prev?.map((b) => (b.id === updated.id ? updated : b)) ?? null);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "파일럿 상태 변경 중 오류가 발생했습니다.");
+    } finally {
+      setTogglingId(null);
+    }
+  };
+
   if (authLoading || !user || user.role !== "ADMIN") return null;
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-12">
-      <h1 className="mb-8 text-2xl font-bold">관리자</h1>
+      <div className="mb-8 flex items-center justify-between">
+        <h1 className="text-2xl font-bold">관리자</h1>
+        <Link href="/admin/pilot" className="rounded-md border border-black px-4 py-2 text-sm">
+          Pilot Operations Dashboard →
+        </Link>
+      </div>
       {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
 
       <section className="mb-10">
@@ -279,6 +301,19 @@ export default function AdminPage() {
                   >
                     {b.status === "DISABLED" ? "재활성화" : "비활성화"}
                   </button>
+                  <select
+                    value={b.pilot_status ?? ""}
+                    disabled={togglingId === b.id}
+                    onChange={(e) => onChangePilotStatus(b, (e.target.value || null) as PilotStatus | null)}
+                    className="rounded-md border border-gray-300 px-2 py-1.5 text-xs"
+                  >
+                    <option value="">파일럿 제외</option>
+                    {(["PILOT_ACTIVE", "PILOT_PAUSED", "PILOT_COMPLETED"] as PilotStatus[]).map((s) => (
+                      <option key={s} value={s}>
+                        {PILOT_STATUS_LABELS[s]}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </li>
             ))}
