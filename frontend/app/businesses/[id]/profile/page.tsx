@@ -209,7 +209,7 @@ export default function BusinessProfilePage() {
             </p>
             <div className="mt-3 flex gap-2">
               <a
-                href={naverCandidate.naver_url}
+                href={naverCandidate.map_url}
                 target="_blank"
                 rel="noreferrer"
                 className="rounded-md border border-black px-3 py-1.5"
