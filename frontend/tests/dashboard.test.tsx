@@ -9,6 +9,7 @@ const {
   getOwnerProfileMock,
   listCouponsMock,
   listIncomingExpansionInvitesMock,
+  listMenusMock,
 } = vi.hoisted(() => ({
   // useEffect의 deps 배열에 router가 들어가므로(app/dashboard/page.tsx), 매
   // 렌더마다 새 객체를 반환하면 deps가 계속 "바뀐 것"으로 보여 effect가
@@ -20,6 +21,7 @@ const {
   getOwnerProfileMock: vi.fn(),
   listCouponsMock: vi.fn(),
   listIncomingExpansionInvitesMock: vi.fn(),
+  listMenusMock: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -46,6 +48,7 @@ vi.mock("@/lib/api", async () => {
       getOwnerProfile: getOwnerProfileMock,
       listCoupons: listCouponsMock,
       listIncomingExpansionInvites: listIncomingExpansionInvitesMock,
+      listMenus: listMenusMock,
     },
   };
 });
@@ -164,6 +167,7 @@ describe("DashboardPage (smoke)", () => {
     getOwnerProfileMock.mockResolvedValueOnce(makeOwnerProfile());
     listCouponsMock.mockResolvedValueOnce([{ id: "c1" }]);
     listIncomingExpansionInvitesMock.mockResolvedValueOnce([]);
+    listMenusMock.mockResolvedValueOnce([{ id: "m1" }]);
 
     render(<DashboardPage />);
 
@@ -183,6 +187,7 @@ describe("DashboardPage (smoke)", () => {
     getOwnerProfileMock.mockResolvedValueOnce(makeOwnerProfile());
     listCouponsMock.mockResolvedValueOnce([]);
     listIncomingExpansionInvitesMock.mockResolvedValueOnce([]);
+    listMenusMock.mockResolvedValueOnce([]);
 
     render(<DashboardPage />);
 
@@ -214,12 +219,34 @@ describe("DashboardPage (smoke)", () => {
         effect_estimate: null,
       },
     ]);
+    listMenusMock.mockResolvedValueOnce([]);
 
     render(<DashboardPage />);
 
     expect(await screen.findByText("💡 지금 사장님이 할 일")).toBeInTheDocument();
     expect(screen.getByText("주변 가게에서 받은 제휴 제안이 1건 있어요.")).toBeInTheDocument();
     expect(screen.getByText("제휴 제안 확인하기")).toBeInTheDocument();
+    expect(screen.queryByText("아직 손님에게 줄 쿠폰이 없어요.")).not.toBeInTheDocument();
+    expect(screen.queryByText("아직 등록된 메뉴가 없어요.")).not.toBeInTheDocument();
+  });
+
+  it("P1-5 - 메뉴가 0개면 받은 제휴 제안 다음, 쿠폰/예약보다 먼저 메뉴 등록을 할 일로 보여준다", async () => {
+    myBusinessesMock.mockResolvedValueOnce([makeBusiness()]);
+    getBusinessPilotDashboardMock.mockResolvedValue(makeDashboard());
+    getPerformanceMock.mockResolvedValueOnce(makePerformance());
+    getOwnerProfileMock.mockResolvedValueOnce(makeOwnerProfile());
+    listIncomingExpansionInvitesMock.mockResolvedValueOnce([]);
+    listMenusMock.mockResolvedValueOnce([]);
+    // 쿠폰은 이미 있는데도(원래는 쿠폰 체크를 통과해 다음 단계로 넘어갈
+    // 상황) 메뉴가 0개면 메뉴 등록이 먼저 떠야 한다 - claim된 업체 40%가
+    // 메뉴 0개인 실제 프로덕션 데이터가 이 우선순위의 근거.
+    listCouponsMock.mockResolvedValueOnce([{ id: "c1" }]);
+
+    render(<DashboardPage />);
+
+    expect(await screen.findByText("💡 지금 사장님이 할 일")).toBeInTheDocument();
+    expect(screen.getByText("아직 등록된 메뉴가 없어요.")).toBeInTheDocument();
+    expect(screen.getByText("메뉴 등록하기")).toBeInTheDocument();
     expect(screen.queryByText("아직 손님에게 줄 쿠폰이 없어요.")).not.toBeInTheDocument();
   });
 });

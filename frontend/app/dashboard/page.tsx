@@ -13,6 +13,7 @@ import {
   type BusinessPilotDashboard,
   type Coupon,
   type IncomingPartnerInvite,
+  type Menu,
   type Performance,
 } from "@/lib/api";
 
@@ -43,6 +44,7 @@ interface TodoItem {
 function buildTodo(params: {
   ownerProfile: BusinessOwnerProfile;
   incomingInviteCount: number;
+  menusCount: number;
   couponsCount: number;
   reservationsEverCount: number;
   clicksToday: number;
@@ -52,6 +54,7 @@ function buildTodo(params: {
   const {
     ownerProfile,
     incomingInviteCount,
+    menusCount,
     couponsCount,
     reservationsEverCount,
     clicksToday,
@@ -75,6 +78,15 @@ function buildTodo(params: {
       detail: "수락하면 서로의 손님에게 AI가 자연스럽게 서로를 추천해줘요.",
       actionLabel: "제휴 제안 확인하기",
       actionHref: `/businesses/${businessId}/expansion`,
+    };
+  }
+
+  if (menusCount === 0) {
+    return {
+      message: "아직 등록된 메뉴가 없어요.",
+      detail: "메뉴가 있어야 AI가 손님에게 우리 가게 메뉴를 추천할 수 있어요.",
+      actionLabel: "메뉴 등록하기",
+      actionHref: `/businesses/${businessId}/menus`,
     };
   }
 
@@ -138,6 +150,7 @@ export default function DashboardPage() {
   const [ownerProfile, setOwnerProfile] = useState<BusinessOwnerProfile | null>(null);
   const [coupons, setCoupons] = useState<Coupon[] | null>(null);
   const [incomingInvites, setIncomingInvites] = useState<IncomingPartnerInvite[] | null>(null);
+  const [menus, setMenus] = useState<Menu[] | null>(null);
   const [detailError, setDetailError] = useState<string | null>(null);
   const [togglingStatus, setTogglingStatus] = useState(false);
 
@@ -167,6 +180,7 @@ export default function DashboardPage() {
     setOwnerProfile(null);
     setCoupons(null);
     setIncomingInvites(null);
+    setMenus(null);
     Promise.all([
       api.getBusinessPilotDashboard(token, selectedId, "today"),
       api.getBusinessPilotDashboard(token, selectedId, "all"),
@@ -177,14 +191,18 @@ export default function DashboardPage() {
       // 없었던 P1-4의 핵심 단절 지점이라 Home에서 반드시 가져온다. 실패해도
       // Home 전체가 막히지 않도록 조용히 빈 배열로 대체.
       api.listIncomingExpansionInvites(token, selectedId).catch(() => []),
+      // P1-5 - claim된 업체 중 40%가 메뉴를 하나도 등록하지 않아 Customer AI가
+      // 추천할 근거 자체가 없는 상태라, Home에서 메뉴 개수를 반드시 가져온다.
+      api.listMenus(selectedId).catch(() => []),
     ])
-      .then(([today, all, perf, profile, couponList, invites]) => {
+      .then(([today, all, perf, profile, couponList, invites, menuList]) => {
         setDashToday(today);
         setDashAll(all);
         setPerformance(perf);
         setOwnerProfile(profile);
         setCoupons(couponList);
         setIncomingInvites(invites);
+        setMenus(menuList);
       })
       .catch((err) => setDetailError(err instanceof ApiError ? err.message : "불러오기 실패"));
   }, [token, selectedId]);
@@ -277,6 +295,7 @@ export default function DashboardPage() {
           !ownerProfile ||
           coupons === null ||
           incomingInvites === null ||
+          menus === null ||
           !business ? (
             <p className="text-gray-500">불러오는 중...</p>
           ) : (
@@ -367,6 +386,7 @@ export default function DashboardPage() {
                 const todo = buildTodo({
                   ownerProfile,
                   incomingInviteCount: incomingInvites.length,
+                  menusCount: menus.length,
                   couponsCount: coupons.length,
                   reservationsEverCount: dashAll.reservations_created,
                   clicksToday: dashToday.recommendation_clicks,

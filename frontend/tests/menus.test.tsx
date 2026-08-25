@@ -34,6 +34,19 @@ vi.mock("@/lib/api", async () => {
 import MenusPage from "@/app/businesses/[id]/menus/page";
 
 describe("MenusPage (smoke)", () => {
+  it("explains why menus matter to AI recommendations, and the 0-menu state explains the same thing", async () => {
+    listMenusMock.mockResolvedValueOnce([]);
+
+    render(<MenusPage />);
+
+    expect(
+      await screen.findByText("메뉴를 등록하면 AI가 손님에게 우리 가게의 메뉴를 더 정확하게 소개할 수 있어요.")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("아직 등록된 메뉴가 없어요. 메뉴를 등록하면 AI가 손님에게 추천할 수 있어요.")
+    ).toBeInTheDocument();
+  });
+
   it("shows an existing menu's photo, origin, and allergy info", async () => {
     listMenusMock.mockResolvedValueOnce([
       {
@@ -76,7 +89,7 @@ describe("MenusPage (smoke)", () => {
     const user = userEvent.setup();
     render(<MenusPage />);
 
-    await screen.findByText("아직 등록된 메뉴가 없어요.");
+    await screen.findByText(/아직 등록된 메뉴가 없어요/);
 
     await user.type(screen.getByLabelText(/메뉴명/), "김치찌개");
     await user.type(screen.getByLabelText(/가격/), "9000");
@@ -104,7 +117,7 @@ describe("MenusPage (smoke)", () => {
     const user = userEvent.setup();
     render(<MenusPage />);
 
-    await screen.findByText("아직 등록된 메뉴가 없어요.");
+    await screen.findByText(/아직 등록된 메뉴가 없어요/);
 
     const draftButton = screen.getByRole("button", { name: "AI가 초안 써줄게요" });
     expect(draftButton).toBeDisabled();

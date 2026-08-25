@@ -85,7 +85,10 @@ export default function MenusPage() {
   return (
     <main className="mx-auto max-w-lg px-6 py-12">
       <p className="mb-1 text-sm text-gray-500">Step 2 / 3 · 메뉴 등록</p>
-      <h1 className="mb-8 text-2xl font-bold">메뉴를 등록해 주세요</h1>
+      <h1 className="mb-2 text-2xl font-bold">메뉴를 등록해 주세요</h1>
+      <p className="mb-8 text-sm text-gray-600">
+        메뉴를 등록하면 AI가 손님에게 우리 가게의 메뉴를 더 정확하게 소개할 수 있어요.
+      </p>
 
       {menus === null ? (
         <p className="text-gray-500">불러오는 중...</p>
@@ -123,7 +126,11 @@ export default function MenusPage() {
               </button>
             </li>
           ))}
-          {menus.length === 0 && <p className="text-gray-500">아직 등록된 메뉴가 없어요.</p>}
+          {menus.length === 0 && (
+            <p className="text-gray-500">
+              아직 등록된 메뉴가 없어요. 메뉴를 등록하면 AI가 손님에게 추천할 수 있어요.
+            </p>
+          )}
         </ul>
       )}
 
