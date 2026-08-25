@@ -160,11 +160,13 @@ describe("DashboardPage (smoke)", () => {
 
     render(<DashboardPage />);
 
-    expect(await screen.findByText("손님이 우리 가게를 만나는 과정")).toBeInTheDocument();
+    expect(await screen.findByText("AI가 손님을 만나는 과정")).toBeInTheDocument();
     expect(screen.getByText("영종 카페")).toBeInTheDocument();
     expect(screen.getAllByText("3회").length).toBeGreaterThan(0);
     expect(screen.getByText("50,000원")).toBeInTheDocument();
     expect(screen.getByText("💡 지금 사장님이 할 일")).toBeInTheDocument();
+    expect(screen.getByText("상담 5회 · 추천 클릭 3회 · 쿠폰 2건 · 예약 0건")).toBeInTheDocument();
+    expect(screen.getByText("이번 달 기준")).toBeInTheDocument();
   });
 
   it("shows a call-to-action when the business is not public", async () => {
@@ -178,5 +180,8 @@ describe("DashboardPage (smoke)", () => {
 
     expect(await screen.findByText("지금 공개하기")).toBeInTheDocument();
     expect(screen.getByText("지금 우리 가게는 손님에게 보이지 않아요.")).toBeInTheDocument();
+    expect(
+      screen.getByText("영종 AI가 손님을 기다리고 있어요. 첫 번째 관심이 생기면 이곳에서 바로 보여드릴게요.")
+    ).toBeInTheDocument();
   });
 });

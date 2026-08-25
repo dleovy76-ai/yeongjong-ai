@@ -30,38 +30,11 @@ function textOf(value: Record<string, unknown> | null): string {
   return typeof text === "string" ? text : "";
 }
 
-// ---- Section 1: 오늘 AI가 우리 가게를 위해 한 일 ----
-function TodayStatCard({
-  icon,
-  label,
-  value,
-  unit,
-  emptyNote,
-}: {
-  icon: string;
-  label: string;
-  value: number;
-  unit: string;
-  emptyNote: string;
-}) {
-  return (
-    <div className="rounded-lg border border-gray-200 p-4">
-      <p className="text-sm text-gray-500">
-        {icon} {label}
-      </p>
-      <p className="mt-1 text-2xl font-bold tabular-nums">
-        {value.toLocaleString()}
-        {unit}
-      </p>
-      {value === 0 && <p className="mt-1 text-xs text-gray-400">{emptyNote}</p>}
-    </div>
-  );
-}
-
-// ---- Section 2: 손님이 우리 가게를 만나는 과정 (핵심 Funnel) ----
+// ---- 핵심 Funnel: "AI가 손님을 만나는 과정" ----
 function FunnelNode({
   icon,
   title,
+  period,
   value,
   caption,
   isZero,
@@ -69,6 +42,7 @@ function FunnelNode({
 }: {
   icon: string;
   title: string;
+  period?: string;
   value?: string;
   caption?: string;
   isZero?: boolean;
@@ -78,9 +52,10 @@ function FunnelNode({
     <div className="flex flex-1 flex-col items-center rounded-lg border border-gray-200 bg-white p-4 text-center">
       <span className="text-2xl">{icon}</span>
       <p className="mt-1 text-sm font-semibold">{title}</p>
+      {period && <p className="text-sm text-gray-500">{period}</p>}
       {value !== undefined && <p className="mt-1 text-xl font-bold tabular-nums">{value}</p>}
-      {caption && <p className="mt-1 text-xs text-gray-400">{caption}</p>}
-      {isZero && emptyNote && <p className="mt-1 text-xs text-gray-400">{emptyNote}</p>}
+      {caption && <p className="mt-1 text-sm text-gray-600">{caption}</p>}
+      {isZero && emptyNote && <p className="mt-1 text-sm text-gray-600">{emptyNote}</p>}
     </div>
   );
 }
@@ -94,7 +69,7 @@ function FunnelArrow() {
   );
 }
 
-// ---- Section 4: 지금 사장님이 할 일 ----
+// ---- 지금 사장님이 할 일 ----
 interface TodoItem {
   message: string;
   detail: string;
@@ -251,7 +226,9 @@ export default function DashboardPage() {
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">영종 AI</h1>
-          <p className="mt-1 text-sm text-gray-600">사장님, 오늘도 AI가 우리 가게를 알리고 있어요.</p>
+          <p className="mt-1 text-sm text-gray-600">
+            영종 AI는 손님에게 우리 가게를 알리고, 관심을 예약·쿠폰으로 연결해 방문과 매출까지 도와드려요.
+          </p>
         </div>
         <div className="flex gap-2 text-sm">
           <Link href="/businesses/claim" className="rounded-md border border-black px-3 py-1.5">
@@ -326,100 +303,72 @@ export default function DashboardPage() {
                 </section>
               )}
 
-              {/* Section 1: 오늘 AI가 우리 가게를 위해 한 일 */}
-              <section className="mb-8">
-                <h2 className="mb-3 font-semibold">오늘 AI가 우리 가게를 위해 한 일</h2>
-                <div className="grid grid-cols-2 gap-3">
-                  <TodayStatCard
-                    icon="🤖"
-                    label="AI 상담"
-                    value={dashToday.ai_interactions_total}
-                    unit="회"
-                    emptyNote="아직 AI 상담 데이터가 없어요."
-                  />
-                  <TodayStatCard
-                    icon="👀"
-                    label="AI 추천 클릭"
-                    value={dashToday.recommendation_clicks}
-                    unit="회"
-                    emptyNote="AI 추천을 보고 우리 가게를 확인한 손님이 아직 없어요."
-                  />
-                  <TodayStatCard
-                    icon="🎟"
-                    label="쿠폰"
-                    value={dashToday.coupons_issued}
-                    unit="회"
-                    emptyNote="아직 발급된 쿠폰이 없어요."
-                  />
-                  <TodayStatCard
-                    icon="📅"
-                    label="예약"
-                    value={dashToday.reservations_created}
-                    unit="건"
-                    emptyNote="아직 들어온 예약이 없어요."
-                  />
-                </div>
-              </section>
+              {/* 핵심 Funnel: AI가 손님을 만나는 과정 */}
+              {(() => {
+                const allZero =
+                  dashToday.ai_interactions_total === 0 &&
+                  dashToday.recommendation_clicks === 0 &&
+                  dashToday.coupons_issued === 0 &&
+                  dashToday.reservations_created === 0;
+                return (
+                  <section className="mb-8">
+                    <h2 className="mb-3 font-semibold">AI가 손님을 만나는 과정</h2>
+                    {allZero && (
+                      <p className="mb-3 text-sm text-gray-600">
+                        영종 AI가 손님을 기다리고 있어요. 첫 번째 관심이 생기면 이곳에서 바로 보여드릴게요.
+                      </p>
+                    )}
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
+                      <FunnelNode
+                        icon="🤖"
+                        title="AI와 나눈 대화"
+                        value={`${dashToday.ai_interactions_total}회`}
+                        caption="손님과 사장님이 AI와 나눈 대화 횟수예요."
+                      />
+                      <FunnelArrow />
+                      <FunnelNode
+                        icon="⭐"
+                        title="우리 가게를 추천"
+                        caption="AI가 손님에게 우리 가게를 추천해요. 추천 횟수는 정확하게 집계하지 않아요."
+                      />
+                      <FunnelArrow />
+                      <FunnelNode
+                        icon="👀"
+                        title="관심을 보임"
+                        value={`${dashToday.recommendation_clicks}회`}
+                        caption="손님이 추천을 보고 눌러본 횟수예요."
+                      />
+                      <FunnelArrow />
+                      <FunnelNode
+                        icon="🎟"
+                        title="쿠폰 / 예약"
+                        value={`쿠폰 ${dashToday.coupons_issued}건 · 예약 ${dashToday.reservations_created}건`}
+                        isZero={dashToday.coupons_issued === 0 && dashToday.reservations_created === 0}
+                        emptyNote="아직 쿠폰이나 예약으로 이어진 손님이 없어요."
+                      />
+                      <FunnelArrow />
+                      <FunnelNode
+                        icon="🚶"
+                        title="방문"
+                        value={`${dashToday.visits_confirmed}건`}
+                        isZero={dashToday.visits_confirmed === 0}
+                        emptyNote="아직 방문이 확인되지 않았어요."
+                      />
+                      <FunnelArrow />
+                      <FunnelNode
+                        icon="💰"
+                        title="AI를 통해 연결된 매출"
+                        period="오늘"
+                        value={formatWon(dashToday.revenue.ai_connected_revenue)}
+                        isZero={Number(dashToday.revenue.ai_connected_revenue) === 0}
+                        emptyNote="아직 기록된 매출이 없어요. 예약이나 쿠폰 사용이 확인되면 여기 표시돼요."
+                      />
+                    </div>
+                  </section>
+                );
+              })()}
 
-              {/* Section 2: 손님이 우리 가게를 만나는 과정 (핵심 Funnel) */}
-              <section className="mb-8">
-                <h2 className="mb-3 font-semibold">손님이 우리 가게를 만나는 과정</h2>
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
-                  <FunnelNode
-                    icon="🤖"
-                    title="AI가 손님을 만남"
-                    value={`${dashToday.ai_interactions_total}회`}
-                    isZero={dashToday.ai_interactions_total === 0}
-                    emptyNote="아직 오늘 AI에게 직접 물어본 손님이 없어요."
-                  />
-                  <FunnelArrow />
-                  <FunnelNode icon="⭐" title="우리 가게를 추천" caption="AI가 후보 중에서 우리 가게를 추천해요" />
-                  <FunnelArrow />
-                  <FunnelNode
-                    icon="👀"
-                    title="손님이 관심을 보임"
-                    value={`${dashToday.recommendation_clicks}회`}
-                    isZero={dashToday.recommendation_clicks === 0}
-                    emptyNote="아직 추천을 보고 확인한 손님이 없어요."
-                  />
-                  <FunnelArrow />
-                  <FunnelNode
-                    icon="🎟"
-                    title="쿠폰 / 예약"
-                    value={`쿠폰 ${dashToday.coupons_issued}회 · 예약 ${dashToday.reservations_created}건`}
-                    isZero={dashToday.coupons_issued === 0 && dashToday.reservations_created === 0}
-                    emptyNote="아직 쿠폰이나 예약으로 이어진 손님이 없어요."
-                  />
-                  <FunnelArrow />
-                  <FunnelNode
-                    icon="🚶"
-                    title="실제 방문"
-                    value={`${dashToday.visits_confirmed}건`}
-                    isZero={dashToday.visits_confirmed === 0}
-                    emptyNote="아직 방문이 확인되지 않았어요."
-                  />
-                  <FunnelArrow />
-                  <FunnelNode
-                    icon="💰"
-                    title="AI와 연결된 매출"
-                    value={formatWon(dashToday.revenue.ai_connected_revenue)}
-                    isZero={Number(dashToday.revenue.ai_connected_revenue) === 0}
-                    emptyNote="아직 기록된 매출이 없어요. 예약이나 쿠폰 사용이 확인되면 여기 표시돼요."
-                  />
-                </div>
-              </section>
-
-              {/* Section 3: 오늘의 한마디 */}
-              <section className="mb-8 rounded-md bg-gray-50 p-4 text-sm">
-                <h2 className="mb-2 font-semibold">오늘의 한마디</h2>
-                {dashToday.recommendation_clicks > 0 ? (
-                  <p>오늘 AI 추천을 통해 {dashToday.recommendation_clicks}회 우리 가게를 확인했어요.</p>
-                ) : (
-                  <p className="text-gray-500">아직 충분한 데이터가 쌓이지 않았어요.</p>
-                )}
-              </section>
-
-              {/* Section 4: 지금 사장님이 할 일 */}
+              {/* 지금 사장님이 할 일 */}
               {(() => {
                 const todo = buildTodo({
                   ownerProfile,
@@ -446,32 +395,41 @@ export default function DashboardPage() {
                 );
               })()}
 
-              {/* Section 5: 우리 가게 성과 */}
+              {/* 오늘 AI 활동 상세 (Funnel 요약, 큰 카드로 반복하지 않음) */}
+              <section className="mb-8 rounded-md border border-gray-200 p-4">
+                <h2 className="mb-2 font-semibold">오늘 AI 활동 상세</h2>
+                <p className="text-sm text-gray-700">
+                  상담 {dashToday.ai_interactions_total}회 · 추천 클릭 {dashToday.recommendation_clicks}회 · 쿠폰{" "}
+                  {dashToday.coupons_issued}건 · 예약 {dashToday.reservations_created}건
+                </p>
+              </section>
+
+              {/* 우리 가게 성과 (이번 달) */}
               <section className="mb-8 rounded-md border border-gray-200 p-4">
                 <div className="mb-3 flex items-center justify-between">
                   <h2 className="font-semibold">우리 가게 성과</h2>
-                  <Link href={`/businesses/${business.id}/performance`} className="text-xs underline">
+                  <Link href={`/businesses/${business.id}/performance`} className="text-sm underline">
                     자세히 보기 →
                   </Link>
                 </div>
-                <p className="mb-3 text-xs text-gray-500">{performance.period} 기준</p>
+                <p className="mb-3 text-sm text-gray-500">이번 달 기준</p>
                 <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
                   <div className="rounded-md bg-gray-50 p-3">
-                    <dt className="text-xs text-gray-500">전체 매출</dt>
+                    <dt className="text-sm text-gray-500">우리 가게 전체 매출</dt>
                     <dd className="font-semibold">{formatWon(performance.revenue_total)}</dd>
                   </div>
                   <div className="rounded-md bg-gray-50 p-3">
-                    <dt className="text-xs text-gray-500">AI와 연결된 매출</dt>
+                    <dt className="text-sm text-gray-500">AI를 통해 연결된 매출</dt>
                     <dd className="font-semibold">{formatWon(performance.revenue_ai_connected)}</dd>
                   </div>
                   <div className="rounded-md bg-gray-50 p-3">
-                    <dt className="text-xs text-gray-500">AI 상담</dt>
+                    <dt className="text-sm text-gray-500">AI 상담</dt>
                     <dd className="font-semibold">{performance.ai_response_count.toLocaleString()}건</dd>
                   </div>
                 </dl>
               </section>
 
-              {/* Section 6/7: 더 많은 정보를 보고 싶다면 */}
+              {/* 더 많은 정보를 보고 싶다면 */}
               <section>
                 <h2 className="mb-3 font-semibold">더 많은 정보를 보고 싶다면</h2>
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
