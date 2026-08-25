@@ -149,6 +149,8 @@ export interface Coupon {
   conditions: string | null;
   usage_limit: number | null;
   status: CouponStatus;
+  issued_count: number;
+  redeemed_count: number;
 }
 
 export interface CouponIssue {

@@ -170,6 +170,63 @@ def test_issue_links_to_logged_in_customer(client):
     assert anonymous.json()["code"] not in codes
 
 
+def test_coupon_response_reports_issued_and_redeemed_counts(client):
+    """P1-3 - 쿠폰별 발급/사용 건수. list_coupons가 CouponIssue를 그대로
+    집계해서 돌려주는지 확인한다(새 계산 규칙 없음)."""
+    headers = _register(client, "coupon-owner12@example.com")
+    business = _create_business(client, headers)
+    business_id = business["id"]
+
+    coupon = _create_coupon(client, headers, business_id)
+    client.patch(
+        f"/api/v1/businesses/{business_id}/coupons/{coupon['id']}", headers=headers, json={"status": "ACTIVE"}
+    )
+
+    just_created = client.get(f"/api/v1/businesses/{business_id}/coupons", headers=headers).json()[0]
+    assert just_created["issued_count"] == 0
+    assert just_created["redeemed_count"] == 0
+
+    claim1 = client.post(f"/api/v1/businesses/{business_id}/coupons/{coupon['id']}/issue").json()
+    client.post(f"/api/v1/businesses/{business_id}/coupons/{coupon['id']}/issue")  # 발급만, 미사용
+    client.post(f"/api/v1/businesses/{business_id}/coupons/redeem", headers=headers, json={"code": claim1["code"]})
+
+    updated = client.get(f"/api/v1/businesses/{business_id}/coupons", headers=headers).json()[0]
+    assert updated["issued_count"] == 2
+    assert updated["redeemed_count"] == 1
+
+
+def test_coupon_usage_counts_do_not_leak_across_businesses_or_coupons(client):
+    """P1-3 - 다른 업체(또는 같은 업체의 다른 쿠폰)의 CouponIssue가 이 쿠폰의
+    건수에 섞이지 않아야 한다."""
+    headers_a = _register(client, "coupon-owner13@example.com")
+    business_a = _create_business(client, headers_a, name_ko="가게A")
+    coupon_a1 = _create_coupon(client, headers_a, business_a["id"], title="쿠폰A1")
+    coupon_a2 = _create_coupon(client, headers_a, business_a["id"], title="쿠폰A2")
+    for coupon in (coupon_a1, coupon_a2):
+        client.patch(
+            f"/api/v1/businesses/{business_a['id']}/coupons/{coupon['id']}",
+            headers=headers_a,
+            json={"status": "ACTIVE"},
+        )
+    client.post(f"/api/v1/businesses/{business_a['id']}/coupons/{coupon_a1['id']}/issue")
+
+    headers_b = _register(client, "coupon-owner14@example.com")
+    business_b = _create_business(client, headers_b, name_ko="가게B")
+    coupon_b = _create_coupon(client, headers_b, business_b["id"], title="쿠폰B")
+    client.patch(
+        f"/api/v1/businesses/{business_b['id']}/coupons/{coupon_b['id']}", headers=headers_b, json={"status": "ACTIVE"}
+    )
+    client.post(f"/api/v1/businesses/{business_b['id']}/coupons/{coupon_b['id']}/issue")
+    client.post(f"/api/v1/businesses/{business_b['id']}/coupons/{coupon_b['id']}/issue")
+
+    a_coupons = {c["title"]: c for c in client.get(f"/api/v1/businesses/{business_a['id']}/coupons", headers=headers_a).json()}
+    assert a_coupons["쿠폰A1"]["issued_count"] == 1
+    assert a_coupons["쿠폰A2"]["issued_count"] == 0  # 같은 업체의 다른 쿠폰과도 안 섞임
+
+    b_coupons = client.get(f"/api/v1/businesses/{business_b['id']}/coupons", headers=headers_b).json()
+    assert b_coupons[0]["issued_count"] == 2  # 다른 업체(가게A)의 발급이 안 섞임
+
+
 def test_redeem_requires_owner_auth(client):
     headers = _register(client, "coupon-owner10@example.com")
     business = _create_business(client, headers)

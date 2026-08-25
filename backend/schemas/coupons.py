@@ -42,6 +42,11 @@ class CouponResponse(BaseModel):
     conditions: str | None
     usage_limit: int | None
     status: CouponStatus
+    # P1-3 - 쿠폰별 발급/사용 건수(전체 기간 누적). CouponIssue를 조회해야만
+    # 채울 수 있어서 Coupon ORM 객체를 그대로 model_validate()할 때는 항상
+    # 기본값 0으로 시작하고, 라우터가 실제 집계값으로 덮어쓴다.
+    issued_count: int = 0
+    redeemed_count: int = 0
 
     model_config = {"from_attributes": True}
 

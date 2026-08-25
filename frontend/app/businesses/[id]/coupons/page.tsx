@@ -3,7 +3,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
-import { api, ApiError, type Coupon, type CouponDiscountType } from "@/lib/api";
+import { api, ApiError, type Coupon, type CouponDiscountType, type CouponIssue } from "@/lib/api";
 
 const STATUS_LABEL: Record<Coupon["status"], string> = {
   DRAFT: "준비 중 (비공개)",
@@ -11,6 +11,19 @@ const STATUS_LABEL: Record<Coupon["status"], string> = {
   EXPIRED: "만료됨",
   DISABLED: "비활성화됨",
 };
+
+function formatWon(amount: string): string {
+  return `${Number(amount).toLocaleString()}원`;
+}
+
+interface RedemptionEntry {
+  claim: CouponIssue;
+  amountInput: string;
+  formOpen: boolean;
+  recording: boolean;
+  error: string | null;
+  transaction: { amount: string } | null;
+}
 
 export default function CouponsPage() {
   const { id } = useParams<{ id: string }>();
@@ -26,9 +39,12 @@ export default function CouponsPage() {
   const [submitting, setSubmitting] = useState(false);
 
   const [redeemCode, setRedeemCode] = useState("");
-  const [redeemAmount, setRedeemAmount] = useState("");
-  const [redeemResult, setRedeemResult] = useState<string | null>(null);
+  const [redeeming, setRedeeming] = useState(false);
   const [redeemError, setRedeemError] = useState<string | null>(null);
+  // 쿠폰 사용 처리 건 목록을 조회하는 API가 없어서, 이번 방문(세션) 동안
+  // 이 화면에서 직접 처리한 건만 여기 쌓인다 - 새로고침하면 사라진다(아래
+  // 최종 보고의 "남은 문제"에 명시).
+  const [recentRedemptions, setRecentRedemptions] = useState<RedemptionEntry[]>([]);
 
   useEffect(() => {
     if (!authLoading && !token) router.push("/login");
@@ -69,29 +85,56 @@ export default function CouponsPage() {
     setCoupons((prev) => prev?.map((c) => (c.id === updated.id ? updated : c)) ?? null);
   };
 
+  const updateRedemption = (claimId: string, patch: Partial<RedemptionEntry>) => {
+    setRecentRedemptions((prev) => prev.map((r) => (r.claim.id === claimId ? { ...r, ...patch } : r)));
+  };
+
   const onRedeem = async (e: FormEvent) => {
     e.preventDefault();
     if (!token) return;
     setRedeemError(null);
-    setRedeemResult(null);
+    setRedeeming(true);
     try {
       const claim = await api.redeemCoupon(token, id, redeemCode.trim());
-      let resultText = `사용 처리 완료! (코드: ${claim.code})`;
-      if (redeemAmount.trim()) {
-        await api.createTransaction(token, id, { amount: redeemAmount.trim(), coupon_issue_id: claim.id });
-        resultText += ` · 거래액 ${Number(redeemAmount).toLocaleString()}원 기록됨`;
-      }
-      setRedeemResult(resultText);
+      setRecentRedemptions((prev) => [
+        { claim, amountInput: "", formOpen: true, recording: false, error: null, transaction: null },
+        ...prev,
+      ]);
       setRedeemCode("");
-      setRedeemAmount("");
     } catch (err) {
       setRedeemError(err instanceof ApiError ? err.message : "쿠폰 사용 처리 중 오류가 발생했습니다.");
+    } finally {
+      setRedeeming(false);
+    }
+  };
+
+  const onRecordAmount = async (claimId: string) => {
+    if (!token) return;
+    const entry = recentRedemptions.find((r) => r.claim.id === claimId);
+    if (!entry) return;
+    const amount = Number(entry.amountInput);
+    if (!entry.amountInput || amount <= 0) return;
+    updateRedemption(claimId, { recording: true, error: null });
+    try {
+      const transaction = await api.createTransaction(token, id, {
+        amount: entry.amountInput,
+        coupon_issue_id: claimId,
+      });
+      updateRedemption(claimId, { transaction, formOpen: false, recording: false });
+    } catch (err) {
+      updateRedemption(claimId, {
+        error: err instanceof ApiError ? err.message : "매출 기록 중 오류가 발생했습니다.",
+        recording: false,
+      });
     }
   };
 
   return (
     <main className="mx-auto max-w-lg px-6 py-12">
-      <h1 className="mb-8 text-2xl font-bold">쿠폰 관리</h1>
+      <h1 className="mb-2 text-2xl font-bold">쿠폰 관리</h1>
+      <p className="mb-8 text-sm text-gray-600">
+        쿠폰을 받은 손님이 실제로 사용했는지 확인하고, 사용한 손님의 매출까지 기록할 수 있어요.
+      </p>
 
       {coupons === null ? (
         <p className="text-gray-500">불러오는 중...</p>
@@ -118,9 +161,24 @@ export default function CouponsPage() {
                   </button>
                 )}
               </div>
+              <div className="mt-3 grid grid-cols-2 gap-2 border-t border-gray-100 pt-3">
+                <div>
+                  <p className="text-gray-500">🎟 손님에게 발급</p>
+                  <p className="font-semibold">{coupon.issued_count}건</p>
+                </div>
+                <div>
+                  <p className="text-gray-500">✅ 실제 사용</p>
+                  <p className="font-semibold">{coupon.redeemed_count}건</p>
+                  {coupon.redeemed_count === 0 && (
+                    <p className="mt-1 text-gray-500">아직 사용된 쿠폰이 없어요.</p>
+                  )}
+                </div>
+              </div>
             </li>
           ))}
-          {coupons.length === 0 && <p className="text-gray-500">아직 등록된 쿠폰이 없어요.</p>}
+          {coupons.length === 0 && (
+            <p className="text-gray-500">아직 만든 쿠폰이 없어요. 아래에서 첫 쿠폰을 만들어보세요.</p>
+          )}
         </ul>
       )}
 
@@ -179,35 +237,93 @@ export default function CouponsPage() {
         </button>
       </form>
 
-      <form onSubmit={onRedeem} className="flex flex-col gap-4 rounded-md border border-gray-200 p-4">
+      <div className="flex flex-col gap-4 rounded-md border border-gray-200 p-4">
         <h2 className="font-semibold">손님 쿠폰 코드 사용 처리</h2>
-        <p className="text-sm text-gray-600">
-          손님이 보여준 코드를 입력하면 사용 완료로 처리돼요. 한 번 처리한 코드는 다시 쓸 수 없어요.
-        </p>
-        <input
-          className="rounded-md border border-gray-300 px-3 py-2 uppercase"
-          placeholder="예: HMCARD7Q"
-          value={redeemCode}
-          onChange={(e) => setRedeemCode(e.target.value)}
-          required
-        />
-        <label className="flex flex-col gap-1 text-sm">
-          실제 결제 금액 (선택 - 입력하면 이번 달 성과에 AI 연관 매출로 잡혀요)
+        <form onSubmit={onRedeem} className="flex flex-col gap-3">
+          <p className="text-sm text-gray-600">
+            손님이 보여준 코드를 입력하면 사용 완료로 처리돼요. 한 번 처리한 코드는 다시 쓸 수 없어요.
+          </p>
           <input
-            type="number"
-            min="0"
-            className="rounded-md border border-gray-300 px-3 py-2 normal-case"
-            placeholder="예: 15000"
-            value={redeemAmount}
-            onChange={(e) => setRedeemAmount(e.target.value)}
+            className="rounded-md border border-gray-300 px-3 py-2 uppercase"
+            placeholder="예: HMCARD7Q"
+            value={redeemCode}
+            onChange={(e) => setRedeemCode(e.target.value)}
+            required
           />
-        </label>
-        {redeemError && <p className="text-sm text-red-600">{redeemError}</p>}
-        {redeemResult && <p className="text-sm text-green-700">{redeemResult}</p>}
-        <button type="submit" className="rounded-md border border-black px-4 py-2">
-          사용 처리
-        </button>
-      </form>
+          {redeemError && <p className="text-sm text-red-600">{redeemError}</p>}
+          <button
+            type="submit"
+            disabled={redeeming}
+            className="rounded-md border border-black px-4 py-2 disabled:opacity-50"
+          >
+            {redeeming ? "처리 중..." : "사용 처리"}
+          </button>
+        </form>
+
+        {recentRedemptions.map((entry) => (
+          <div key={entry.claim.id} className="rounded-md bg-gray-50 p-3 text-sm">
+            <p className="text-gray-500">코드: {entry.claim.code}</p>
+
+            {entry.transaction ? (
+              <>
+                <p className="mt-1 text-gray-700">
+                  실제 매출 <span className="font-semibold">{formatWon(entry.transaction.amount)}</span>
+                </p>
+                <p className="mt-1 text-green-700">매출이 기록됐어요. 쿠폰을 사용한 손님의 매출로 연결됐어요.</p>
+              </>
+            ) : entry.formOpen ? (
+              <>
+                <p className="mt-2 font-semibold">🎉 쿠폰 사용이 확인됐어요</p>
+                <p className="mt-1 text-gray-600">
+                  실제 결제금액을 기록하면 AI를 통해 연결된 매출로 확인할 수 있어요.
+                </p>
+                <div className="mt-2 flex items-center gap-2">
+                  <span className="text-lg font-semibold">₩</span>
+                  <input
+                    type="number"
+                    min="1"
+                    inputMode="numeric"
+                    placeholder="15000"
+                    className="w-32 rounded-md border border-gray-300 px-3 py-2 text-base normal-case"
+                    value={entry.amountInput}
+                    onChange={(e) => updateRedemption(entry.claim.id, { amountInput: e.target.value })}
+                  />
+                </div>
+                {entry.amountInput && Number(entry.amountInput) > 0 && (
+                  <p className="mt-1 text-gray-500">{Number(entry.amountInput).toLocaleString()}원</p>
+                )}
+                {entry.error && <p className="mt-1 text-red-600">{entry.error}</p>}
+                <div className="mt-3 flex gap-2">
+                  <button
+                    onClick={() => onRecordAmount(entry.claim.id)}
+                    disabled={entry.recording || !entry.amountInput || Number(entry.amountInput) <= 0}
+                    className="rounded-md bg-black px-4 py-2 text-white disabled:opacity-50"
+                  >
+                    {entry.recording ? "기록 중..." : "매출 기록하기"}
+                  </button>
+                  <button
+                    onClick={() => updateRedemption(entry.claim.id, { formOpen: false })}
+                    disabled={entry.recording}
+                    className="rounded-md border border-black px-4 py-2 disabled:opacity-50"
+                  >
+                    나중에
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="mt-2 flex items-center justify-between">
+                <p className="text-gray-500">실제 매출: 아직 기록하지 않았어요</p>
+                <button
+                  onClick={() => updateRedemption(entry.claim.id, { formOpen: true })}
+                  className="rounded-md border border-black px-3 py-1.5"
+                >
+                  매출 기록하기
+                </button>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
     </main>
   );
 }

@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from core.database import get_db
@@ -39,6 +40,34 @@ def _get_coupon_or_404(db: Session, business_id: UUID, coupon_id: UUID) -> Coupo
     return coupon
 
 
+def _coupon_usage_counts(db: Session, coupon_ids: list[UUID]) -> tuple[dict[UUID, int], dict[UUID, int]]:
+    """쿠폰별 발급/사용 건수(전체 기간 누적) - Performance의 coupons_issued/
+    coupons_redeemed와 판정 기준(REDEEMED 여부)이 완전히 동일한 CouponIssue
+    집계다. 기간만 다르다(Performance는 이번 달, 이건 쿠폰 전체 기간)."""
+    if not coupon_ids:
+        return {}, {}
+    issued = dict(
+        db.query(CouponIssue.coupon_id, func.count(CouponIssue.id))
+        .filter(CouponIssue.coupon_id.in_(coupon_ids))
+        .group_by(CouponIssue.coupon_id)
+        .all()
+    )
+    redeemed = dict(
+        db.query(CouponIssue.coupon_id, func.count(CouponIssue.id))
+        .filter(CouponIssue.coupon_id.in_(coupon_ids), CouponIssue.status == CouponIssueStatus.REDEEMED)
+        .group_by(CouponIssue.coupon_id)
+        .all()
+    )
+    return issued, redeemed
+
+
+def _to_coupon_response(coupon: Coupon, issued_counts: dict, redeemed_counts: dict) -> CouponResponse:
+    response = CouponResponse.model_validate(coupon)
+    response.issued_count = issued_counts.get(coupon.id, 0)
+    response.redeemed_count = redeemed_counts.get(coupon.id, 0)
+    return response
+
+
 @router.post("", response_model=CouponResponse, status_code=status.HTTP_201_CREATED)
 def create_coupon(
     business_id: UUID,
@@ -53,7 +82,8 @@ def create_coupon(
     db.add(coupon)
     db.commit()
     db.refresh(coupon)
-    return CouponResponse.model_validate(coupon)
+    # 방금 만든 쿠폰이라 발급/사용 건수는 항상 0 - 쿼리 없이 바로 반환한다.
+    return _to_coupon_response(coupon, {}, {})
 
 
 @router.get("", response_model=list[CouponResponse])
@@ -70,7 +100,8 @@ def list_coupons(
     coupons = db.query(Coupon).filter(Coupon.business_id == business_id).all()
     if not is_owner:
         coupons = [c for c in coupons if is_coupon_currently_claimable(c)]
-    return [CouponResponse.model_validate(c) for c in coupons]
+    issued_counts, redeemed_counts = _coupon_usage_counts(db, [c.id for c in coupons])
+    return [_to_coupon_response(c, issued_counts, redeemed_counts) for c in coupons]
 
 
 @router.patch("/{coupon_id}", response_model=CouponResponse)
@@ -89,7 +120,8 @@ def update_coupon(
         setattr(coupon, field, value)
     db.commit()
     db.refresh(coupon)
-    return CouponResponse.model_validate(coupon)
+    issued_counts, redeemed_counts = _coupon_usage_counts(db, [coupon.id])
+    return _to_coupon_response(coupon, issued_counts, redeemed_counts)
 
 
 @router.post("/{coupon_id}/issue", response_model=CouponIssueResponse, status_code=status.HTTP_201_CREATED)
