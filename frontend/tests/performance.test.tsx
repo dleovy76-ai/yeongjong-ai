@@ -39,6 +39,9 @@ function makePerformance(overrides: Partial<Record<string, unknown>> = {}) {
     visits_confirmed_note: "쿠폰 사용 처리 또는 예약 방문 완료 처리로 확인된 건수예요.",
     successful_referrals: 0,
     successful_referrals_note: "전체 기간 누적입니다.",
+    partner_invites_sent: 0,
+    partner_accepted: 0,
+    partner_performance_note: "제안한 업체와 제휴 성사 업체 수예요.",
     estimated_time_saved_minutes: 0,
     estimated_time_saved_note: "추정치입니다.",
     revenue_total: "0",
@@ -100,12 +103,17 @@ describe("PerformancePage - 이번 달 우리 가게 성과", () => {
     expect(screen.getByText("아직 방문이 확인되지 않았어요.")).toBeInTheDocument();
   });
 
-  it("지금까지 소개로 가입한 업체는 이번 달 성과와 별개로 전체 기간임을 명시한다", async () => {
-    getPerformanceMock.mockResolvedValueOnce(makePerformance({ successful_referrals: 3 }));
+  it("제휴 성과(제안/성사/소개가입)는 이번 달 성과와 별개로 전체 기간임을 명시한다", async () => {
+    getPerformanceMock.mockResolvedValueOnce(
+      makePerformance({ partner_invites_sent: 4, partner_accepted: 1, successful_referrals: 3 })
+    );
 
     render(<PerformancePage />);
 
-    expect(await screen.findByText("3곳")).toBeInTheDocument();
-    expect(screen.getByText(/전체 기간 누적/)).toBeInTheDocument();
+    expect(await screen.findByText("🤝 제휴 성과")).toBeInTheDocument();
+    expect(
+      screen.getByText("제안한 업체 4곳 · 제휴 성사 1곳 · 소개로 가입 3곳")
+    ).toBeInTheDocument();
+    expect(screen.getAllByText(/전체 기간 누적/).length).toBeGreaterThan(0);
   });
 });

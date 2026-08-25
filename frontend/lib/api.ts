@@ -715,6 +715,9 @@ export interface Performance {
   visits_confirmed_note: string;
   successful_referrals: number;
   successful_referrals_note: string;
+  partner_invites_sent: number;
+  partner_accepted: number;
+  partner_performance_note: string;
   estimated_time_saved_minutes: number;
   estimated_time_saved_note: string;
   revenue_total: string;

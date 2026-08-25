@@ -40,6 +40,8 @@ def get_performance(
         recommendation_clicks=summary["recommendation_clicks"],
         visits_confirmed=summary["visits_confirmed"],
         successful_referrals=summary["successful_referrals"],
+        partner_invites_sent=summary["partner_invites_sent"],
+        partner_accepted=summary["partner_accepted"],
         estimated_time_saved_minutes=summary["ai_response_count"] * _MINUTES_SAVED_PER_AI_RESPONSE,
         revenue_total=summary["revenue_total"],
         revenue_direct=summary["revenue_direct"],

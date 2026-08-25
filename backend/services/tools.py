@@ -408,6 +408,27 @@ class PerformanceSummaryTool:
             )
             .count()
         )
+        # P1-4 - "제안한 업체"는 SUGGESTED(아직 사장님이 아무 결정도 안 한 AI
+        # 추천)를 제외한, 실제로 사장님이 [제휴 제안하기]를 눌러 INVITED 이상으로
+        # 넘어간 적 있는 업체 수(전체 기간 누적) - PartnerSearchTool.
+        # decided_relationship_ids와 동일한 판정 기준(status != SUGGESTED)을
+        # 재사용한다.
+        partner_invites_sent = (
+            self.db.query(BusinessRelationship)
+            .filter(
+                BusinessRelationship.business_a_id == business_id,
+                BusinessRelationship.status != PartnerRelationshipStatus.SUGGESTED,
+            )
+            .count()
+        )
+        partner_accepted = (
+            self.db.query(BusinessRelationship)
+            .filter(
+                BusinessRelationship.business_a_id == business_id,
+                BusinessRelationship.status == PartnerRelationshipStatus.ACCEPTED,
+            )
+            .count()
+        )
         # 기획서 12번 "가장 성과가 좋았던 기능" - 매출 인과관계까지 증명할 방법은
         # 없으니(§29), 정직하게 "가장 많이 쓰인 기능"(응대 건수 기준)으로 제한한다.
         ai_response_count_by_agent_type = dict(
@@ -445,6 +466,8 @@ class PerformanceSummaryTool:
             "recommendation_clicks": recommendation_clicks,
             "visits_confirmed": coupons_redeemed + reservations_completed,
             "successful_referrals": successful_referrals,
+            "partner_invites_sent": partner_invites_sent,
+            "partner_accepted": partner_accepted,
             # str, not Decimal - this dict also flows straight into
             # ManagerDashboardTool's json.dumps() for the LLM prompt (see
             # coupon_summary's str(discount_value) just below for the same

@@ -12,6 +12,7 @@ import {
   type BusinessOwnerProfile,
   type BusinessPilotDashboard,
   type Coupon,
+  type IncomingPartnerInvite,
   type Performance,
 } from "@/lib/api";
 
@@ -41,13 +42,22 @@ interface TodoItem {
 
 function buildTodo(params: {
   ownerProfile: BusinessOwnerProfile;
+  incomingInviteCount: number;
   couponsCount: number;
   reservationsEverCount: number;
   clicksToday: number;
   couponsIssuedToday: number;
   businessId: string;
 }): TodoItem {
-  const { ownerProfile, couponsCount, reservationsEverCount, clicksToday, couponsIssuedToday, businessId } = params;
+  const {
+    ownerProfile,
+    incomingInviteCount,
+    couponsCount,
+    reservationsEverCount,
+    clicksToday,
+    couponsIssuedToday,
+    businessId,
+  } = params;
 
   const profileIncomplete = !ownerProfile.description || !textOf(ownerProfile.opening_hours);
   if (profileIncomplete) {
@@ -56,6 +66,15 @@ function buildTodo(params: {
       detail: "가게 소개나 영업시간이 비어 있으면 AI가 \"확인이 필요합니다\"라고만 답해요.",
       actionLabel: "가게 정보 채우기",
       actionHref: `/businesses/${businessId}/profile`,
+    };
+  }
+
+  if (incomingInviteCount > 0) {
+    return {
+      message: `주변 가게에서 받은 제휴 제안이 ${incomingInviteCount}건 있어요.`,
+      detail: "수락하면 서로의 손님에게 AI가 자연스럽게 서로를 추천해줘요.",
+      actionLabel: "제휴 제안 확인하기",
+      actionHref: `/businesses/${businessId}/expansion`,
     };
   }
 
@@ -118,6 +137,7 @@ export default function DashboardPage() {
   const [performance, setPerformance] = useState<Performance | null>(null);
   const [ownerProfile, setOwnerProfile] = useState<BusinessOwnerProfile | null>(null);
   const [coupons, setCoupons] = useState<Coupon[] | null>(null);
+  const [incomingInvites, setIncomingInvites] = useState<IncomingPartnerInvite[] | null>(null);
   const [detailError, setDetailError] = useState<string | null>(null);
   const [togglingStatus, setTogglingStatus] = useState(false);
 
@@ -146,19 +166,25 @@ export default function DashboardPage() {
     setPerformance(null);
     setOwnerProfile(null);
     setCoupons(null);
+    setIncomingInvites(null);
     Promise.all([
       api.getBusinessPilotDashboard(token, selectedId, "today"),
       api.getBusinessPilotDashboard(token, selectedId, "all"),
       api.getPerformance(token, selectedId),
       api.getOwnerProfile(token, selectedId),
       api.listCoupons(selectedId, token),
+      // 받은 제휴 제안 - Expansion 화면에 들어가지 않으면 존재 자체를 알 방법이
+      // 없었던 P1-4의 핵심 단절 지점이라 Home에서 반드시 가져온다. 실패해도
+      // Home 전체가 막히지 않도록 조용히 빈 배열로 대체.
+      api.listIncomingExpansionInvites(token, selectedId).catch(() => []),
     ])
-      .then(([today, all, perf, profile, couponList]) => {
+      .then(([today, all, perf, profile, couponList, invites]) => {
         setDashToday(today);
         setDashAll(all);
         setPerformance(perf);
         setOwnerProfile(profile);
         setCoupons(couponList);
+        setIncomingInvites(invites);
       })
       .catch((err) => setDetailError(err instanceof ApiError ? err.message : "불러오기 실패"));
   }, [token, selectedId]);
@@ -245,7 +271,13 @@ export default function DashboardPage() {
 
           {detailError && <p className="mb-4 text-sm text-red-600">{detailError}</p>}
 
-          {!dashToday || !dashAll || !performance || !ownerProfile || coupons === null || !business ? (
+          {!dashToday ||
+          !dashAll ||
+          !performance ||
+          !ownerProfile ||
+          coupons === null ||
+          incomingInvites === null ||
+          !business ? (
             <p className="text-gray-500">불러오는 중...</p>
           ) : (
             <>
@@ -334,6 +366,7 @@ export default function DashboardPage() {
               {(() => {
                 const todo = buildTodo({
                   ownerProfile,
+                  incomingInviteCount: incomingInvites.length,
                   couponsCount: coupons.length,
                   reservationsEverCount: dashAll.reservations_created,
                   clicksToday: dashToday.recommendation_clicks,

@@ -25,6 +25,12 @@ class PerformanceResponse(BaseModel):
         "우리 가게가 보낸 초대 링크로 실제 새 업체가 가입한 누적 건수입니다 (전체 기간 기준). "
         "아직 할인/포인트 같은 보상은 없어요 - 결제·포인트 시스템이 생기면 추가될 예정입니다."
     )
+    partner_invites_sent: int
+    partner_accepted: int
+    partner_performance_note: str = (
+        "제안한 업체는 우리 가게가 실제로 제휴를 제안한 누적 업체 수(전체 기간 기준)이고, "
+        "제휴 성사는 상대가 수락해 서로의 손님에게 자연스럽게 추천해주는 관계가 된 업체 수예요."
+    )
     estimated_time_saved_minutes: int
     estimated_time_saved_note: str = (
         "AI 응대 1건당 약 3분 절감을 가정한 추정치입니다 (검증된 값이 아닙니다)."

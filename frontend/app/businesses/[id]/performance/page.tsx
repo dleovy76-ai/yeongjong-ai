@@ -149,11 +149,16 @@ export default function PerformancePage() {
             <p className="mt-1 text-sm text-gray-600">{performance.estimated_time_saved_note}</p>
           </section>
 
-          {/* 지금까지 소개로 가입한 업체 (전체 기간 - 이번 달 성과와 기간이 다름) */}
+          {/* 제휴 성과 (전체 기간 - 이번 달 성과와 기간이 다름) */}
           <section className="rounded-md border border-gray-200 p-4 text-sm">
-            <p className="font-semibold">🤝 지금까지 소개로 가입한 업체</p>
-            <p className="mt-1 text-lg font-semibold">{performance.successful_referrals.toLocaleString()}곳</p>
-            <p className="mt-1 text-gray-500">전체 기간 누적 · {performance.successful_referrals_note}</p>
+            <p className="font-semibold">🤝 제휴 성과</p>
+            <p className="mt-1 text-lg font-semibold">
+              제안한 업체 {performance.partner_invites_sent.toLocaleString()}곳 · 제휴 성사{" "}
+              {performance.partner_accepted.toLocaleString()}곳 · 소개로 가입{" "}
+              {performance.successful_referrals.toLocaleString()}곳
+            </p>
+            <p className="mt-1 text-gray-500">전체 기간 누적 · {performance.partner_performance_note}</p>
+            <p className="mt-1 text-gray-500">{performance.successful_referrals_note}</p>
           </section>
         </>
       )}

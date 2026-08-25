@@ -8,6 +8,7 @@ const {
   getPerformanceMock,
   getOwnerProfileMock,
   listCouponsMock,
+  listIncomingExpansionInvitesMock,
 } = vi.hoisted(() => ({
   // useEffect의 deps 배열에 router가 들어가므로(app/dashboard/page.tsx), 매
   // 렌더마다 새 객체를 반환하면 deps가 계속 "바뀐 것"으로 보여 effect가
@@ -18,6 +19,7 @@ const {
   getPerformanceMock: vi.fn(),
   getOwnerProfileMock: vi.fn(),
   listCouponsMock: vi.fn(),
+  listIncomingExpansionInvitesMock: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -43,6 +45,7 @@ vi.mock("@/lib/api", async () => {
       getPerformance: getPerformanceMock,
       getOwnerProfile: getOwnerProfileMock,
       listCoupons: listCouponsMock,
+      listIncomingExpansionInvites: listIncomingExpansionInvitesMock,
     },
   };
 });
@@ -104,6 +107,9 @@ function makePerformance(overrides: Partial<Record<string, unknown>> = {}) {
     reservations_this_month: 0,
     successful_referrals: 0,
     successful_referrals_note: "",
+    partner_invites_sent: 0,
+    partner_accepted: 0,
+    partner_performance_note: "",
     estimated_time_saved_minutes: 0,
     estimated_time_saved_note: "",
     revenue_total: "0",
@@ -157,6 +163,7 @@ describe("DashboardPage (smoke)", () => {
     getPerformanceMock.mockResolvedValueOnce(makePerformance({ revenue_total: "90000", revenue_ai_connected: "50000" }));
     getOwnerProfileMock.mockResolvedValueOnce(makeOwnerProfile());
     listCouponsMock.mockResolvedValueOnce([{ id: "c1" }]);
+    listIncomingExpansionInvitesMock.mockResolvedValueOnce([]);
 
     render(<DashboardPage />);
 
@@ -175,6 +182,7 @@ describe("DashboardPage (smoke)", () => {
     getPerformanceMock.mockResolvedValueOnce(makePerformance());
     getOwnerProfileMock.mockResolvedValueOnce(makeOwnerProfile());
     listCouponsMock.mockResolvedValueOnce([]);
+    listIncomingExpansionInvitesMock.mockResolvedValueOnce([]);
 
     render(<DashboardPage />);
 
@@ -183,5 +191,35 @@ describe("DashboardPage (smoke)", () => {
     expect(
       screen.getByText("영종 AI가 손님을 기다리고 있어요. 첫 번째 관심이 생기면 이곳에서 바로 보여드릴게요.")
     ).toBeInTheDocument();
+  });
+
+  it("받은 제휴 제안이 있으면 프로필 완성 다음으로 최우선 할 일에 노출한다", async () => {
+    myBusinessesMock.mockResolvedValueOnce([makeBusiness()]);
+    getBusinessPilotDashboardMock.mockResolvedValue(makeDashboard());
+    getPerformanceMock.mockResolvedValueOnce(makePerformance());
+    getOwnerProfileMock.mockResolvedValueOnce(makeOwnerProfile());
+    // 쿠폰이 0개라 원래는 "쿠폰 만들기"가 떠야 하지만, 받은 제휴 제안이
+    // 있으면 그보다 먼저 노출돼야 한다 - P1-4의 핵심(제안이 상대에게
+    // 전혀 알려지지 않던 단절을 Home에서 메꾸는 것).
+    listCouponsMock.mockResolvedValueOnce([]);
+    listIncomingExpansionInvitesMock.mockResolvedValueOnce([
+      {
+        business_a_id: "biz-9",
+        name_ko: "뱃터카페",
+        category: "CAFE",
+        score: 95,
+        reason: "근처라 손님 동선이 자연스럽게 이어져요",
+        status: "INVITED",
+        invite_message: null,
+        effect_estimate: null,
+      },
+    ]);
+
+    render(<DashboardPage />);
+
+    expect(await screen.findByText("💡 지금 사장님이 할 일")).toBeInTheDocument();
+    expect(screen.getByText("주변 가게에서 받은 제휴 제안이 1건 있어요.")).toBeInTheDocument();
+    expect(screen.getByText("제휴 제안 확인하기")).toBeInTheDocument();
+    expect(screen.queryByText("아직 손님에게 줄 쿠폰이 없어요.")).not.toBeInTheDocument();
   });
 });

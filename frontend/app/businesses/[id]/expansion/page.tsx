@@ -160,11 +160,13 @@ export default function ExpansionPage() {
               <li key={invite.business_a_id} className="rounded-md bg-gray-50 p-3 text-sm">
                 <p className="font-semibold">
                   {invite.name_ko}{" "}
-                  <span className="font-normal text-gray-500">
-                    · {CATEGORY_LABELS[invite.category]} · 적합도 {invite.score}
-                  </span>
+                  <span className="font-normal text-gray-500">· {CATEGORY_LABELS[invite.category]}</span>
                 </p>
-                <p className="mt-1 text-gray-600">{invite.reason}</p>
+                <p className="mt-2 text-xs font-semibold text-gray-500">AI 추천 이유</p>
+                <p className="mt-0.5 text-gray-700">{invite.reason}</p>
+                <p className="mt-1 text-xs text-gray-400">
+                  참고 점수 {invite.score}점 · AI가 그때그때 판단한 값이라 다시 분석하면 달라질 수 있어요.
+                </p>
                 {invite.effect_estimate && <EffectEstimateCard estimate={invite.effect_estimate} />}
                 {invite.invite_message && (
                   <p className="mt-2 whitespace-pre-wrap rounded-md bg-white p-2 text-gray-700">
@@ -206,9 +208,13 @@ export default function ExpansionPage() {
       {suggestions === null ? (
         <p className="text-gray-500">불러오는 중...</p>
       ) : suggestions.length === 0 ? (
-        <p className="text-gray-500">
-          아직 추천 결과가 없어요. 위 버튼으로 분석을 시작해 보세요.
-        </p>
+        <div className="text-sm text-gray-500">
+          <p>아직 추천 결과가 없어요. 위 버튼으로 분석을 시작해 보세요.</p>
+          <p className="mt-2">
+            분석하면 AI가 실제 등록된 업체 중에서 협업하면 좋을 곳을 골라드려요. 마음에 드는 곳에 제휴를
+            제안하고, 상대가 수락하면 서로의 손님 AI 대화에서 자연스럽게 서로를 추천해줘요.
+          </p>
+        </div>
       ) : (
         <ul className="flex flex-col gap-3">
           {suggestions.map((s) => (
@@ -216,12 +222,13 @@ export default function ExpansionPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="font-semibold">
-                    {s.name_ko}{" "}
-                    <span className="font-normal text-gray-500">
-                      · {CATEGORY_LABELS[s.category]} · 적합도 {s.score}
-                    </span>
+                    {s.name_ko} <span className="font-normal text-gray-500">· {CATEGORY_LABELS[s.category]}</span>
                   </p>
-                  <p className="mt-1 text-gray-600">{s.reason}</p>
+                  <p className="mt-2 text-xs font-semibold text-gray-500">AI 추천 이유</p>
+                  <p className="mt-0.5 text-gray-700">{s.reason}</p>
+                  <p className="mt-1 text-xs text-gray-400">
+                    참고 점수 {s.score}점 · AI가 그때그때 판단한 값이라 다시 분석하면 달라질 수 있어요.
+                  </p>
                   <p className="mt-1 text-xs text-gray-400">
                     {s.is_claimed ? "이미 영종 AI 사용 중" : "아직 미등록 업체"} · {STATUS_LABEL[s.status]}
                   </p>

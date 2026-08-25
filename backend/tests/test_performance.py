@@ -116,6 +116,52 @@ def test_performance_counts_successful_referrals(client, db_session):
     assert response.json()["successful_referrals"] == 1
 
 
+def test_performance_counts_partner_invites_and_acceptance(client, db_session):
+    """P1-4 - '제안한 업체'는 SUGGESTED를 제외한(INVITED/ACCEPTED/REJECTED)
+    누적 건수, '제휴 성사'는 ACCEPTED만. 아직 사장님이 아무 결정도 하지 않은
+    SUGGESTED 추천은 둘 다에서 제외되어야 한다."""
+    from models import BusinessRelationship, PartnerRelationshipStatus
+
+    headers = _register(client, "perf-owner-partner@example.com")
+    business = _create_business(client, headers)
+    b1 = _create_business(client, headers)
+    b2 = _create_business(client, headers)
+    b3 = _create_business(client, headers)
+
+    db_session.add_all(
+        [
+            BusinessRelationship(
+                business_a_id=business["id"],
+                business_b_id=b1["id"],
+                score=90,
+                reason="추천1",
+                status=PartnerRelationshipStatus.SUGGESTED,
+            ),
+            BusinessRelationship(
+                business_a_id=business["id"],
+                business_b_id=b2["id"],
+                score=85,
+                reason="추천2",
+                status=PartnerRelationshipStatus.INVITED,
+            ),
+            BusinessRelationship(
+                business_a_id=business["id"],
+                business_b_id=b3["id"],
+                score=95,
+                reason="추천3",
+                status=PartnerRelationshipStatus.ACCEPTED,
+            ),
+        ]
+    )
+    db_session.commit()
+
+    response = client.get(f"/api/v1/businesses/{business['id']}/performance", headers=headers)
+    assert response.status_code == 200
+    body = response.json()
+    assert body["partner_invites_sent"] == 2  # INVITED + ACCEPTED, SUGGESTED 제외
+    assert body["partner_accepted"] == 1
+
+
 def test_performance_counts_recommendation_clicks_scoped_to_this_business_only(client, db_session):
     """P1-2 - recommendation_clicks/visits_confirmed는 pilot_analytics.py의
     계산 로직을 그대로 재사용한다(직접 다시 구현하지 않는다) - 이 테스트는
