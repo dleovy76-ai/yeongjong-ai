@@ -23,7 +23,7 @@ interface Message {
 interface ChatWidgetProps {
   greeting: string;
   placeholder: string;
-  onSend: (message: string) => Promise<ChatReply>;
+  onSend: (message: string, history: { role: "user" | "ai"; text: string }[]) => Promise<ChatReply>;
 }
 
 export function ChatWidget({ greeting, placeholder, onSend }: ChatWidgetProps) {
@@ -36,11 +36,14 @@ export function ChatWidget({ greeting, placeholder, onSend }: ChatWidgetProps) {
     const question = input.trim();
     if (!question || sending) return;
 
+    // P1-6 - 백엔드는 세션을 두지 않으므로, 지금까지 이 위젯이 화면에
+    // 들고 있던 전체 대화를 매번 그대로 실어 보낸다(이 메시지 이전까지).
+    const historyBeforeThisMessage = messages.map((m) => ({ role: m.role, text: m.text }));
     setMessages((prev) => [...prev, { role: "user", text: question }]);
     setInput("");
     setSending(true);
     try {
-      const reply = await onSend(question);
+      const reply = await onSend(question, historyBeforeThisMessage);
       setMessages((prev) => [...prev, { role: "ai", text: reply.text, images: reply.images }]);
     } catch (err) {
       const text =

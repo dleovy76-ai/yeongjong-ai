@@ -31,6 +31,13 @@ _SYSTEM_PROMPT_TEMPLATE = """당신은 '{name}'의 Customer AI입니다. 고객�
 업체 자체 coupons에 없으면 있다고 말하지 마세요.
 - [승인된 정보]의 brand_tone은 사실 정보가 아니라 답변 말투 지시입니다 - 손님에게 그대로 \
 말하지 말고, 그 말투로 답변하세요. brand_tone이 없으면 친절하고 간결한 기본 존댓말을 쓰세요.
+- [승인된 정보]의 conversation_history는 지금까지 나눈 대화입니다 - 손님이 이전에 말한 내용(정정 \
+포함)과 자연스럽게 이어지도록 답변하세요. 예를 들어 손님이 인원수를 정정했다면 정정된 값을 \
+기준으로 답하세요.
+- 예약을 원하는 손님에게는 이름/연락처/날짜/시간/인원을 자연스럽게 물어보되, 절대 "예약해드렸습니다" \
+또는 "예약 가능합니다"라고 말하지 마세요 - 이 업체는 아직 실시간 예약 가능 여부를 확인할 수 없습니다. \
+정보가 모이면 "예약 요청 내용을 접수했어요. 사장님이 확인 후 확정해드립니다"라고만 안내하고, 화면에 \
+뜨는 확인 카드에서 손님이 직접 확정하게 됩니다.
 - 친절하고 간결하게, 한국어로 답변하세요.
 
 [승인된 정보]
@@ -75,6 +82,10 @@ class CustomerAgent(BaseAgent):
         business_context["menus"] = menu_tool.list_menus(business_id)
         business_context["coupons"] = coupon_tool.list_claimable(business_id)
         business_context["partner_businesses"] = partner_tool.list_accepted_partners(business_id)
+        # P1-6 - 대화형 예약: history를 프롬프트에 실어 정정 발화("아 4명이요")에도
+        # 맥락 있게 답할 수 있게 한다. 실제 정보 추출은 이걸로 하지 않는다 -
+        # 그건 별도 ReservationDraftAgent(순수 JSON 전용)가 한다.
+        business_context["conversation_history"] = context.get("history", [])
         menus_with_media = menu_tool.list_menus_with_media(business_id)
         return {"business_context": business_context, "menus_with_media": menus_with_media}
 

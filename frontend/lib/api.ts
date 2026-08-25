@@ -268,8 +268,11 @@ export const api = {
   deleteMenu: (token: string, businessId: string, menuId: string) =>
     request<void>(`/api/v1/businesses/${businessId}/menus/${menuId}`, { method: "DELETE", token }),
 
-  chat: (businessId: string, message: string) =>
-    request<ChatResponse>("/api/v1/ai/chat", { method: "POST", body: { business_id: businessId, message } }),
+  chat: (businessId: string, message: string, history: ChatHistoryItem[] = []) =>
+    request<ChatResponse>("/api/v1/ai/chat", {
+      method: "POST",
+      body: { business_id: businessId, message, history },
+    }),
 
   recommend: (query: string) =>
     request<RecommendationResponse>("/api/v1/recommendations", { method: "POST", body: { query } }),
@@ -674,10 +677,25 @@ export interface MenuImageItem {
   image_url: string;
 }
 
+export interface ChatHistoryItem {
+  role: "user" | "ai";
+  text: string;
+}
+
+export interface ReservationDraft {
+  customer_name: string | null;
+  customer_phone: string | null;
+  date: string | null;
+  time: string | null;
+  party_size: number | null;
+  notes: string | null;
+}
+
 export interface ChatResponse {
   agent_type: string;
   reply: string;
   menu_images: MenuImageItem[];
+  reservation_draft: ReservationDraft | null;
 }
 
 export interface RecommendationItem {
