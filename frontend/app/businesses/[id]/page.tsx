@@ -348,7 +348,7 @@ export default function BusinessDetailPage() {
             {draftConfirming ? "확정 중..." : "예약 확정"}
           </button>
           <p className="mt-2 text-xs text-gray-500">
-            예약 요청 내용을 접수했어요. 사장님이 확인 후 확정해드립니다.
+            확정을 누르면 예약 요청이 접수되고, 사장님이 확인 후 확정해드립니다.
           </p>
         </div>
       )}
