@@ -700,6 +700,10 @@ export interface Performance {
   coupons_issued: number;
   coupons_redeemed: number;
   reservations_this_month: number;
+  recommendation_clicks: number;
+  recommendation_clicks_note: string;
+  visits_confirmed: number;
+  visits_confirmed_note: string;
   successful_referrals: number;
   successful_referrals_note: string;
   estimated_time_saved_minutes: number;

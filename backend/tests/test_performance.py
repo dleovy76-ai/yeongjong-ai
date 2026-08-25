@@ -79,6 +79,8 @@ def test_performance_counts_ai_responses_and_coupon_activity(client, monkeypatch
     assert body["coupons_issued"] == 2
     assert body["coupons_redeemed"] == 1
     assert body["reservations_this_month"] == 1
+    assert body["recommendation_clicks"] == 0
+    assert body["visits_confirmed"] == 2  # coupons_redeemed(1) + 완료된 예약(1)
     assert body["estimated_time_saved_minutes"] == 6
     assert "추정" in body["estimated_time_saved_note"]
     assert body["revenue_total"] == "37000.00"
@@ -112,6 +114,40 @@ def test_performance_counts_successful_referrals(client, db_session):
     response = client.get(f"/api/v1/businesses/{business['id']}/performance", headers=headers)
     assert response.status_code == 200
     assert response.json()["successful_referrals"] == 1
+
+
+def test_performance_counts_recommendation_clicks_scoped_to_this_business_only(client, db_session):
+    """P1-2 - recommendation_clicks/visits_confirmed는 pilot_analytics.py의
+    계산 로직을 그대로 재사용한다(직접 다시 구현하지 않는다) - 이 테스트는
+    그 재사용이 실제로 이 업체로만 정확히 범위를 좁히는지 확인한다."""
+    from models import AiInteraction, RecommendationClick
+
+    headers = _register(client, "perf-owner-clicks@example.com")
+    business = _create_business(client, headers)
+    other_business = _create_business(client, headers)
+
+    interaction = AiInteraction(business_id=None, agent_type="info")
+    db_session.add(interaction)
+    db_session.flush()
+
+    db_session.add_all(
+        [
+            RecommendationClick(ai_interaction_id=interaction.id, entity_id=business["id"], entity_type="business"),
+            RecommendationClick(ai_interaction_id=interaction.id, entity_id=business["id"], entity_type="business"),
+            # 다른 업체로 간 클릭 - 이 업체의 recommendation_clicks에 섞이면 안 된다.
+            RecommendationClick(
+                ai_interaction_id=interaction.id, entity_id=other_business["id"], entity_type="business"
+            ),
+        ]
+    )
+    db_session.commit()
+
+    response = client.get(f"/api/v1/businesses/{business['id']}/performance", headers=headers)
+    assert response.status_code == 200
+    assert response.json()["recommendation_clicks"] == 2
+
+    other_response = client.get(f"/api/v1/businesses/{other_business['id']}/performance", headers=headers)
+    assert other_response.json()["recommendation_clicks"] == 1
 
 
 def test_performance_requires_owner(client):

@@ -10,6 +10,16 @@ class PerformanceResponse(BaseModel):
     coupons_issued: int
     coupons_redeemed: int
     reservations_this_month: int
+    recommendation_clicks: int
+    recommendation_clicks_note: str = (
+        "AI 추천을 보고 우리 가게를 눌러본 횟수예요. 같은 손님이 여러 번 눌렀을 수 있어 "
+        "실제 손님 수와는 다를 수 있어요."
+    )
+    visits_confirmed: int
+    visits_confirmed_note: str = (
+        "쿠폰 사용 처리 또는 예약 방문 완료 처리로 확인된 건수예요. 실제 방문자 수를 "
+        "추정한 값이 아니에요."
+    )
     successful_referrals: int
     successful_referrals_note: str = (
         "우리 가게가 보낸 초대 링크로 실제 새 업체가 가입한 누적 건수입니다 (전체 기간 기준). "

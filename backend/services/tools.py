@@ -29,6 +29,7 @@ from models import (
     Transaction,
     TransactionAttribution,
 )
+from services.pilot_analytics import _recommendation_clicks_count, _reservation_counts
 
 
 def current_month_start() -> datetime:
@@ -387,6 +388,13 @@ class PerformanceSummaryTool:
             .filter(Reservation.business_id == business_id, Reservation.created_at >= month_start)
             .count()
         )
+        # P1-2 Performance UX - "관심을 보인 횟수"/"방문 확인" 두 숫자는 pilot_
+        # analytics.py의 정의를 그대로 재사용한다(직접 다시 계산하지 않는다) -
+        # 같은 의미의 숫자가 두 화면에서 서로 다르게 계산되어 어긋나지 않도록.
+        recommendation_clicks = _recommendation_clicks_count(self.db, business_id, month_start, None)
+        _reservations_created_all, reservations_completed = _reservation_counts(
+            self.db, [business_id], month_start, None
+        )
         # 기획서 21번 (추천 보상 시스템) - 실제 보상(할인/포인트)을 지급하려면
         # 결제·포인트 인프라가 필요한데 아직 없음(§29 - 지어낼 수 없음).
         # 대신 검증 가능한 실적만: 이 업체가 보낸 초대 링크로 실제 새 업체가
@@ -434,6 +442,8 @@ class PerformanceSummaryTool:
             "coupons_issued": coupons_issued,
             "coupons_redeemed": coupons_redeemed,
             "reservations_this_month": reservations_this_month,
+            "recommendation_clicks": recommendation_clicks,
+            "visits_confirmed": coupons_redeemed + reservations_completed,
             "successful_referrals": successful_referrals,
             # str, not Decimal - this dict also flows straight into
             # ManagerDashboardTool's json.dumps() for the LLM prompt (see

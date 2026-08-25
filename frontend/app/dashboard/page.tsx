@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { FunnelArrow, FunnelNode } from "@/components/Funnel";
 import { useAuth } from "@/lib/auth-context";
 import {
   api,
@@ -28,45 +29,6 @@ function textOf(value: Record<string, unknown> | null): string {
   if (!value) return "";
   const text = value["text"];
   return typeof text === "string" ? text : "";
-}
-
-// ---- 핵심 Funnel: "AI가 손님을 만나는 과정" ----
-function FunnelNode({
-  icon,
-  title,
-  period,
-  value,
-  caption,
-  isZero,
-  emptyNote,
-}: {
-  icon: string;
-  title: string;
-  period?: string;
-  value?: string;
-  caption?: string;
-  isZero?: boolean;
-  emptyNote?: string;
-}) {
-  return (
-    <div className="flex flex-1 flex-col items-center rounded-lg border border-gray-200 bg-white p-4 text-center">
-      <span className="text-2xl">{icon}</span>
-      <p className="mt-1 text-sm font-semibold">{title}</p>
-      {period && <p className="text-sm text-gray-500">{period}</p>}
-      {value !== undefined && <p className="mt-1 text-xl font-bold tabular-nums">{value}</p>}
-      {caption && <p className="mt-1 text-sm text-gray-600">{caption}</p>}
-      {isZero && emptyNote && <p className="mt-1 text-sm text-gray-600">{emptyNote}</p>}
-    </div>
-  );
-}
-
-function FunnelArrow() {
-  return (
-    <div className="flex items-center justify-center text-gray-300">
-      <span className="sm:hidden">↓</span>
-      <span className="hidden sm:inline">→</span>
-    </div>
-  );
 }
 
 // ---- 지금 사장님이 할 일 ----
