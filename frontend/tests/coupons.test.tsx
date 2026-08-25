@@ -2,12 +2,14 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-const { routerMock, listCouponsMock, redeemCouponMock, createTransactionMock } = vi.hoisted(() => ({
-  routerMock: { push: vi.fn() },
-  listCouponsMock: vi.fn(),
-  redeemCouponMock: vi.fn(),
-  createTransactionMock: vi.fn(),
-}));
+const { routerMock, listCouponsMock, listUnrecordedCouponIssuesMock, redeemCouponMock, createTransactionMock } =
+  vi.hoisted(() => ({
+    routerMock: { push: vi.fn() },
+    listCouponsMock: vi.fn(),
+    listUnrecordedCouponIssuesMock: vi.fn(),
+    redeemCouponMock: vi.fn(),
+    createTransactionMock: vi.fn(),
+  }));
 
 vi.mock("next/navigation", () => ({
   useRouter: () => routerMock,
@@ -25,6 +27,7 @@ vi.mock("@/lib/api", async () => {
     api: {
       ...actual.api,
       listCoupons: listCouponsMock,
+      listUnrecordedCouponIssues: listUnrecordedCouponIssuesMock,
       redeemCoupon: redeemCouponMock,
       createTransaction: createTransactionMock,
     },
@@ -67,6 +70,7 @@ function makeClaim(overrides: Partial<Record<string, unknown>> = {}) {
 describe("CouponsPage - 쿠폰 사용 처리와 매출 기록 분리", () => {
   it("쿠폰별 발급/사용 건수를 카드에 보여준다", async () => {
     listCouponsMock.mockResolvedValueOnce([makeCoupon({ issued_count: 24, redeemed_count: 8 })]);
+    listUnrecordedCouponIssuesMock.mockResolvedValueOnce([]);
 
     render(<CouponsPage />);
 
@@ -77,6 +81,7 @@ describe("CouponsPage - 쿠폰 사용 처리와 매출 기록 분리", () => {
 
   it("쿠폰 사용 처리 직후 매출 입력 카드가 뜨고, 기록하면 금액이 표시된다", async () => {
     listCouponsMock.mockResolvedValueOnce([]);
+    listUnrecordedCouponIssuesMock.mockResolvedValueOnce([]);
     redeemCouponMock.mockResolvedValueOnce(makeClaim());
     createTransactionMock.mockResolvedValueOnce({
       id: "txn-1",
@@ -113,6 +118,7 @@ describe("CouponsPage - 쿠폰 사용 처리와 매출 기록 분리", () => {
 
   it("나중에를 누르면 Transaction을 만들지 않고, 다시 매출 기록하기를 누르면 입력 폼이 다시 열린다", async () => {
     listCouponsMock.mockResolvedValueOnce([]);
+    listUnrecordedCouponIssuesMock.mockResolvedValueOnce([]);
     redeemCouponMock.mockResolvedValueOnce(makeClaim());
 
     const user = userEvent.setup();
@@ -130,5 +136,28 @@ describe("CouponsPage - 쿠폰 사용 처리와 매출 기록 분리", () => {
 
     await user.click(screen.getByRole("button", { name: "매출 기록하기" }));
     expect(await screen.findByText("🎉 쿠폰 사용이 확인됐어요")).toBeInTheDocument();
+  });
+
+  it("새로고침(재방문) 후에도 매출 미기록 쿠폰 사용 건이 서버 데이터로 그대로 남아있다", async () => {
+    listCouponsMock.mockResolvedValueOnce([makeCoupon()]);
+    listUnrecordedCouponIssuesMock.mockResolvedValueOnce([
+      {
+        id: "issue-old",
+        coupon_id: "coupon-1",
+        code: "OLDCODE1",
+        status: "REDEEMED",
+        issued_at: "2026-08-20T00:00:00Z",
+        redeemed_at: "2026-08-20T00:00:00Z",
+        coupon_title: "아메리카노 20% 할인",
+      },
+    ]);
+
+    render(<CouponsPage />);
+
+    expect(await screen.findByText("🎟 아직 매출을 기록하지 않은 쿠폰")).toBeInTheDocument();
+    expect(screen.getByText("사용 확인: 2026.08.20 · 코드 OLDCODE1")).toBeInTheDocument();
+    expect(screen.getByText("실제 매출: 아직 기록하지 않았어요")).toBeInTheDocument();
+    // 이번 세션에서 방금 처리한 게 아니므로 축하 문구는 안 뜬다.
+    expect(screen.queryByText("🎉 쿠폰 사용이 확인됐어요")).not.toBeInTheDocument();
   });
 });

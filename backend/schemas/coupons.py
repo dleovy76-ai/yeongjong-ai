@@ -62,5 +62,13 @@ class CouponIssueResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class UnrecordedCouponIssueResponse(CouponIssueResponse):
+    """P1-3.1 - 사용(REDEEMED)됐지만 아직 Transaction이 안 걸린 CouponIssue.
+    coupon_title은 화면에 "이게 어느 쿠폰이었는지" 보여주기 위한 것 - 프론트가
+    별도로 쿠폰 목록과 조인할 필요 없게 라우터에서 한 번에 채워준다."""
+
+    coupon_title: str
+
+
 class RedeemRequest(BaseModel):
     code: str = Field(min_length=1, max_length=12)

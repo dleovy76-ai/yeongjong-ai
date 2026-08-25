@@ -8,7 +8,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from core.database import get_db
-from models import Coupon, CouponIssue, CouponIssueStatus, User, UserRole
+from models import Coupon, CouponIssue, CouponIssueStatus, Transaction, User, UserRole
 from routers._business_common import get_business_or_404, require_owner
 from routers.auth import get_current_user, get_current_user_optional
 from schemas.coupons import (
@@ -17,6 +17,7 @@ from schemas.coupons import (
     CouponResponse,
     CouponUpdateRequest,
     RedeemRequest,
+    UnrecordedCouponIssueResponse,
 )
 from services.tools import is_coupon_currently_claimable
 
@@ -102,6 +103,39 @@ def list_coupons(
         coupons = [c for c in coupons if is_coupon_currently_claimable(c)]
     issued_counts, redeemed_counts = _coupon_usage_counts(db, [c.id for c in coupons])
     return [_to_coupon_response(c, issued_counts, redeemed_counts) for c in coupons]
+
+
+@router.get("/issues", response_model=list[UnrecordedCouponIssueResponse])
+def list_unrecorded_coupon_issues(
+    business_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[UnrecordedCouponIssueResponse]:
+    """P1-3.1 - "나중에" 미룬 매출 기록을 다음 접속에서도 찾을 수 있게 한다.
+    쿠폰 "사용"(CouponIssue.status == REDEEMED)과 "매출 기록"(연결된
+    Transaction 존재)은 서로 다른 개념이니 섞지 않는다 - 이 엔드포인트는
+    사용됐지만 아직 Transaction이 안 걸린 것만 돌려준다."""
+    business = get_business_or_404(db, business_id)
+    require_owner(business, current_user)
+
+    recorded_issue_ids = db.query(Transaction.coupon_issue_id).filter(
+        Transaction.business_id == business_id, Transaction.coupon_issue_id.isnot(None)
+    )
+    rows = (
+        db.query(CouponIssue, Coupon.title)
+        .join(Coupon)
+        .filter(
+            Coupon.business_id == business_id,
+            CouponIssue.status == CouponIssueStatus.REDEEMED,
+            CouponIssue.id.notin_(recorded_issue_ids),
+        )
+        .order_by(CouponIssue.redeemed_at.desc())
+        .all()
+    )
+    return [
+        UnrecordedCouponIssueResponse(**CouponIssueResponse.model_validate(issue).model_dump(), coupon_title=title)
+        for issue, title in rows
+    ]
 
 
 @router.patch("/{coupon_id}", response_model=CouponResponse)

@@ -162,6 +162,10 @@ export interface CouponIssue {
   redeemed_at: string | null;
 }
 
+export interface UnrecordedCouponIssue extends CouponIssue {
+  coupon_title: string;
+}
+
 export type ReservationStatus = "REQUESTED" | "CONFIRMED" | "CANCELLED" | "COMPLETED" | "NO_SHOW";
 
 export interface Reservation {
@@ -280,6 +284,9 @@ export const api = {
 
   listCoupons: (businessId: string, token?: string | null) =>
     request<Coupon[]>(`/api/v1/businesses/${businessId}/coupons`, { token }),
+
+  listUnrecordedCouponIssues: (token: string, businessId: string) =>
+    request<UnrecordedCouponIssue[]>(`/api/v1/businesses/${businessId}/coupons/issues`, { token }),
 
   createCoupon: (
     token: string,

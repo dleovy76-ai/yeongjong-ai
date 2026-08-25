@@ -3,7 +3,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
-import { api, ApiError, type Coupon, type CouponDiscountType, type CouponIssue } from "@/lib/api";
+import { api, ApiError, type Coupon, type CouponDiscountType, type UnrecordedCouponIssue } from "@/lib/api";
 
 const STATUS_LABEL: Record<Coupon["status"], string> = {
   DRAFT: "준비 중 (비공개)",
@@ -16,10 +16,16 @@ function formatWon(amount: string): string {
   return `${Number(amount).toLocaleString()}원`;
 }
 
-interface RedemptionEntry {
-  claim: CouponIssue;
+function formatDate(iso: string): string {
+  const d = new Date(iso);
+  return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")}`;
+}
+
+interface PendingIssue {
+  issue: UnrecordedCouponIssue;
   amountInput: string;
   formOpen: boolean;
+  isFresh: boolean; // 방금 이 화면에서 사용 처리한 것(과거에서 불러온 게 아님)
   recording: boolean;
   error: string | null;
   transaction: { amount: string } | null;
@@ -41,10 +47,11 @@ export default function CouponsPage() {
   const [redeemCode, setRedeemCode] = useState("");
   const [redeeming, setRedeeming] = useState(false);
   const [redeemError, setRedeemError] = useState<string | null>(null);
-  // 쿠폰 사용 처리 건 목록을 조회하는 API가 없어서, 이번 방문(세션) 동안
-  // 이 화면에서 직접 처리한 건만 여기 쌓인다 - 새로고침하면 사라진다(아래
-  // 최종 보고의 "남은 문제"에 명시).
-  const [recentRedemptions, setRecentRedemptions] = useState<RedemptionEntry[]>([]);
+  // P1-3.1 - 처음엔 "이번 방문 중 처리한 것만" 세션에만 있었는데, 새로고침하면
+  // 사라지는 문제가 있었다. 이제 listUnrecordedCouponIssues로 서버에서
+  // "사용됐지만 매출 미기록"인 건을 그대로 불러와 여기 시드로 채운다 -
+  // 나중에 다시 들어와도 그대로 남아있다.
+  const [pendingIssues, setPendingIssues] = useState<PendingIssue[]>([]);
 
   useEffect(() => {
     if (!authLoading && !token) router.push("/login");
@@ -52,7 +59,22 @@ export default function CouponsPage() {
 
   useEffect(() => {
     if (!token) return;
-    api.listCoupons(id, token).then(setCoupons).catch(() => setCoupons([]));
+    Promise.all([api.listCoupons(id, token), api.listUnrecordedCouponIssues(token, id).catch(() => [])])
+      .then(([couponList, unrecorded]) => {
+        setCoupons(couponList);
+        setPendingIssues(
+          unrecorded.map((issue) => ({
+            issue,
+            amountInput: "",
+            formOpen: false,
+            isFresh: false,
+            recording: false,
+            error: null,
+            transaction: null,
+          }))
+        );
+      })
+      .catch(() => setCoupons([]));
   }, [id, token]);
 
   const onCreate = async (e: FormEvent) => {
@@ -85,8 +107,8 @@ export default function CouponsPage() {
     setCoupons((prev) => prev?.map((c) => (c.id === updated.id ? updated : c)) ?? null);
   };
 
-  const updateRedemption = (claimId: string, patch: Partial<RedemptionEntry>) => {
-    setRecentRedemptions((prev) => prev.map((r) => (r.claim.id === claimId ? { ...r, ...patch } : r)));
+  const updatePending = (issueId: string, patch: Partial<PendingIssue>) => {
+    setPendingIssues((prev) => prev.map((p) => (p.issue.id === issueId ? { ...p, ...patch } : p)));
   };
 
   const onRedeem = async (e: FormEvent) => {
@@ -96,8 +118,17 @@ export default function CouponsPage() {
     setRedeeming(true);
     try {
       const claim = await api.redeemCoupon(token, id, redeemCode.trim());
-      setRecentRedemptions((prev) => [
-        { claim, amountInput: "", formOpen: true, recording: false, error: null, transaction: null },
+      const couponTitle = coupons?.find((c) => c.id === claim.coupon_id)?.title ?? "";
+      setPendingIssues((prev) => [
+        {
+          issue: { ...claim, coupon_title: couponTitle },
+          amountInput: "",
+          formOpen: true,
+          isFresh: true,
+          recording: false,
+          error: null,
+          transaction: null,
+        },
         ...prev,
       ]);
       setRedeemCode("");
@@ -108,21 +139,21 @@ export default function CouponsPage() {
     }
   };
 
-  const onRecordAmount = async (claimId: string) => {
+  const onRecordAmount = async (issueId: string) => {
     if (!token) return;
-    const entry = recentRedemptions.find((r) => r.claim.id === claimId);
+    const entry = pendingIssues.find((p) => p.issue.id === issueId);
     if (!entry) return;
     const amount = Number(entry.amountInput);
     if (!entry.amountInput || amount <= 0) return;
-    updateRedemption(claimId, { recording: true, error: null });
+    updatePending(issueId, { recording: true, error: null });
     try {
       const transaction = await api.createTransaction(token, id, {
         amount: entry.amountInput,
-        coupon_issue_id: claimId,
+        coupon_issue_id: issueId,
       });
-      updateRedemption(claimId, { transaction, formOpen: false, recording: false });
+      updatePending(issueId, { transaction, formOpen: false, recording: false });
     } catch (err) {
-      updateRedemption(claimId, {
+      updatePending(issueId, {
         error: err instanceof ApiError ? err.message : "매출 기록 중 오류가 발생했습니다.",
         recording: false,
       });
@@ -237,7 +268,7 @@ export default function CouponsPage() {
         </button>
       </form>
 
-      <div className="flex flex-col gap-4 rounded-md border border-gray-200 p-4">
+      <div className="mb-8 flex flex-col gap-4 rounded-md border border-gray-200 p-4">
         <h2 className="font-semibold">손님 쿠폰 코드 사용 처리</h2>
         <form onSubmit={onRedeem} className="flex flex-col gap-3">
           <p className="text-sm text-gray-600">
@@ -259,71 +290,80 @@ export default function CouponsPage() {
             {redeeming ? "처리 중..." : "사용 처리"}
           </button>
         </form>
-
-        {recentRedemptions.map((entry) => (
-          <div key={entry.claim.id} className="rounded-md bg-gray-50 p-3 text-sm">
-            <p className="text-gray-500">코드: {entry.claim.code}</p>
-
-            {entry.transaction ? (
-              <>
-                <p className="mt-1 text-gray-700">
-                  실제 매출 <span className="font-semibold">{formatWon(entry.transaction.amount)}</span>
-                </p>
-                <p className="mt-1 text-green-700">매출이 기록됐어요. 쿠폰을 사용한 손님의 매출로 연결됐어요.</p>
-              </>
-            ) : entry.formOpen ? (
-              <>
-                <p className="mt-2 font-semibold">🎉 쿠폰 사용이 확인됐어요</p>
-                <p className="mt-1 text-gray-600">
-                  실제 결제금액을 기록하면 AI를 통해 연결된 매출로 확인할 수 있어요.
-                </p>
-                <div className="mt-2 flex items-center gap-2">
-                  <span className="text-lg font-semibold">₩</span>
-                  <input
-                    type="number"
-                    min="1"
-                    inputMode="numeric"
-                    placeholder="15000"
-                    className="w-32 rounded-md border border-gray-300 px-3 py-2 text-base normal-case"
-                    value={entry.amountInput}
-                    onChange={(e) => updateRedemption(entry.claim.id, { amountInput: e.target.value })}
-                  />
-                </div>
-                {entry.amountInput && Number(entry.amountInput) > 0 && (
-                  <p className="mt-1 text-gray-500">{Number(entry.amountInput).toLocaleString()}원</p>
-                )}
-                {entry.error && <p className="mt-1 text-red-600">{entry.error}</p>}
-                <div className="mt-3 flex gap-2">
-                  <button
-                    onClick={() => onRecordAmount(entry.claim.id)}
-                    disabled={entry.recording || !entry.amountInput || Number(entry.amountInput) <= 0}
-                    className="rounded-md bg-black px-4 py-2 text-white disabled:opacity-50"
-                  >
-                    {entry.recording ? "기록 중..." : "매출 기록하기"}
-                  </button>
-                  <button
-                    onClick={() => updateRedemption(entry.claim.id, { formOpen: false })}
-                    disabled={entry.recording}
-                    className="rounded-md border border-black px-4 py-2 disabled:opacity-50"
-                  >
-                    나중에
-                  </button>
-                </div>
-              </>
-            ) : (
-              <div className="mt-2 flex items-center justify-between">
-                <p className="text-gray-500">실제 매출: 아직 기록하지 않았어요</p>
-                <button
-                  onClick={() => updateRedemption(entry.claim.id, { formOpen: true })}
-                  className="rounded-md border border-black px-3 py-1.5"
-                >
-                  매출 기록하기
-                </button>
-              </div>
-            )}
-          </div>
-        ))}
       </div>
+
+      {pendingIssues.length > 0 && (
+        <div className="flex flex-col gap-3">
+          <h2 className="font-semibold">🎟 아직 매출을 기록하지 않은 쿠폰</h2>
+          {pendingIssues.map((entry) => (
+            <div key={entry.issue.id} className="rounded-md border border-gray-200 bg-gray-50 p-3 text-sm">
+              <p className="font-semibold">{entry.issue.coupon_title || "쿠폰"}</p>
+              <p className="mt-1 text-gray-500">
+                사용 확인: {entry.issue.redeemed_at ? formatDate(entry.issue.redeemed_at) : "-"} · 코드{" "}
+                {entry.issue.code}
+              </p>
+
+              {entry.transaction ? (
+                <>
+                  <p className="mt-2 text-gray-700">
+                    실제 매출 <span className="font-semibold">{formatWon(entry.transaction.amount)}</span>
+                  </p>
+                  <p className="mt-1 text-green-700">매출이 기록됐어요. 쿠폰을 사용한 손님의 매출로 연결됐어요.</p>
+                </>
+              ) : entry.formOpen ? (
+                <>
+                  {entry.isFresh && <p className="mt-2 font-semibold">🎉 쿠폰 사용이 확인됐어요</p>}
+                  <p className="mt-1 text-gray-600">
+                    실제 결제금액을 기록하면 AI를 통해 연결된 매출로 확인할 수 있어요.
+                  </p>
+                  <div className="mt-2 flex items-center gap-2">
+                    <span className="text-lg font-semibold">₩</span>
+                    <input
+                      type="number"
+                      min="1"
+                      inputMode="numeric"
+                      placeholder="15000"
+                      className="w-32 rounded-md border border-gray-300 px-3 py-2 text-base normal-case"
+                      value={entry.amountInput}
+                      onChange={(e) => updatePending(entry.issue.id, { amountInput: e.target.value })}
+                    />
+                  </div>
+                  {entry.amountInput && Number(entry.amountInput) > 0 && (
+                    <p className="mt-1 text-gray-500">{Number(entry.amountInput).toLocaleString()}원</p>
+                  )}
+                  {entry.error && <p className="mt-1 text-red-600">{entry.error}</p>}
+                  <div className="mt-3 flex gap-2">
+                    <button
+                      onClick={() => onRecordAmount(entry.issue.id)}
+                      disabled={entry.recording || !entry.amountInput || Number(entry.amountInput) <= 0}
+                      className="rounded-md bg-black px-4 py-2 text-white disabled:opacity-50"
+                    >
+                      {entry.recording ? "기록 중..." : "매출 기록하기"}
+                    </button>
+                    <button
+                      onClick={() => updatePending(entry.issue.id, { formOpen: false })}
+                      disabled={entry.recording}
+                      className="rounded-md border border-black px-4 py-2 disabled:opacity-50"
+                    >
+                      나중에
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div className="mt-2 flex items-center justify-between">
+                  <p className="text-gray-500">실제 매출: 아직 기록하지 않았어요</p>
+                  <button
+                    onClick={() => updatePending(entry.issue.id, { formOpen: true })}
+                    className="rounded-md border border-black px-3 py-1.5"
+                  >
+                    매출 기록하기
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </main>
   );
 }
