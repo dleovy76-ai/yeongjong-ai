@@ -204,6 +204,34 @@ def test_coupon_and_reservation_can_each_have_their_own_transaction(client):
     assert len(listed) == 2
 
 
+def test_completed_reservation_transaction_reflects_in_performance_summary(client):
+    """P1-1 Transaction UX - 예약 화면에서 기록한 매출이 새 API 없이도 기존
+    Performance 조회에 바로 반영되는지 확인한다(캐시 없이 매 요청마다
+    Transaction 테이블을 직접 집계하는 기존 구조 그대로)."""
+    headers = _register(client, "txn-owner-perf@example.com")
+    business = _create_business(client, headers)
+    reservation = _create_reservation(client, business["id"])
+    client.patch(
+        f"/api/v1/businesses/{business['id']}/reservations/{reservation['id']}",
+        headers=headers,
+        json={"status": "COMPLETED"},
+    )
+
+    before = client.get(f"/api/v1/businesses/{business['id']}/performance", headers=headers).json()
+    assert float(before["revenue_assisted"]) == 0
+
+    response = client.post(
+        f"/api/v1/businesses/{business['id']}/transactions",
+        headers=headers,
+        json={"amount": "50000", "reservation_id": reservation["id"]},
+    )
+    assert response.status_code == 201, response.text
+
+    after = client.get(f"/api/v1/businesses/{business['id']}/performance", headers=headers).json()
+    assert float(after["revenue_assisted"]) == 50000
+    assert float(after["revenue_ai_connected"]) == 50000
+
+
 def test_transaction_requires_owner(client):
     headers = _register(client, "txn-owner6@example.com")
     business = _create_business(client, headers)
