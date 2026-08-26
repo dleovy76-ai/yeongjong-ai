@@ -12,21 +12,27 @@ interface ChatImage {
 interface ChatReply {
   text: string;
   images?: ChatImage[];
+  // P1-5 (REORG_DECISIONS.md) - 이 응답을 남긴 AiInteraction id. 있어야만
+  // 👍/👎 버튼을 보여준다(피드백을 어느 대화에 붙일지 알아야 하므로).
+  interactionId?: string;
 }
 
 interface Message {
   role: "user" | "ai";
   text: string;
   images?: ChatImage[];
+  interactionId?: string;
+  feedback?: "up" | "down";
 }
 
 interface ChatWidgetProps {
   greeting: string;
   placeholder: string;
   onSend: (message: string, history: { role: "user" | "ai"; text: string }[]) => Promise<ChatReply>;
+  onFeedback?: (interactionId: string, feedback: "up" | "down") => void;
 }
 
-export function ChatWidget({ greeting, placeholder, onSend }: ChatWidgetProps) {
+export function ChatWidget({ greeting, placeholder, onSend, onFeedback }: ChatWidgetProps) {
   const [messages, setMessages] = useState<Message[]>([{ role: "ai", text: greeting }]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
@@ -44,7 +50,10 @@ export function ChatWidget({ greeting, placeholder, onSend }: ChatWidgetProps) {
     setSending(true);
     try {
       const reply = await onSend(question, historyBeforeThisMessage);
-      setMessages((prev) => [...prev, { role: "ai", text: reply.text, images: reply.images }]);
+      setMessages((prev) => [
+        ...prev,
+        { role: "ai", text: reply.text, images: reply.images, interactionId: reply.interactionId },
+      ]);
     } catch (err) {
       const text =
         err instanceof ApiError ? err.message : "AI 응답을 받아오지 못했습니다. 잠시 후 다시 시도해 주세요.";
@@ -52,6 +61,13 @@ export function ChatWidget({ greeting, placeholder, onSend }: ChatWidgetProps) {
     } finally {
       setSending(false);
     }
+  };
+
+  const onGiveFeedback = (index: number, feedback: "up" | "down") => {
+    const message = messages[index];
+    if (!message.interactionId) return;
+    setMessages((prev) => prev.map((m, i) => (i === index ? { ...m, feedback } : m)));
+    onFeedback?.(message.interactionId, feedback);
   };
 
   return (
@@ -77,6 +93,26 @@ export function ChatWidget({ greeting, placeholder, onSend }: ChatWidgetProps) {
                     className="h-20 w-20 rounded-md border border-gray-200 object-cover"
                   />
                 ))}
+              </div>
+            )}
+            {m.role === "ai" && m.interactionId && onFeedback && (
+              <div className="mt-1 flex gap-1">
+                <button
+                  type="button"
+                  aria-label="도움이 됐어요"
+                  onClick={() => onGiveFeedback(i, "up")}
+                  className={"rounded px-1.5 py-0.5 text-xs " + (m.feedback === "up" ? "bg-gray-200" : "opacity-50")}
+                >
+                  👍
+                </button>
+                <button
+                  type="button"
+                  aria-label="도움이 안 됐어요"
+                  onClick={() => onGiveFeedback(i, "down")}
+                  className={"rounded px-1.5 py-0.5 text-xs " + (m.feedback === "down" ? "bg-gray-200" : "opacity-50")}
+                >
+                  👎
+                </button>
               </div>
             )}
           </div>

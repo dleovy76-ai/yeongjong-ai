@@ -3,6 +3,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
+from models import AiInteractionFeedback
+
 
 class ChatHistoryItem(BaseModel):
     """P1-6 - 프론트가 이미 화면에 들고 있는 전체 대화를 매 요청마다 그대로
@@ -45,3 +47,19 @@ class ChatResponse(BaseModel):
     reply: str
     menu_images: list[MenuImageItem] = []
     reservation_draft: ReservationDraft | None = None
+    # P1-5 (REORG_DECISIONS.md) - 이 응답을 남긴 AiInteraction 행. 프론트가
+    # 손님의 👍/👎를 /ai/interactions/{id}/feedback으로 보낼 때 쓴다.
+    # BaseAgent.log()가 모든 agent에 대해 이미 채워주던 값이라(원래 Info AI
+    # 추천 클릭 추적용) 새로 만든 게 아니라 노출만 추가한 것.
+    interaction_id: UUID | None = None
+
+
+class AiInteractionFeedbackRequest(BaseModel):
+    feedback: AiInteractionFeedback
+
+
+class AiInteractionFeedbackResponse(BaseModel):
+    id: UUID
+    feedback: AiInteractionFeedback | None
+
+    model_config = {"from_attributes": True}

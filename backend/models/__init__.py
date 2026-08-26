@@ -2,6 +2,7 @@
 # registers all model classes on Base.metadata.
 from .models import (  # noqa: F401
     AiInteraction,
+    AiInteractionFeedback,
     Business,
     BusinessCategory,
     BusinessProfile,

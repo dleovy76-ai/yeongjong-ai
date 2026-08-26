@@ -2,15 +2,23 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-const { getBusinessMock, getProfileMock, listMenusMock, listCouponsMock, chatMock, createReservationMock } =
-  vi.hoisted(() => ({
-    getBusinessMock: vi.fn(),
-    getProfileMock: vi.fn(),
-    listMenusMock: vi.fn(),
-    listCouponsMock: vi.fn(),
-    chatMock: vi.fn(),
-    createReservationMock: vi.fn(),
-  }));
+const {
+  getBusinessMock,
+  getProfileMock,
+  listMenusMock,
+  listCouponsMock,
+  chatMock,
+  createReservationMock,
+  submitChatFeedbackMock,
+} = vi.hoisted(() => ({
+  getBusinessMock: vi.fn(),
+  getProfileMock: vi.fn(),
+  listMenusMock: vi.fn(),
+  listCouponsMock: vi.fn(),
+  chatMock: vi.fn(),
+  createReservationMock: vi.fn(),
+  submitChatFeedbackMock: vi.fn(),
+}));
 
 vi.mock("next/navigation", () => ({
   useParams: () => ({ id: "biz-1" }),
@@ -32,6 +40,7 @@ vi.mock("@/lib/api", async () => {
       listCoupons: listCouponsMock,
       chat: chatMock,
       createReservation: createReservationMock,
+      submitChatFeedback: submitChatFeedbackMock,
     },
   };
 });
@@ -125,6 +134,59 @@ describe("BusinessDetailPage (smoke) - 통합 AI 채팅", () => {
     ]);
     expect(screen.queryByRole("img")).not.toBeInTheDocument();
     expect(screen.queryByText("예약 내용을 확인해주세요")).not.toBeInTheDocument();
+  });
+});
+
+describe("BusinessDetailPage (smoke) - P1-5 채팅 피드백(👍/👎)", () => {
+  it("interaction_id가 있는 답변에는 피드백 버튼이 뜨고, 누르면 submitChatFeedback을 호출한다", async () => {
+    getBusinessMock.mockResolvedValueOnce(business);
+    getProfileMock.mockResolvedValueOnce(null);
+    listMenusMock.mockResolvedValueOnce([]);
+    listCouponsMock.mockResolvedValueOnce([]);
+    chatMock.mockResolvedValueOnce({
+      agent_type: "customer",
+      reply: "네, 오늘 영업합니다!",
+      menu_images: [],
+      reservation_draft: null,
+      interaction_id: "int-1",
+    });
+    submitChatFeedbackMock.mockResolvedValueOnce({ id: "int-1", feedback: "UP" });
+
+    const user = userEvent.setup();
+    render(<BusinessDetailPage />);
+
+    await screen.findByText("영종 식당");
+    await user.type(screen.getByPlaceholderText("예: 내일 저녁 7시에 3명 예약하고 싶어요"), "오늘 영업하나요?");
+    await user.click(screen.getByRole("button", { name: "전송" }));
+
+    await screen.findByText("네, 오늘 영업합니다!");
+    await user.click(screen.getByRole("button", { name: "도움이 됐어요" }));
+
+    expect(submitChatFeedbackMock).toHaveBeenCalledWith("int-1", "UP");
+  });
+
+  it("interaction_id가 없는 답변(오류 메시지 등)에는 피드백 버튼이 안 뜬다", async () => {
+    getBusinessMock.mockResolvedValueOnce(business);
+    getProfileMock.mockResolvedValueOnce(null);
+    listMenusMock.mockResolvedValueOnce([]);
+    listCouponsMock.mockResolvedValueOnce([]);
+    chatMock.mockResolvedValueOnce({
+      agent_type: "customer",
+      reply: "네, 오늘 영업합니다!",
+      menu_images: [],
+      reservation_draft: null,
+      interaction_id: null,
+    });
+
+    const user = userEvent.setup();
+    render(<BusinessDetailPage />);
+
+    await screen.findByText("영종 식당");
+    await user.type(screen.getByPlaceholderText("예: 내일 저녁 7시에 3명 예약하고 싶어요"), "오늘 영업하나요?");
+    await user.click(screen.getByRole("button", { name: "전송" }));
+
+    await screen.findByText("네, 오늘 영업합니다!");
+    expect(screen.queryByRole("button", { name: "도움이 됐어요" })).not.toBeInTheDocument();
   });
 });
 

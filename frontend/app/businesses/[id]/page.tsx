@@ -254,7 +254,11 @@ export default function BusinessDetailPage() {
           // 반영되고, AI가 더 이상 예약 의도가 없다고 판단하면 카드도 사라진다.
           setReservationDraft(res.reservation_draft);
           if (res.reservation_draft) setDraftConfirmed(false);
-          return { text: res.reply, images: res.menu_images };
+          return { text: res.reply, images: res.menu_images, interactionId: res.interaction_id ?? undefined };
+        }}
+        onFeedback={(interactionId, feedback) => {
+          // P1-5 - 클릭 추적과 같은 원칙: 기록 실패로 채팅 UX가 막히면 안 된다.
+          api.submitChatFeedback(interactionId, feedback === "up" ? "UP" : "DOWN").catch(() => {});
         }}
       />
 

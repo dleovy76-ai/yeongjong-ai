@@ -1,12 +1,20 @@
 import json
 import re
+from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from core.database import get_db
+from models import AiInteraction
 from routers._ai_common import resolve_llm_provider, run_agent
-from schemas.ai import ChatRequest, ChatResponse, ReservationDraft
+from schemas.ai import (
+    AiInteractionFeedbackRequest,
+    AiInteractionFeedbackResponse,
+    ChatRequest,
+    ChatResponse,
+    ReservationDraft,
+)
 from services.agents.customer import CustomerAgent
 from services.agents.reservation_draft import ReservationDraftAgent
 
@@ -70,4 +78,25 @@ def chat(body: ChatRequest, db: Session = Depends(get_db)) -> ChatResponse:
         reply=reply,
         menu_images=agent.last_recommended_menus,
         reservation_draft=reservation_draft,
+        interaction_id=agent.last_interaction_id,
     )
+
+
+@router.post("/interactions/{interaction_id}/feedback", response_model=AiInteractionFeedbackResponse)
+def record_chat_feedback(
+    interaction_id: UUID, body: AiInteractionFeedbackRequest, db: Session = Depends(get_db)
+) -> AiInteractionFeedbackResponse:
+    """P1-5 (REORG_DECISIONS.md) - 손님이 채팅 응답에 남기는 가벼운 👍/👎.
+    공개(비로그인) 엔드포인트다 - 채팅 자체가 로그인 없이 이뤄지므로, 그
+    응답에 대한 피드백도 같은 조건에서 남길 수 있어야 한다
+    (recordRecommendationClick과 동일한 원칙). 재제출 시 덮어쓴다 - 손님이
+    잘못 눌렀을 때 고칠 수 있어야 하니, 클릭 추적처럼 한 번만 허용할
+    이유가 없다."""
+    interaction = db.get(AiInteraction, interaction_id)
+    if interaction is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "해당 대화를 찾을 수 없습니다.")
+
+    interaction.feedback = body.feedback
+    db.commit()
+    db.refresh(interaction)
+    return AiInteractionFeedbackResponse.model_validate(interaction)

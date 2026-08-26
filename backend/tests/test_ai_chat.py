@@ -222,6 +222,62 @@ def test_chat_endpoint_reservation_draft_agent_interaction_not_scoped_to_busines
     assert draft_rows[0].business_id is None
 
 
+# ---- P1-5 채팅 피드백(👍/👎) ----
+
+
+def test_chat_endpoint_returns_interaction_id(client, monkeypatch):
+    fake = FakeLLMProvider(response="네, 실외석에서는 가능해요.")
+    monkeypatch.setattr(ai_common_module, "get_llm_provider", lambda: fake)
+
+    business = _register_and_create_business(client)
+    response = client.post(
+        "/api/v1/ai/chat", json={"business_id": business["id"], "message": "강아지 되나요?"}
+    )
+
+    assert response.status_code == 200
+    assert response.json()["interaction_id"] is not None
+
+
+def test_feedback_endpoint_records_up_or_down(client, monkeypatch, db_session):
+    from models import AiInteraction
+
+    fake = FakeLLMProvider(response="네, 실외석에서는 가능해요.")
+    monkeypatch.setattr(ai_common_module, "get_llm_provider", lambda: fake)
+
+    business = _register_and_create_business(client)
+    chat_response = client.post(
+        "/api/v1/ai/chat", json={"business_id": business["id"], "message": "강아지 되나요?"}
+    ).json()
+    interaction_id = chat_response["interaction_id"]
+
+    response = client.post(f"/api/v1/ai/interactions/{interaction_id}/feedback", json={"feedback": "UP"})
+
+    assert response.status_code == 200
+    assert response.json()["feedback"] == "UP"
+    stored = db_session.get(AiInteraction, interaction_id)
+    assert stored.feedback.value == "UP"
+
+
+def test_feedback_endpoint_overwrites_previous_feedback(client, monkeypatch):
+    fake = FakeLLMProvider(response="네, 실외석에서는 가능해요.")
+    monkeypatch.setattr(ai_common_module, "get_llm_provider", lambda: fake)
+
+    business = _register_and_create_business(client)
+    interaction_id = client.post(
+        "/api/v1/ai/chat", json={"business_id": business["id"], "message": "질문"}
+    ).json()["interaction_id"]
+
+    client.post(f"/api/v1/ai/interactions/{interaction_id}/feedback", json={"feedback": "DOWN"})
+    response = client.post(f"/api/v1/ai/interactions/{interaction_id}/feedback", json={"feedback": "UP"})
+
+    assert response.json()["feedback"] == "UP"
+
+
+def test_feedback_endpoint_404_for_unknown_interaction(client):
+    response = client.post(f"/api/v1/ai/interactions/{uuid.uuid4()}/feedback", json={"feedback": "UP"})
+    assert response.status_code == 404
+
+
 def test_chat_endpoint_customer_reply_uses_conversation_history_for_context(client, monkeypatch):
     fake = FakeLLMProvider(response="4명으로 확인했습니다!")
     monkeypatch.setattr(ai_common_module, "get_llm_provider", lambda: fake)

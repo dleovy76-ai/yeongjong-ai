@@ -357,6 +357,14 @@ class Reservation(Base):
     customer: Mapped["User | None"] = relationship()
 
 
+class AiInteractionFeedback(str, enum.Enum):
+    """P1-5 (REORG_DECISIONS.md) - 손님이 AI 응답에 남기는 가벼운 👍/👎.
+    "응대 해결률/만족도" 지표의 최소 버전 - 별도 집계/화면은 이번 범위 밖."""
+
+    UP = "UP"
+    DOWN = "DOWN"
+
+
 class AiInteraction(Base):
     """One agent response (STEP14 event tracking). Started minimal (§19
     Performance Dashboard's "AI 응대 건수" count only); now also carries the
@@ -383,6 +391,9 @@ class AiInteraction(Base):
     completion_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
     estimated_cost_usd: Mapped[Decimal | None] = mapped_column(Numeric(10, 6), nullable=True)
     prompt_version: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    feedback: Mapped[AiInteractionFeedback | None] = mapped_column(
+        Enum(AiInteractionFeedback, name="ai_interaction_feedback"), nullable=True
+    )
 
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False, index=True)
 

@@ -295,6 +295,14 @@ export const api = {
       body: { business_id: businessId, message, history },
     }),
 
+  // P1-5 (REORG_DECISIONS.md) - 공개(비로그인) 엔드포인트, recordRecommendationClick과
+  // 같은 이유(채팅 자체가 비로그인이니 피드백도 같은 조건에서 남길 수 있어야 함).
+  submitChatFeedback: (interactionId: string, feedback: AiInteractionFeedback) =>
+    request<AiInteractionFeedbackResult>(`/api/v1/ai/interactions/${interactionId}/feedback`, {
+      method: "POST",
+      body: { feedback },
+    }),
+
   recommend: (query: string) =>
     request<RecommendationResponse>("/api/v1/recommendations", { method: "POST", body: { query } }),
 
@@ -717,6 +725,14 @@ export interface ChatResponse {
   reply: string;
   menu_images: MenuImageItem[];
   reservation_draft: ReservationDraft | null;
+  interaction_id: string | null;
+}
+
+export type AiInteractionFeedback = "UP" | "DOWN";
+
+export interface AiInteractionFeedbackResult {
+  id: string;
+  feedback: AiInteractionFeedback | null;
 }
 
 export interface RecommendationItem {
