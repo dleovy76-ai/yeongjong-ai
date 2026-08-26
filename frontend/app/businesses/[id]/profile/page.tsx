@@ -360,6 +360,33 @@ export default function BusinessProfilePage() {
         {naverError && <p className="mt-2 text-red-600">{naverError}</p>}
       </div>
 
+      {/* P0-3 (온보딩 완료 체감 순간) - 저장 직후엔 완료 축하 문구도, Home으로
+          돌아갈 링크도 없어서 사장님이 "다 된 건가?" 하고 헤맬 수 있었다.
+          기존 로직은 안 건드리고 이 완료 상태에 문구/링크만 추가한다. */}
+      {saved && (
+        <div className="mt-6 rounded-md border-2 border-black p-4">
+          <p className="font-semibold">🎉 우리 가게 AI가 준비됐어요!</p>
+          <p className="mt-1 text-sm text-gray-600">
+            메뉴와 AI 정보 입력이 끝났어요. 아래에서 AI 답변을 직접 확인해보거나, Home에서 손님에게
+            공개할 수 있어요.
+          </p>
+          <div className="mt-3 flex gap-2">
+            <Link
+              href={`/businesses/${id}`}
+              className="rounded-md border border-black px-4 py-2 text-center text-sm"
+            >
+              AI 테스트해보기 →
+            </Link>
+            <Link
+              href="/dashboard"
+              className="rounded-md bg-black px-4 py-2 text-center text-sm text-white"
+            >
+              Home에서 공개하기 →
+            </Link>
+          </div>
+        </div>
+      )}
+
       {saved && expansionLoading && (
         <p className="mt-6 text-sm text-gray-500">사장님과 연계 가능성이 높은 업체를 찾는 중...</p>
       )}
@@ -383,14 +410,6 @@ export default function BusinessProfilePage() {
         </div>
       )}
 
-      {saved && (
-        <Link
-          href={`/businesses/${id}`}
-          className="mt-6 inline-block rounded-md border border-black px-4 py-2 text-center"
-        >
-          AI 테스트해보기 →
-        </Link>
-      )}
     </main>
   );
 }
