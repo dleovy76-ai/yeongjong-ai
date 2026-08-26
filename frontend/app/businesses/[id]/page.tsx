@@ -56,6 +56,11 @@ export default function BusinessDetailPage() {
   const [resvSubmitting, setResvSubmitting] = useState(false);
   const [resvError, setResvError] = useState<string | null>(null);
   const [resvDone, setResvDone] = useState(false);
+  // P0-2 (예약 경로 중복 정리) - 수동 폼과 AI 대화형 예약이 동시에 펼쳐져
+  // 있으면 처음 온 손님이 뭘 써야 할지 헷갈린다. AI 대화를 기본 경로로
+  // 두고, 수동 폼은 원하는 사람만 펼쳐보는 대안으로 접어둔다 - 폼 자체의
+  // 로직/필드는 전혀 안 건드림.
+  const [showManualForm, setShowManualForm] = useState(false);
 
   const [reservationDraft, setReservationDraft] = useState<ReservationDraft | null>(null);
   const [draftConfirmed, setDraftConfirmed] = useState(false);
@@ -238,77 +243,6 @@ export default function BusinessDetailPage() {
         </div>
       )}
 
-      <div className="mb-8">
-        <h2 className="mb-2 font-semibold">예약 요청</h2>
-        {resvDone ? (
-          <p className="rounded-md border border-gray-200 p-3 text-sm text-green-700">
-            예약 요청이 접수되었어요. 업체에서 확인 후 확정 연락을 드려요.
-          </p>
-        ) : (
-          <form onSubmit={onReserve} className="flex flex-col gap-3 text-sm">
-            <label className="flex flex-col gap-1">
-              이름 *
-              <input
-                className="rounded-md border border-gray-300 px-3 py-2"
-                value={resvName}
-                onChange={(e) => setResvName(e.target.value)}
-                required
-              />
-            </label>
-            <label className="flex flex-col gap-1">
-              연락처 *
-              <input
-                className="rounded-md border border-gray-300 px-3 py-2"
-                placeholder="010-1234-5678"
-                value={resvPhone}
-                onChange={(e) => setResvPhone(e.target.value)}
-                required
-              />
-            </label>
-            <div className="flex gap-2">
-              <label className="flex flex-1 flex-col gap-1">
-                날짜 및 시간 *
-                <input
-                  type="datetime-local"
-                  className="rounded-md border border-gray-300 px-3 py-2"
-                  value={resvTime}
-                  onChange={(e) => setResvTime(e.target.value)}
-                  required
-                />
-              </label>
-              <label className="flex flex-col gap-1">
-                인원 *
-                <input
-                  type="number"
-                  min="1"
-                  className="w-20 rounded-md border border-gray-300 px-3 py-2"
-                  value={resvPartySize}
-                  onChange={(e) => setResvPartySize(e.target.value)}
-                  required
-                />
-              </label>
-            </div>
-            <label className="flex flex-col gap-1">
-              요청사항 (선택)
-              <input
-                className="rounded-md border border-gray-300 px-3 py-2"
-                placeholder="예: 창가 자리 부탁드려요"
-                value={resvNotes}
-                onChange={(e) => setResvNotes(e.target.value)}
-              />
-            </label>
-            {resvError && <p className="text-red-600">{resvError}</p>}
-            <button
-              type="submit"
-              disabled={resvSubmitting}
-              className="rounded-md bg-black px-4 py-2 text-white disabled:opacity-50"
-            >
-              {resvSubmitting ? "요청 중..." : "예약 요청하기"}
-            </button>
-          </form>
-        )}
-      </div>
-
       <h2 className="mb-2 font-semibold">AI에게 물어보세요</h2>
       <ChatWidget
         greeting="안녕하세요! 영업시간, 주차, 반려동물 동반 여부부터 메뉴 추천, 예약까지 편하게 물어보세요."
@@ -357,6 +291,87 @@ export default function BusinessDetailPage() {
           예약 요청이 접수되었어요. 업체에서 확인 후 확정 연락을 드려요.
         </p>
       )}
+
+      <div className="mt-8">
+        {resvDone ? (
+          <p className="rounded-md border border-gray-200 p-3 text-sm text-green-700">
+            예약 요청이 접수되었어요. 업체에서 확인 후 확정 연락을 드려요.
+          </p>
+        ) : showManualForm ? (
+          <>
+            <h2 className="mb-2 font-semibold">양식으로 예약하기</h2>
+            <form onSubmit={onReserve} className="flex flex-col gap-3 text-sm">
+              <label className="flex flex-col gap-1">
+                이름 *
+                <input
+                  className="rounded-md border border-gray-300 px-3 py-2"
+                  value={resvName}
+                  onChange={(e) => setResvName(e.target.value)}
+                  required
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                연락처 *
+                <input
+                  className="rounded-md border border-gray-300 px-3 py-2"
+                  placeholder="010-1234-5678"
+                  value={resvPhone}
+                  onChange={(e) => setResvPhone(e.target.value)}
+                  required
+                />
+              </label>
+              <div className="flex gap-2">
+                <label className="flex flex-1 flex-col gap-1">
+                  날짜 및 시간 *
+                  <input
+                    type="datetime-local"
+                    className="rounded-md border border-gray-300 px-3 py-2"
+                    value={resvTime}
+                    onChange={(e) => setResvTime(e.target.value)}
+                    required
+                  />
+                </label>
+                <label className="flex flex-col gap-1">
+                  인원 *
+                  <input
+                    type="number"
+                    min="1"
+                    className="w-20 rounded-md border border-gray-300 px-3 py-2"
+                    value={resvPartySize}
+                    onChange={(e) => setResvPartySize(e.target.value)}
+                    required
+                  />
+                </label>
+              </div>
+              <label className="flex flex-col gap-1">
+                요청사항 (선택)
+                <input
+                  className="rounded-md border border-gray-300 px-3 py-2"
+                  placeholder="예: 창가 자리 부탁드려요"
+                  value={resvNotes}
+                  onChange={(e) => setResvNotes(e.target.value)}
+                />
+              </label>
+              {resvError && <p className="text-red-600">{resvError}</p>}
+              <button
+                type="submit"
+                disabled={resvSubmitting}
+                className="rounded-md bg-black px-4 py-2 text-white disabled:opacity-50"
+              >
+                {resvSubmitting ? "요청 중..." : "예약 요청하기"}
+              </button>
+            </form>
+          </>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setShowManualForm(true)}
+            className="text-sm text-gray-600 underline"
+          >
+            AI 대화 대신 양식으로 직접 예약할게요
+          </button>
+        )}
+      </div>
     </main>
   );
 }

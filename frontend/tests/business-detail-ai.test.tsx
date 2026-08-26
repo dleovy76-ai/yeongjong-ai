@@ -297,6 +297,18 @@ describe("BusinessDetailPage (smoke) - P1-6 대화형 예약 (AI 확인 카드)"
     ]);
   });
 
+  it("P0-2 - 수동 예약 폼은 기본적으로 접혀있고 AI 대화가 먼저 보인다", async () => {
+    getBusinessMock.mockResolvedValueOnce(business);
+    noProfileCoupons();
+
+    render(<BusinessDetailPage />);
+
+    await screen.findByText("영종 식당");
+    expect(screen.getByRole("button", { name: "AI 대화 대신 양식으로 직접 예약할게요" })).toBeInTheDocument();
+    expect(screen.queryByLabelText("이름 *")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "예약 요청하기" })).not.toBeInTheDocument();
+  });
+
   it("기존 수동 예약 폼은 그대로 동작한다", async () => {
     getBusinessMock.mockResolvedValueOnce(business);
     noProfileCoupons();
@@ -316,6 +328,8 @@ describe("BusinessDetailPage (smoke) - P1-6 대화형 예약 (AI 확인 카드)"
     render(<BusinessDetailPage />);
 
     await screen.findByText("영종 식당");
+    // P0-2 - 수동 폼은 기본적으로 접혀있고, 링크를 눌러야 펼쳐진다.
+    await user.click(screen.getByRole("button", { name: "AI 대화 대신 양식으로 직접 예약할게요" }));
     await user.type(screen.getByLabelText("이름 *"), "박손님");
     await user.type(screen.getByLabelText("연락처 *"), "010-2222-3333");
     await user.type(screen.getByLabelText("날짜 및 시간 *"), "2026-08-27T18:00");
