@@ -9,6 +9,14 @@ function categoryLabel(category: string): string {
   return CATEGORY_LABELS[category as BusinessCategory] ?? category;
 }
 
+function ArrowIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M5 12h14M13 6l6 6-6 6" />
+    </svg>
+  );
+}
+
 export default function DiscoverPage() {
   const router = useRouter();
   const [interactionId, setInteractionId] = useState<string | null>(null);
@@ -47,45 +55,60 @@ export default function DiscoverPage() {
   };
 
   return (
-    <main className="mx-auto max-w-2xl px-6 py-12">
-      <h1 className="mb-2 text-2xl font-bold">영종도에서 뭐 할까?</h1>
-      <p className="mb-8 text-sm text-gray-600">
-        지금 영종 AI에 등록된 업체 중에서 딱 맞는 곳을 추천해 드려요.
-      </p>
-      <ChatWidget
-        greeting="안녕하세요! 어떤 곳을 찾고 계신가요? 예를 들어 '바다 보이는 카페', '아이랑 갈 곳', '강아지랑 묵을 숙소' 처럼 편하게 물어보세요."
-        placeholder="예: 바다 보이는 카페 가고 싶어"
-        onSend={handleSend}
-      />
+    <main className="min-h-screen bg-cream">
+      <div className="mx-auto flex max-w-2xl flex-col items-center px-6 py-14 text-center sm:py-16">
+        <span className="rounded-full bg-coral/10 px-4 py-1.5 text-xs font-medium text-coral-dark">
+          AI 여행 안내원
+        </span>
+        <h1 className="mt-5 font-display text-[28px] font-normal leading-snug text-coral-dark sm:text-[34px]">
+          영종도에서 뭐 할까?
+        </h1>
+        <p className="mt-3 text-sm leading-relaxed text-ink-muted sm:text-[15px]">
+          지금 영종 AI에 등록된 업체 중에서 딱 맞는 곳을 추천해 드려요.
+        </p>
 
-      {recommendations.length > 0 && (
-        <div className="mt-6">
-          <h2 className="mb-3 text-sm font-semibold text-gray-600">추천 목록</h2>
-          <ul className="flex flex-col gap-2">
-            {recommendations.map((item) => (
-              <li key={item.id}>
-                <button
-                  type="button"
-                  onClick={() => handleRecommendationClick(item)}
-                  disabled={clickedIds.has(item.id)}
-                  className="w-full rounded-md border border-gray-200 p-3 text-left text-sm transition hover:border-black disabled:cursor-default disabled:opacity-60"
-                >
-                  <p className="font-semibold">
-                    {item.name}
-                    <span className="ml-2 text-xs font-normal text-gray-500">{categoryLabel(item.category)}</span>
-                  </p>
-                  <p className="mt-1 text-gray-600">{item.reason}</p>
-                  {item.source === "business" ? (
-                    <p className="mt-1 text-xs text-gray-400">클릭하면 업체 페이지로 이동해요</p>
-                  ) : (
-                    <p className="mt-1 text-xs text-gray-400">관광지 정보 (등록된 업체 페이지는 없어요)</p>
-                  )}
-                </button>
-              </li>
-            ))}
-          </ul>
+        <div className="mt-8 w-full">
+          <ChatWidget
+            greeting="안녕하세요! 어떤 곳을 찾고 계신가요? 예를 들어 '바다 보이는 카페', '아이랑 갈 곳', '강아지랑 묵을 숙소' 처럼 편하게 물어보세요."
+            placeholder="예: 바다 보이는 카페 가고 싶어"
+            onSend={handleSend}
+          />
         </div>
-      )}
+
+        {recommendations.length > 0 && (
+          <div className="mt-9 w-full text-left">
+            <h2 className="mb-3 text-xs font-semibold tracking-wide text-ink-muted">추천 목록</h2>
+            <ul className="flex flex-col gap-2.5">
+              {recommendations.map((item) => (
+                <li key={item.id}>
+                  <button
+                    type="button"
+                    onClick={() => handleRecommendationClick(item)}
+                    disabled={clickedIds.has(item.id)}
+                    className="w-full rounded-2xl border border-ink/10 bg-white p-4 text-left transition hover:border-coral/40 disabled:cursor-default disabled:opacity-60"
+                  >
+                    <p className="flex flex-wrap items-center gap-2">
+                      <span className="text-sm font-semibold text-ink">{item.name}</span>
+                      <span className="rounded-full bg-coral/10 px-2.5 py-0.5 text-[11px] font-medium text-coral-dark">
+                        {categoryLabel(item.category)}
+                      </span>
+                    </p>
+                    <p className="mt-1 text-[13.5px] leading-relaxed text-ink-muted">{item.reason}</p>
+                    {item.source === "business" ? (
+                      <p className="mt-1.5 flex items-center gap-1 text-xs text-ink-muted/60">
+                        클릭하면 업체 페이지로 이동해요
+                        <ArrowIcon />
+                      </p>
+                    ) : (
+                      <p className="mt-1.5 text-xs text-ink-muted/60">관광지 정보 (등록된 업체 페이지는 없어요)</p>
+                    )}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
     </main>
   );
 }

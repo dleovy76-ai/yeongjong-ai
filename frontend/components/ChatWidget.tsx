@@ -32,6 +32,33 @@ interface ChatWidgetProps {
   onFeedback?: (interactionId: string, feedback: "up" | "down") => void;
 }
 
+function AiAvatar() {
+  return (
+    <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-coral to-terracotta">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 21s7-7.58 7-12a7 7 0 1 0-14 0c0 4.42 7 12 7 12z" />
+        <circle cx="12" cy="9" r="2.3" />
+      </svg>
+    </div>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20 6 9 17l-5-5" />
+    </svg>
+  );
+}
+
+function XIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 6 6 18M6 6l12 12" />
+    </svg>
+  );
+}
+
 export function ChatWidget({ greeting, placeholder, onSend, onFeedback }: ChatWidgetProps) {
   const [messages, setMessages] = useState<Message[]>([{ role: "ai", text: greeting }]);
   const [input, setInput] = useState("");
@@ -71,57 +98,66 @@ export function ChatWidget({ greeting, placeholder, onSend, onFeedback }: ChatWi
   };
 
   return (
-    <div className="flex h-[28rem] flex-col rounded-md border border-gray-200">
-      <div className="flex-1 space-y-3 overflow-y-auto p-4">
+    <div className="flex flex-col overflow-hidden rounded-3xl border border-coral/15 bg-paper shadow-[0_20px_48px_rgba(184,90,42,0.10)]">
+      <div className="flex h-[28rem] flex-col gap-4 overflow-y-auto p-5 sm:p-6">
         {messages.map((m, i) => (
-          <div key={i} className={m.role === "user" ? "text-right" : "text-left"}>
-            <span
-              className={
-                "inline-block max-w-[85%] whitespace-pre-wrap rounded-lg px-3 py-2 text-sm " +
-                (m.role === "user" ? "bg-black text-white" : "bg-gray-100 text-gray-900")
-              }
-            >
-              {m.text}
-            </span>
-            {m.images && m.images.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-2">
-                {m.images.map((img) => (
-                  <img
-                    key={img.id}
-                    src={img.image_url}
-                    alt={img.name}
-                    className="h-20 w-20 rounded-md border border-gray-200 object-cover"
-                  />
-                ))}
-              </div>
-            )}
-            {m.role === "ai" && m.interactionId && onFeedback && (
-              <div className="mt-1 flex gap-1">
-                <button
-                  type="button"
-                  aria-label="도움이 됐어요"
-                  onClick={() => onGiveFeedback(i, "up")}
-                  className={"rounded px-1.5 py-0.5 text-xs " + (m.feedback === "up" ? "bg-gray-200" : "opacity-50")}
-                >
-                  👍
-                </button>
-                <button
-                  type="button"
-                  aria-label="도움이 안 됐어요"
-                  onClick={() => onGiveFeedback(i, "down")}
-                  className={"rounded px-1.5 py-0.5 text-xs " + (m.feedback === "down" ? "bg-gray-200" : "opacity-50")}
-                >
-                  👎
-                </button>
-              </div>
-            )}
+          <div key={i} className={"flex items-start gap-2.5 " + (m.role === "user" ? "justify-end" : "justify-start")}>
+            {m.role === "ai" && <AiAvatar />}
+            <div className="flex max-w-[80%] flex-col gap-2">
+              <span
+                className={
+                  "inline-block whitespace-pre-wrap rounded-2xl px-4 py-3 text-sm leading-relaxed " +
+                  (m.role === "user" ? "rounded-br-md bg-coral text-white" : "rounded-tl-md bg-sand text-ink")
+                }
+              >
+                {m.text}
+              </span>
+              {m.images && m.images.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {m.images.map((img) => (
+                    <img
+                      key={img.id}
+                      src={img.image_url}
+                      alt={img.name}
+                      className="h-16 w-16 rounded-lg border border-ink/10 object-cover sm:h-20 sm:w-20"
+                    />
+                  ))}
+                </div>
+              )}
+              {m.role === "ai" && m.interactionId && onFeedback && (
+                <div className="flex gap-1.5">
+                  <button
+                    type="button"
+                    aria-label="도움이 됐어요"
+                    onClick={() => onGiveFeedback(i, "up")}
+                    className={
+                      "flex h-6 w-6 items-center justify-center rounded-full transition " +
+                      (m.feedback === "up" ? "bg-sand text-coral-dark" : "bg-sand/60 text-ink-muted/50 hover:text-ink-muted")
+                    }
+                  >
+                    <CheckIcon />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="도움이 안 됐어요"
+                    onClick={() => onGiveFeedback(i, "down")}
+                    className={
+                      "flex h-6 w-6 items-center justify-center rounded-full transition " +
+                      (m.feedback === "down" ? "bg-sand text-coral-dark" : "bg-sand/60 text-ink-muted/50 hover:text-ink-muted")
+                    }
+                  >
+                    <XIcon />
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         ))}
-        {sending && <p className="text-left text-sm text-gray-400">답변 작성 중...</p>}
+        {sending && <p className="text-sm text-ink-muted">답변 작성 중...</p>}
       </div>
-      <form onSubmit={onSubmit} className="flex gap-2 border-t border-gray-200 p-3">
+      <form onSubmit={onSubmit} className="flex gap-2.5 border-t border-ink/10 p-3.5">
         <input
-          className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm"
+          className="flex-1 rounded-full border border-ink/10 bg-cream/50 px-4 py-2.5 text-sm text-ink placeholder:text-ink-muted/50 focus:border-coral focus:outline-none"
           placeholder={placeholder}
           value={input}
           onChange={(e) => setInput(e.target.value)}
@@ -129,7 +165,7 @@ export function ChatWidget({ greeting, placeholder, onSend, onFeedback }: ChatWi
         <button
           type="submit"
           disabled={sending || !input.trim()}
-          className="rounded-md bg-black px-4 py-2 text-sm text-white disabled:opacity-50"
+          className="rounded-full bg-coral px-6 py-2.5 text-sm font-medium text-white shadow-sm transition disabled:opacity-50"
         >
           전송
         </button>

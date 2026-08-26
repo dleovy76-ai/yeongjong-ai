@@ -15,6 +15,8 @@ const config: Config = {
         "ink-muted": "#6b5844",
         sky: "#7fb3c4",
         terracotta: "#b85a2a",
+        sand: "#f4e9d8",
+        paper: "#fffaf3",
       },
       fontFamily: {
         display: ['"Gowun Dodum"', "sans-serif"],
