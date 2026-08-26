@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "yeongjong-ai-frontend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--prefix", "D:\\yeongjong-ai\\frontend"],
+      "port": 3000
+    }
+  ]
+}
