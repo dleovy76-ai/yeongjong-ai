@@ -14,12 +14,16 @@ export default function ClaimBusinessPage() {
   );
 }
 
+const _MIN_QUERY_LENGTH = 2;
+const _DEBOUNCE_MS = 300;
+
 function ClaimBusinessPageInner() {
   const { token, loading: authLoading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [query, setQuery] = useState(searchParams.get("query") ?? "");
   const [results, setResults] = useState<Business[] | null>(null);
+  const [searching, setSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [claimingId, setClaimingId] = useState<string | null>(null);
 
@@ -27,20 +31,42 @@ function ClaimBusinessPageInner() {
     if (!authLoading && !token) router.push("/login");
   }, [authLoading, token, router]);
 
+  // 실시간(자동) 검색 - 이름을 완벽히 몰라도 몇 글자만 입력하면 잠시 후
+  // 자동으로 후보가 뜬다. 백엔드는 이미 부분(포함) 일치 검색이라
+  // (routers/businesses.py list_unclaimed_businesses), 프론트에서 "언제
+  // 호출할지"만 바꾸면 된다 - 디바운스는 매 타이핑마다 요청을 보내지 않기
+  // 위한 것.
   useEffect(() => {
-    const prefilled = searchParams.get("query");
-    if (!token || !prefilled) return;
-    api.listUnclaimedBusinesses(prefilled).then(setResults).catch(() => setResults([]));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
+    if (!token) return;
+    const trimmed = query.trim();
+    if (trimmed.length < _MIN_QUERY_LENGTH) {
+      setResults(null);
+      setSearching(false);
+      return;
+    }
+    setSearching(true);
+    const timeoutId = setTimeout(() => {
+      api
+        .listUnclaimedBusinesses(trimmed)
+        .then(setResults)
+        .catch((err) => setError(err instanceof ApiError ? err.message : "검색 중 오류가 발생했습니다."))
+        .finally(() => setSearching(false));
+    }, _DEBOUNCE_MS);
+    return () => clearTimeout(timeoutId);
+  }, [token, query]);
 
   const onSearch = async (e: FormEvent) => {
     e.preventDefault();
+    const trimmed = query.trim();
+    if (trimmed.length < _MIN_QUERY_LENGTH) return;
     setError(null);
+    setSearching(true);
     try {
-      setResults(await api.listUnclaimedBusinesses(query));
+      setResults(await api.listUnclaimedBusinesses(trimmed));
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "검색 중 오류가 발생했습니다.");
+    } finally {
+      setSearching(false);
     }
   };
 
