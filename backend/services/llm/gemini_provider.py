@@ -7,11 +7,23 @@ from services.llm.base import LLMProvider, LLMResponse
 
 logger = logging.getLogger(__name__)
 
-_TIMEOUT_SECONDS = 30.0
+# P1-4 (REORG_DECISIONS.md) - 이전엔 30초였다. httpx 타임아웃 자체는 이미 있었고
+# routers/_ai_common.py의 run_agent()가 httpx.HTTPError(TimeoutException 포함)를
+# 502로 잡아주는 것도 이미 됐었다 - 진짜 문제는 실시간 채팅 UX에서 30초는
+# 사실상 "무한정 기다리는" 것과 체감이 비슷하다는 것. Expansion의 다건 구조화
+# 출력(2048 토큰)까지 감안해 너무 짧지 않으면서 채팅 UX에 맞는 값으로 낮춘다.
+_TIMEOUT_SECONDS = 20.0
 
 
 class GeminiConfigurationError(RuntimeError):
     pass
+
+
+class GeminiResponseError(RuntimeError):
+    """P1-4 - 이전엔 맨 RuntimeError를 던져서 run_agent()의
+    `except httpx.HTTPError`에 안 걸리고 그대로 500으로 새나갔다(응답 형태가
+    이상한 경우 - 안전필터 차단 등). 전용 예외로 만들어 run_agent()가 같이
+    잡을 수 있게 한다."""
 
 
 class GeminiProvider(LLMProvider):
@@ -41,7 +53,7 @@ class GeminiProvider(LLMProvider):
             text = data["candidates"][0]["content"]["parts"][0]["text"].strip()
         except (KeyError, IndexError) as exc:
             logger.error("Unexpected Gemini response shape: %s", data)
-            raise RuntimeError("Gemini 응답을 해석할 수 없습니다.") from exc
+            raise GeminiResponseError("Gemini 응답을 해석할 수 없습니다.") from exc
 
         usage = data.get("usageMetadata", {})
         return LLMResponse(

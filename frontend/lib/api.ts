@@ -1,5 +1,12 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
+// P1-4 (REORG_DECISIONS.md) - 백엔드의 Gemini 호출 타임아웃(20초, gemini_provider.py)
+// 보다 조금 더 길게 잡는다 - 정상적인 경우 백엔드가 먼저 502로 깔끔하게
+// 응답하고, 이 타임아웃은 백엔드가 그마저도 못 하고 완전히 멈춰버린 경우의
+// 최후 안전장치다. 이게 없으면 프론트는 fetch()가 끝없이 기다려서 "답변
+// 작성 중..."이 정말로 무한정 떠 있을 수 있었다.
+const REQUEST_TIMEOUT_MS = 25_000;
+
 export class ApiError extends Error {
   status: number;
   constructor(status: number, message: string) {
@@ -15,11 +22,25 @@ async function request<T>(
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (options.token) headers["Authorization"] = `Bearer ${options.token}`;
 
-  const response = await fetch(`${API_URL}${path}`, {
-    method: options.method ?? "GET",
-    headers,
-    body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+  let response: Response;
+  try {
+    response = await fetch(`${API_URL}${path}`, {
+      method: options.method ?? "GET",
+      headers,
+      body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+      signal: controller.signal,
+    });
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") {
+      throw new ApiError(0, "요청 시간이 너무 오래 걸려요. 잠시 후 다시 시도해 주세요.");
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   if (response.status === 204) {
     return undefined as T;
