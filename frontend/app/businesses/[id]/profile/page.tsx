@@ -46,9 +46,20 @@ export default function BusinessProfilePage() {
   const [expansionLoading, setExpansionLoading] = useState(false);
 
   const [profileImage, setProfileImage] = useState<File | null>(null);
+  const [profileImagePreviewUrl, setProfileImagePreviewUrl] = useState<string | null>(null);
   const [imageDrafting, setImageDrafting] = useState(false);
   const [imageDraftError, setImageDraftError] = useState<string | null>(null);
   const [imageDraftFilledCount, setImageDraftFilledCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!profileImage) {
+      setProfileImagePreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(profileImage);
+    setProfileImagePreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [profileImage]);
 
   useEffect(() => {
     if (!authLoading && !token) router.push("/login");
@@ -257,6 +268,14 @@ export default function BusinessProfilePage() {
         >
           {profileImage ? (
             <>
+              {profileImagePreviewUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={profileImagePreviewUrl}
+                  alt="선택한 이미지 미리보기"
+                  className="h-24 w-24 rounded-md border border-gray-300 object-cover"
+                />
+              )}
               <p className="font-medium text-gray-700">
                 선택됨: {profileImage.name || "붙여넣은 이미지"}
               </p>

@@ -175,6 +175,7 @@ describe("BusinessProfilePage - 네이버 화면 캡쳐 업로드로 정보 채�
 
     expect(await screen.findByText("선택됨: clipboard.png")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "사진에서 정보 추출하기" })).toBeEnabled();
+    expect(screen.getByAltText("선택한 이미지 미리보기")).toBeInTheDocument();
   });
 
   it("'선택 지우기'를 누르면 다시 붙여넣기 안내로 돌아가고 추출 버튼이 비활성화된다", async () => {
