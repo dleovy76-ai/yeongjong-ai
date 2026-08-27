@@ -8,12 +8,14 @@ const {
   createMenuMock,
   draftMenuDescriptionMock,
   draftMenusFromTextMock,
+  updateMenuMock,
 } = vi.hoisted(() => ({
   routerMock: { push: vi.fn() },
   listMenusMock: vi.fn(),
   createMenuMock: vi.fn(),
   draftMenuDescriptionMock: vi.fn(),
   draftMenusFromTextMock: vi.fn(),
+  updateMenuMock: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -35,6 +37,7 @@ vi.mock("@/lib/api", async () => {
       createMenu: createMenuMock,
       draftMenuDescription: draftMenuDescriptionMock,
       draftMenusFromText: draftMenusFromTextMock,
+      updateMenu: updateMenuMock,
     },
   };
 });
@@ -183,7 +186,11 @@ describe("MenusPage (smoke)", () => {
     await user.click(screen.getByRole("button", { name: "선택한 메뉴 추가하기" }));
 
     expect(createMenuMock).toHaveBeenCalledTimes(1);
-    expect(createMenuMock).toHaveBeenCalledWith("test-token", "biz-1", { name: "염소탕", price: "15000" });
+    expect(createMenuMock).toHaveBeenCalledWith("test-token", "biz-1", {
+      name: "염소탕",
+      price: "15000",
+      is_signature: false,
+    });
     expect(await screen.findByText(/염소탕 — 15,000원/)).toBeInTheDocument();
   });
 
@@ -200,5 +207,81 @@ describe("MenusPage (smoke)", () => {
     await user.click(screen.getByRole("button", { name: "메뉴 추출하기" }));
 
     expect(await screen.findByText("추출할 수 있는 메뉴를 찾지 못했어요.")).toBeInTheDocument();
+  });
+
+  it("이미 등록된 메뉴를 대표로 설정/해제할 수 있다", async () => {
+    listMenusMock.mockResolvedValueOnce([
+      {
+        id: "m1",
+        business_id: "biz-1",
+        name: "염소탕",
+        description: null,
+        price: "15000",
+        image_url: null,
+        is_signature: false,
+        allergy_info: null,
+        origin_info: null,
+        options: null,
+      },
+    ]);
+    updateMenuMock.mockResolvedValueOnce({
+      id: "m1",
+      business_id: "biz-1",
+      name: "염소탕",
+      description: null,
+      price: "15000",
+      image_url: null,
+      is_signature: true,
+      allergy_info: null,
+      origin_info: null,
+      options: null,
+    });
+
+    const user = userEvent.setup();
+    render(<MenusPage />);
+
+    await user.click(await screen.findByRole("button", { name: "대표로 설정" }));
+
+    expect(updateMenuMock).toHaveBeenCalledWith("test-token", "biz-1", "m1", { is_signature: true });
+    expect(await screen.findByText(/⭐ 염소탕/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "대표 해제" })).toBeInTheDocument();
+  });
+
+  it("붙여넣기로 추출한 메뉴에 대표 체크를 하면 대표 메뉴로 등록된다", async () => {
+    listMenusMock.mockResolvedValueOnce([]);
+    draftMenusFromTextMock.mockResolvedValueOnce({ items: [{ name: "염소탕", price: "15000" }] });
+    createMenuMock.mockResolvedValueOnce({
+      id: "m4",
+      business_id: "biz-1",
+      name: "염소탕",
+      description: null,
+      price: "15000",
+      image_url: null,
+      is_signature: true,
+      allergy_info: null,
+      origin_info: null,
+      options: null,
+    });
+
+    const user = userEvent.setup();
+    render(<MenusPage />);
+
+    await screen.findByText(/아직 등록된 메뉴가 없어요/);
+
+    await user.type(
+      screen.getByLabelText("네이버 등에서 복사한 메뉴 붙여넣기 (선택)"),
+      "염소탕 15,000원"
+    );
+    await user.click(screen.getByRole("button", { name: "메뉴 추출하기" }));
+
+    await screen.findByDisplayValue("염소탕");
+    await user.click(screen.getByRole("checkbox", { name: "대표" }));
+    await user.click(screen.getByRole("button", { name: "선택한 메뉴 추가하기" }));
+
+    expect(createMenuMock).toHaveBeenCalledWith("test-token", "biz-1", {
+      name: "염소탕",
+      price: "15000",
+      is_signature: true,
+    });
   });
 });

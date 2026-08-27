@@ -301,6 +301,18 @@ export const api = {
   deleteMenu: (token: string, businessId: string, menuId: string) =>
     request<void>(`/api/v1/businesses/${businessId}/menus/${menuId}`, { method: "DELETE", token }),
 
+  updateMenu: (
+    token: string,
+    businessId: string,
+    menuId: string,
+    body: { is_signature: boolean }
+  ) =>
+    request<Menu>(`/api/v1/businesses/${businessId}/menus/${menuId}`, {
+      method: "PATCH",
+      body,
+      token,
+    }),
+
   chat: (businessId: string, message: string, history: ChatHistoryItem[] = []) =>
     request<ChatResponse>("/api/v1/ai/chat", {
       method: "POST",

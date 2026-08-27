@@ -10,6 +10,7 @@ interface MenuCandidate {
   name: string;
   price: string;
   include: boolean;
+  isSignature: boolean;
 }
 
 export default function MenusPage() {
@@ -36,6 +37,9 @@ export default function MenusPage() {
   const [candidates, setCandidates] = useState<MenuCandidate[] | null>(null);
   const [bulkAdding, setBulkAdding] = useState(false);
   const [bulkAddError, setBulkAddError] = useState<string | null>(null);
+
+  const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [toggleError, setToggleError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && !token) router.push("/login");
@@ -100,6 +104,7 @@ export default function MenusPage() {
           name: item.name,
           price: item.price ?? "",
           include: true,
+          isSignature: false,
         }))
       );
     } catch (err) {
@@ -126,7 +131,13 @@ export default function MenusPage() {
         continue;
       }
       try {
-        added.push(await api.createMenu(token, id, { name: candidate.name.trim(), price }));
+        added.push(
+          await api.createMenu(token, id, {
+            name: candidate.name.trim(),
+            price,
+            is_signature: candidate.isSignature,
+          })
+        );
       } catch {
         remaining.push(candidate);
       }
@@ -146,6 +157,20 @@ export default function MenusPage() {
     if (!token) return;
     await api.deleteMenu(token, id, menuId);
     setMenus((prev) => prev?.filter((m) => m.id !== menuId) ?? null);
+  };
+
+  const onToggleSignature = async (menu: Menu) => {
+    if (!token) return;
+    setToggleError(null);
+    setTogglingId(menu.id);
+    try {
+      const updated = await api.updateMenu(token, id, menu.id, { is_signature: !menu.is_signature });
+      setMenus((prev) => prev?.map((m) => (m.id === menu.id ? updated : m)) ?? null);
+    } catch (err) {
+      setToggleError(err instanceof ApiError ? err.message : "대표 메뉴 설정 중 오류가 발생했습니다.");
+    } finally {
+      setTogglingId(null);
+    }
   };
 
   return (
@@ -187,9 +212,18 @@ export default function MenusPage() {
                   )}
                 </div>
               </div>
-              <button onClick={() => onDelete(menu.id)} className="text-gray-500 underline">
-                삭제
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => onToggleSignature(menu)}
+                  disabled={togglingId === menu.id}
+                  className="text-gray-500 underline disabled:opacity-50"
+                >
+                  {menu.is_signature ? "대표 해제" : "대표로 설정"}
+                </button>
+                <button onClick={() => onDelete(menu.id)} className="text-gray-500 underline">
+                  삭제
+                </button>
+              </div>
             </li>
           ))}
           {menus.length === 0 && (
@@ -199,6 +233,7 @@ export default function MenusPage() {
           )}
         </ul>
       )}
+      {toggleError && <p className="mb-8 text-sm text-red-600">{toggleError}</p>}
 
       <div className="mb-8 flex flex-col gap-3 rounded-md border border-gray-200 p-4">
         <label className="flex flex-col gap-1 text-sm">
@@ -253,6 +288,14 @@ export default function MenusPage() {
                     onChange={(e) => updateCandidate(index, { price: e.target.value })}
                   />
                   <span className="text-xs text-gray-500">원</span>
+                  <label className="flex items-center gap-1 whitespace-nowrap text-xs text-gray-500">
+                    <input
+                      type="checkbox"
+                      checked={candidate.isSignature}
+                      onChange={(e) => updateCandidate(index, { isSignature: e.target.checked })}
+                    />
+                    대표
+                  </label>
                 </div>
               ))}
               {bulkAddError && <p className="text-sm text-red-600">{bulkAddError}</p>}
