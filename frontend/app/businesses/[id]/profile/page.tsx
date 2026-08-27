@@ -241,10 +241,11 @@ export default function BusinessProfilePage() {
       </p>
 
       <div className="mb-8 flex flex-col gap-3 rounded-md border border-gray-200 p-4">
-        <p className="text-sm font-semibold">네이버 플레이스 화면 캡쳐 업로드 (선택)</p>
+        <p className="text-sm font-semibold">① 네이버에서 정보 가져오기 (선택)</p>
         <span className="text-xs text-gray-500">
           네이버 플레이스 페이지를 직접 캡쳐해서 올리면, AI가 사진을 읽고 아래 항목들을 채워드려요.
-          확인하고 필요하면 고친 뒤 저장하세요.
+          확인하고 필요하면 고친 뒤 저장하세요. (아래 &quot;네이버 페이지 연결하기&quot;와는 다른
+          기능이에요 — 이건 정보를 가져오는 것, 그건 손님에게 보여줄 링크를 연결하는 거예요.)
         </span>
 
         <div
@@ -425,9 +426,11 @@ export default function BusinessProfilePage() {
       </form>
 
       <div className="mt-10 rounded-md border border-gray-200 p-4 text-sm">
-        <h2 className="mb-2 font-semibold">네이버 플레이스 연결</h2>
+        <h2 className="mb-2 font-semibold">② 네이버 페이지 연결하기 (손님용 링크)</h2>
         <p className="mb-3 text-gray-600">
-          손님이 리뷰, 사진, 정확한 영업시간을 볼 수 있게 네이버 플레이스 페이지를 연결해요.
+          손님이 리뷰, 사진, 정확한 영업시간을 볼 수 있게 네이버 플레이스 페이지를 연결해요. (위
+          &quot;네이버에서 정보 가져오기&quot;와는 다른 기능이에요 — 이건 손님에게 보여줄 링크를
+          연결하는 것, 그건 정보를 가져와 채우는 거예요.)
         </p>
 
         {naverPlaceUrl && !naverCandidate && (
