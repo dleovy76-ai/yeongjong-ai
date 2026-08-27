@@ -246,7 +246,7 @@ export default function BusinessProfilePage() {
           예약 안내
           <input
             className="rounded-md border border-gray-300 px-3 py-2"
-            placeholder="예: 전화로만 예약 가능"
+            placeholder="예: 10인 이상 단체는 사전 전화 문의 필요"
             value={reservationPolicy}
             onChange={(e) => setReservationPolicy(e.target.value)}
           />

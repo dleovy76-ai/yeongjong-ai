@@ -42,6 +42,35 @@ def test_chat_endpoint_uses_business_context(client, monkeypatch):
     assert "실외석만 동반 가능" in fake.calls[0]["system_prompt"]
 
 
+def test_chat_endpoint_reservation_policy_reaches_prompt_alongside_reconciliation_rule(client, monkeypatch):
+    """사장님이 적어둔 예약 안내(예: '전화로만')가 실제 프로덕션 데이터처럼
+    다른 채널/조건을 안내하는 내용이어도, AI가 채팅 예약 수집 자체를
+    포기하면 안 된다 - 두 내용이 함께 프롬프트에 들어가는지 확인한다."""
+    fake = FakeLLMProvider(response="전화로도, 여기서도 예약 남겨주실 수 있어요!")
+    monkeypatch.setattr(ai_common_module, "get_llm_provider", lambda: fake)
+
+    business = _register_and_create_business(client)
+    # _register_and_create_business doesn't return the owner's token - log back in to get one
+    login = client.post(
+        "/api/v1/auth/login", json={"email": "chatowner@example.com", "password": "password123"}
+    )
+    headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
+    client.patch(
+        f"/api/v1/businesses/{business['id']}/profile",
+        headers=headers,
+        json={"reservation_policy": "최소 1일 전 전화 예약 필수"},
+    )
+
+    response = client.post(
+        "/api/v1/ai/chat", json={"business_id": business["id"], "message": "예약하고 싶어요"}
+    )
+
+    assert response.status_code == 200
+    prompt = fake.calls[0]["system_prompt"]
+    assert "최소 1일 전 전화 예약 필수" in prompt
+    assert "예약 자체를 아예 받지 않는다는 내용이면" in prompt
+
+
 def test_chat_endpoint_returns_menu_image_when_reply_names_a_photographed_menu(client, monkeypatch):
     fake = FakeLLMProvider(response="대표 메뉴인 짜장면을 추천드려요!")
     monkeypatch.setattr(ai_common_module, "get_llm_provider", lambda: fake)
