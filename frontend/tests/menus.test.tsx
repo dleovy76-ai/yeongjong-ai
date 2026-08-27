@@ -242,4 +242,67 @@ describe("MenusPage (smoke)", () => {
     expect(await screen.findByText(/⭐ 염소탕/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "대표 해제" })).toBeInTheDocument();
   });
+
+  it("메뉴명 입력 후 다른 곳을 클릭하면(포커스 이탈) 버튼을 안 눌러도 자동으로 설명 초안을 채운다", async () => {
+    listMenusMock.mockResolvedValueOnce([]);
+    draftMenuDescriptionMock.mockResolvedValueOnce({ description: "얼큰한 김치찌개예요." });
+
+    const user = userEvent.setup();
+    render(<MenusPage />);
+
+    await screen.findByText(/아직 등록된 메뉴가 없어요/);
+
+    await user.type(screen.getByLabelText(/메뉴명/), "김치찌개");
+    await user.click(screen.getByLabelText(/가격/));
+
+    expect(draftMenuDescriptionMock).toHaveBeenCalledWith("test-token", "biz-1", "김치찌개", false, "");
+    expect(await screen.findByDisplayValue("얼큰한 김치찌개예요.")).toBeInTheDocument();
+  });
+
+  it("이미 등록된 메뉴의 설명을 편집·저장할 수 있다", async () => {
+    listMenusMock.mockResolvedValueOnce([
+      {
+        id: "m1",
+        business_id: "biz-1",
+        name: "염소탕(특)",
+        description: null,
+        price: "20000",
+        image_url: null,
+        is_signature: false,
+        allergy_info: null,
+        origin_info: null,
+        options: null,
+      },
+    ]);
+    draftMenuDescriptionMock.mockResolvedValueOnce({ description: "진하게 우려낸 특대 염소탕이에요." });
+    updateMenuMock.mockResolvedValueOnce({
+      id: "m1",
+      business_id: "biz-1",
+      name: "염소탕(특)",
+      description: "진하게 우려낸 특대 염소탕이에요.",
+      price: "20000",
+      image_url: null,
+      is_signature: false,
+      allergy_info: null,
+      origin_info: null,
+      options: null,
+    });
+
+    const user = userEvent.setup();
+    render(<MenusPage />);
+
+    await user.click(await screen.findByRole("button", { name: "설명 편집" }));
+    await user.click(screen.getAllByRole("button", { name: "AI가 초안 써줄게요" })[0]);
+
+    expect(draftMenuDescriptionMock).toHaveBeenCalledWith("test-token", "biz-1", "염소탕(특)", false, "");
+    const textarea = await screen.findByDisplayValue("진하게 우려낸 특대 염소탕이에요.");
+
+    await user.click(screen.getByRole("button", { name: "저장" }));
+
+    expect(updateMenuMock).toHaveBeenCalledWith("test-token", "biz-1", "m1", {
+      description: "진하게 우려낸 특대 염소탕이에요.",
+    });
+    expect(await screen.findByText("진하게 우려낸 특대 염소탕이에요.")).toBeInTheDocument();
+    expect(textarea).not.toBeInTheDocument();
+  });
 });

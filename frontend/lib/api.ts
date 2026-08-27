@@ -305,7 +305,7 @@ export const api = {
     token: string,
     businessId: string,
     menuId: string,
-    body: { is_signature: boolean }
+    body: Partial<{ is_signature: boolean; description: string }>
   ) =>
     request<Menu>(`/api/v1/businesses/${businessId}/menus/${menuId}`, {
       method: "PATCH",

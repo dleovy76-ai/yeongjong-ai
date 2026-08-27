@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
@@ -40,6 +40,13 @@ export default function MenusPage() {
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [toggleError, setToggleError] = useState<string | null>(null);
 
+  const [editingMenuId, setEditingMenuId] = useState<string | null>(null);
+  const [editDescription, setEditDescription] = useState("");
+  const [editDrafting, setEditDrafting] = useState(false);
+  const [editDraftError, setEditDraftError] = useState<string | null>(null);
+  const [editSaving, setEditSaving] = useState(false);
+  const [editSaveError, setEditSaveError] = useState<string | null>(null);
+
   useEffect(() => {
     if (!authLoading && !token) router.push("/login");
   }, [authLoading, token, router]);
@@ -78,8 +85,11 @@ export default function MenusPage() {
     }
   };
 
+  const draftInFlightRef = useRef(false);
+
   const onDraftDescription = async () => {
-    if (!token || !name.trim()) return;
+    if (!token || !name.trim() || draftInFlightRef.current) return;
+    draftInFlightRef.current = true;
     setDraftError(null);
     setDrafting(true);
     try {
@@ -89,7 +99,12 @@ export default function MenusPage() {
       setDraftError(err instanceof ApiError ? err.message : "초안 작성 중 오류가 발생했습니다.");
     } finally {
       setDrafting(false);
+      draftInFlightRef.current = false;
     }
+  };
+
+  const onNameBlur = () => {
+    if (name.trim() && !description.trim()) onDraftDescription();
   };
 
   const onExtractMenus = async () => {
@@ -165,6 +180,48 @@ export default function MenusPage() {
     }
   };
 
+  const onStartEditDescription = (menu: Menu) => {
+    setEditingMenuId(menu.id);
+    setEditDescription(menu.description ?? "");
+    setEditDraftError(null);
+    setEditSaveError(null);
+  };
+
+  const onDraftEditDescription = async (menu: Menu) => {
+    if (!token) return;
+    setEditDraftError(null);
+    setEditDrafting(true);
+    try {
+      const draft = await api.draftMenuDescription(
+        token,
+        id,
+        menu.name,
+        menu.is_signature,
+        menu.origin_info ?? ""
+      );
+      setEditDescription(draft.description);
+    } catch (err) {
+      setEditDraftError(err instanceof ApiError ? err.message : "초안 작성 중 오류가 발생했습니다.");
+    } finally {
+      setEditDrafting(false);
+    }
+  };
+
+  const onSaveEditDescription = async (menu: Menu) => {
+    if (!token) return;
+    setEditSaveError(null);
+    setEditSaving(true);
+    try {
+      const updated = await api.updateMenu(token, id, menu.id, { description: editDescription });
+      setMenus((prev) => prev?.map((m) => (m.id === menu.id ? updated : m)) ?? null);
+      setEditingMenuId(null);
+    } catch (err) {
+      setEditSaveError(err instanceof ApiError ? err.message : "설명 저장 중 오류가 발생했습니다.");
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
   return (
     <main className="mx-auto max-w-lg px-6 py-12">
       <p className="mb-1 text-sm text-gray-500">Step 2 / 3 · 메뉴 등록</p>
@@ -180,42 +237,89 @@ export default function MenusPage() {
           {menus.map((menu) => (
             <li
               key={menu.id}
-              className="flex items-center justify-between rounded-md border border-gray-200 px-3 py-2 text-sm"
+              className="flex flex-col gap-2 rounded-md border border-gray-200 px-3 py-2 text-sm"
             >
-              <div className="flex items-center gap-3">
-                {menu.image_url && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={menu.image_url}
-                    alt={menu.name}
-                    className="h-12 w-12 rounded-md border border-gray-200 object-cover"
-                  />
-                )}
-                <div>
-                  <span>
-                    {menu.is_signature && "⭐ "}
-                    {menu.name} — {Number(menu.price).toLocaleString()}원
-                  </span>
-                  {menu.origin_info && (
-                    <p className="text-xs text-gray-500">재료/원산지: {menu.origin_info}</p>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  {menu.image_url && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={menu.image_url}
+                      alt={menu.name}
+                      className="h-12 w-12 rounded-md border border-gray-200 object-cover"
+                    />
                   )}
-                  {menu.allergy_info && (
-                    <p className="text-xs text-gray-500">알레르기: {menu.allergy_info}</p>
-                  )}
+                  <div>
+                    <span>
+                      {menu.is_signature && "⭐ "}
+                      {menu.name} — {Number(menu.price).toLocaleString()}원
+                    </span>
+                    {menu.description && <p className="text-xs text-gray-500">{menu.description}</p>}
+                    {menu.origin_info && (
+                      <p className="text-xs text-gray-500">재료/원산지: {menu.origin_info}</p>
+                    )}
+                    {menu.allergy_info && (
+                      <p className="text-xs text-gray-500">알레르기: {menu.allergy_info}</p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button onClick={() => onStartEditDescription(menu)} className="text-gray-500 underline">
+                    설명 편집
+                  </button>
+                  <button
+                    onClick={() => onToggleSignature(menu)}
+                    disabled={togglingId === menu.id}
+                    className="text-gray-500 underline disabled:opacity-50"
+                  >
+                    {menu.is_signature ? "대표 해제" : "대표로 설정"}
+                  </button>
+                  <button onClick={() => onDelete(menu.id)} className="text-gray-500 underline">
+                    삭제
+                  </button>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => onToggleSignature(menu)}
-                  disabled={togglingId === menu.id}
-                  className="text-gray-500 underline disabled:opacity-50"
-                >
-                  {menu.is_signature ? "대표 해제" : "대표로 설정"}
-                </button>
-                <button onClick={() => onDelete(menu.id)} className="text-gray-500 underline">
-                  삭제
-                </button>
-              </div>
+
+              {editingMenuId === menu.id && (
+                <div className="flex flex-col gap-2 border-t border-gray-200 pt-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-gray-500">메뉴 설명</span>
+                    <button
+                      type="button"
+                      onClick={() => onDraftEditDescription(menu)}
+                      disabled={editDrafting}
+                      className="rounded-md border border-black px-2 py-1 text-xs disabled:opacity-50"
+                    >
+                      {editDrafting ? "작성 중..." : "AI가 초안 써줄게요"}
+                    </button>
+                  </div>
+                  {editDraftError && <p className="text-xs text-red-600">{editDraftError}</p>}
+                  <textarea
+                    className="rounded-md border border-gray-300 px-2 py-1 text-sm"
+                    rows={2}
+                    value={editDescription}
+                    onChange={(e) => setEditDescription(e.target.value)}
+                  />
+                  {editSaveError && <p className="text-xs text-red-600">{editSaveError}</p>}
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => onSaveEditDescription(menu)}
+                      disabled={editSaving}
+                      className="rounded-md bg-black px-3 py-1 text-xs text-white disabled:opacity-50"
+                    >
+                      {editSaving ? "저장 중..." : "저장"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditingMenuId(null)}
+                      className="rounded-md border border-gray-300 px-3 py-1 text-xs"
+                    >
+                      취소
+                    </button>
+                  </div>
+                </div>
+              )}
             </li>
           ))}
           {menus.length === 0 && (
@@ -314,6 +418,7 @@ export default function MenusPage() {
             className="rounded-md border border-gray-300 px-3 py-2"
             value={name}
             onChange={(e) => setName(e.target.value)}
+            onBlur={onNameBlur}
             required
           />
         </label>
