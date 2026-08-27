@@ -69,6 +69,7 @@ def test_chat_endpoint_reservation_policy_reaches_prompt_alongside_reconciliatio
     prompt = fake.calls[0]["system_prompt"]
     assert "최소 1일 전 전화 예약 필수" in prompt
     assert "예약 자체를 아예 받지 않는다는 내용이면" in prompt
+    assert "먼저 예약을 언급하지 않아도" in prompt
 
 
 def test_chat_endpoint_returns_menu_image_when_reply_names_a_photographed_menu(client, monkeypatch):
