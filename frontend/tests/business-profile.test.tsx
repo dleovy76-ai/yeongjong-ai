@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 const { routerMock, getOwnerProfileMock, updateProfileMock, analyzeExpansionMock, draftProfileFromImageMock } =
@@ -130,5 +130,23 @@ describe("BusinessProfilePage - 네이버 화면 캡쳐 업로드로 정보 채�
 
     await screen.findByText("Step 3 / 3 · AI 정보");
     expect(screen.getByRole("button", { name: "사진에서 정보 추출하기" })).toBeDisabled();
+  });
+
+  it("클립보드에 있는 이미지를 붙여넣기(Ctrl+V)로도 선택할 수 있다", async () => {
+    getOwnerProfileMock.mockResolvedValueOnce(makeOwnerProfile());
+
+    const { container } = render(<BusinessProfilePage />);
+    await screen.findByText("Step 3 / 3 · AI 정보");
+
+    const file = new File(["fake-bytes"], "clipboard.png", { type: "image/png" });
+    const pasteArea = container.querySelector('div[tabindex="0"]');
+    expect(pasteArea).not.toBeNull();
+
+    fireEvent.paste(pasteArea as Element, {
+      clipboardData: { items: [{ type: "image/png", getAsFile: () => file }] },
+    });
+
+    expect(await screen.findByText("선택된 이미지: clipboard.png")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "사진에서 정보 추출하기" })).toBeEnabled();
   });
 });
