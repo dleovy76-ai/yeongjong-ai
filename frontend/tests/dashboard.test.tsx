@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 const {
   routerMock,
@@ -10,6 +11,7 @@ const {
   listCouponsMock,
   listIncomingExpansionInvitesMock,
   listMenusMock,
+  updateBusinessMock,
 } = vi.hoisted(() => ({
   // useEffect의 deps 배열에 router가 들어가므로(app/dashboard/page.tsx), 매
   // 렌더마다 새 객체를 반환하면 deps가 계속 "바뀐 것"으로 보여 effect가
@@ -22,6 +24,7 @@ const {
   listCouponsMock: vi.fn(),
   listIncomingExpansionInvitesMock: vi.fn(),
   listMenusMock: vi.fn(),
+  updateBusinessMock: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -49,6 +52,7 @@ vi.mock("@/lib/api", async () => {
       listCoupons: listCouponsMock,
       listIncomingExpansionInvites: listIncomingExpansionInvitesMock,
       listMenus: listMenusMock,
+      updateBusiness: updateBusinessMock,
     },
   };
 });
@@ -248,5 +252,41 @@ describe("DashboardPage (smoke)", () => {
     expect(screen.getByText("아직 등록된 메뉴가 없어요.")).toBeInTheDocument();
     expect(screen.getByText("메뉴 등록하기")).toBeInTheDocument();
     expect(screen.queryByText("아직 손님에게 줄 쿠폰이 없어요.")).not.toBeInTheDocument();
+  });
+
+  it("'수정'을 누르면 이름/주소/업종을 고쳐서 저장할 수 있다", async () => {
+    myBusinessesMock.mockResolvedValueOnce([makeBusiness()]);
+    getBusinessPilotDashboardMock.mockResolvedValue(makeDashboard());
+    getPerformanceMock.mockResolvedValueOnce(makePerformance());
+    getOwnerProfileMock.mockResolvedValueOnce(makeOwnerProfile());
+    listCouponsMock.mockResolvedValueOnce([]);
+    listIncomingExpansionInvitesMock.mockResolvedValueOnce([]);
+    listMenusMock.mockResolvedValueOnce([]);
+    updateBusinessMock.mockResolvedValueOnce(
+      makeBusiness({ name_ko: "긴마루염소탕", address: "인천 영종구 운중로71번길 12" })
+    );
+
+    const user = userEvent.setup();
+    render(<DashboardPage />);
+
+    await screen.findByText("영종 카페");
+    await user.click(screen.getByRole("button", { name: "수정" }));
+
+    const nameInput = screen.getByLabelText("이름");
+    await user.clear(nameInput);
+    await user.type(nameInput, "긴마루염소탕");
+    const addressInput = screen.getByLabelText("주소");
+    await user.clear(addressInput);
+    await user.type(addressInput, "인천 영종구 운중로71번길 12");
+
+    await user.click(screen.getByRole("button", { name: "저장" }));
+
+    expect(updateBusinessMock).toHaveBeenCalledWith("test-token", "biz-1", {
+      name_ko: "긴마루염소탕",
+      address: "인천 영종구 운중로71번길 12",
+      category: "CAFE",
+    });
+    expect(await screen.findByText("긴마루염소탕")).toBeInTheDocument();
+    expect(screen.queryByLabelText("이름")).not.toBeInTheDocument();
   });
 });

@@ -8,6 +8,7 @@ import { useAuth } from "@/lib/auth-context";
 import {
   api,
   ApiError,
+  CATEGORY_LABELS,
   type Business,
   type BusinessOwnerProfile,
   type BusinessPilotDashboard,
@@ -154,6 +155,13 @@ export default function DashboardPage() {
   const [detailError, setDetailError] = useState<string | null>(null);
   const [togglingStatus, setTogglingStatus] = useState(false);
 
+  const [editingIdentity, setEditingIdentity] = useState(false);
+  const [editNameKo, setEditNameKo] = useState("");
+  const [editAddress, setEditAddress] = useState("");
+  const [editCategory, setEditCategory] = useState<Business["category"] | "">("");
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+
   useEffect(() => {
     if (authLoading) return;
     if (!token) {
@@ -225,6 +233,34 @@ export default function DashboardPage() {
     }
   };
 
+  const onStartEditIdentity = () => {
+    if (!business) return;
+    setEditingIdentity(true);
+    setEditNameKo(business.name_ko);
+    setEditAddress(business.address);
+    setEditCategory(business.category);
+    setEditError(null);
+  };
+
+  const onSaveIdentity = async () => {
+    if (!token || !business || !editCategory) return;
+    setEditError(null);
+    setEditSaving(true);
+    try {
+      const updated = await api.updateBusiness(token, business.id, {
+        name_ko: editNameKo,
+        address: editAddress,
+        category: editCategory,
+      });
+      setBusinesses((prev) => prev?.map((b) => (b.id === updated.id ? updated : b)) ?? null);
+      setEditingIdentity(false);
+    } catch (err) {
+      setEditError(err instanceof ApiError ? err.message : "저장 중 오류가 발생했습니다.");
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
   if (authLoading || !user) return null;
 
   return (
@@ -272,18 +308,78 @@ export default function DashboardPage() {
           )}
 
           {business && (
-            <div className="mb-6 flex items-center justify-between rounded-md border border-gray-200 p-3 text-sm">
-              <div>
-                <span className="font-semibold">{business.name_ko}</span>{" "}
-                <span className="text-gray-500">· {STATUS_LABEL[business.status]}</span>
+            <div className="mb-6 rounded-md border border-gray-200 p-3 text-sm">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="font-semibold">{business.name_ko}</span>{" "}
+                  <span className="text-gray-500">· {STATUS_LABEL[business.status]}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  {!editingIdentity && (
+                    <button onClick={onStartEditIdentity} className="text-gray-500 underline">
+                      수정
+                    </button>
+                  )}
+                  <button
+                    onClick={toggleStatus}
+                    disabled={togglingStatus}
+                    className="rounded-md border border-black px-3 py-1.5 disabled:opacity-50"
+                  >
+                    {business.status === "ACTIVE" ? "비공개로 전환" : "공개하기"}
+                  </button>
+                </div>
               </div>
-              <button
-                onClick={toggleStatus}
-                disabled={togglingStatus}
-                className="rounded-md border border-black px-3 py-1.5 disabled:opacity-50"
-              >
-                {business.status === "ACTIVE" ? "비공개로 전환" : "공개하기"}
-              </button>
+
+              {editingIdentity && (
+                <div className="mt-3 flex flex-col gap-2 border-t border-gray-200 pt-3">
+                  <label className="flex flex-col gap-1 text-xs">
+                    이름
+                    <input
+                      className="rounded-md border border-gray-300 px-2 py-1 text-sm"
+                      value={editNameKo}
+                      onChange={(e) => setEditNameKo(e.target.value)}
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1 text-xs">
+                    주소
+                    <input
+                      className="rounded-md border border-gray-300 px-2 py-1 text-sm"
+                      value={editAddress}
+                      onChange={(e) => setEditAddress(e.target.value)}
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1 text-xs">
+                    업종
+                    <select
+                      className="rounded-md border border-gray-300 px-2 py-1 text-sm"
+                      value={editCategory}
+                      onChange={(e) => setEditCategory(e.target.value as Business["category"])}
+                    >
+                      {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  {editError && <p className="text-xs text-red-600">{editError}</p>}
+                  <div className="mt-1 flex gap-2">
+                    <button
+                      onClick={onSaveIdentity}
+                      disabled={editSaving || !editNameKo.trim() || !editAddress.trim()}
+                      className="rounded-md bg-black px-3 py-1.5 text-xs text-white disabled:opacity-50"
+                    >
+                      {editSaving ? "저장 중..." : "저장"}
+                    </button>
+                    <button
+                      onClick={() => setEditingIdentity(false)}
+                      className="rounded-md border border-gray-300 px-3 py-1.5 text-xs"
+                    >
+                      취소
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
