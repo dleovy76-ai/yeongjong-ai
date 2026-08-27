@@ -235,6 +235,9 @@ export default function MenusPage() {
 
   return (
     <main className="mx-auto max-w-lg px-6 py-12">
+      <Link href="/dashboard" className="mb-4 inline-block text-sm text-gray-500 underline">
+        ← Home
+      </Link>
       <p className="mb-1 text-sm text-gray-500">Step 2 / 3 · 메뉴 등록</p>
       <h1 className="mb-2 text-2xl font-bold">메뉴를 등록해 주세요</h1>
       <p className="mb-8 text-sm text-gray-600">

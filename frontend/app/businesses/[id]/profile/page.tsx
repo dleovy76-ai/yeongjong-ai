@@ -230,6 +230,9 @@ export default function BusinessProfilePage() {
 
   return (
     <main className="mx-auto max-w-lg px-6 py-12">
+      <Link href={`/businesses/${id}/menus`} className="mb-4 inline-block text-sm text-gray-500 underline">
+        ← 이전: 메뉴 등록
+      </Link>
       <p className="mb-1 text-sm text-gray-500">Step 3 / 3 · AI 정보</p>
       <h1 className="mb-2 text-2xl font-bold">AI가 고객에게 답할 정보예요</h1>
       <p className="mb-8 text-sm text-gray-600">
