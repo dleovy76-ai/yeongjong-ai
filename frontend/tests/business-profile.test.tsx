@@ -109,7 +109,7 @@ describe("BusinessProfilePage - 네이버 화면 캡쳐 업로드로 정보 채�
     await screen.findByText("Step 3 / 3 · AI 정보");
 
     const file = new File(["fake-bytes"], "naver.png", { type: "image/png" });
-    const fileInput = screen.getByLabelText("네이버 플레이스 화면 캡쳐 업로드 (선택)");
+    const fileInput = screen.getByLabelText("또는 파일에서 선택");
     await user.upload(fileInput, file);
     await user.click(screen.getByRole("button", { name: "사진에서 정보 추출하기" }));
 
@@ -146,7 +146,7 @@ describe("BusinessProfilePage - 네이버 화면 캡쳐 업로드로 정보 채�
       clipboardData: { items: [{ type: "image/png", getAsFile: () => file }] },
     });
 
-    expect(await screen.findByText("선택된 이미지: clipboard.png")).toBeInTheDocument();
+    expect(await screen.findByText("선택됨: clipboard.png")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "사진에서 정보 추출하기" })).toBeEnabled();
   });
 });

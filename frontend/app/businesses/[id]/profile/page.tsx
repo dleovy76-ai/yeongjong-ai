@@ -206,13 +206,31 @@ export default function BusinessProfilePage() {
         답합니다 — 확실하지 않은 건 추측해서 알려주지 않아요.
       </p>
 
-      <div
-        className="mb-8 flex flex-col gap-3 rounded-md border border-gray-200 p-4"
-        tabIndex={0}
-        onPaste={onPasteImage}
-      >
+      <div className="mb-8 flex flex-col gap-3 rounded-md border border-gray-200 p-4">
+        <p className="text-sm font-semibold">네이버 플레이스 화면 캡쳐 업로드 (선택)</p>
+        <span className="text-xs text-gray-500">
+          네이버 플레이스 페이지를 직접 캡쳐해서 올리면, AI가 사진을 읽고 아래 항목들을 채워드려요.
+          확인하고 필요하면 고친 뒤 저장하세요.
+        </span>
+
+        <div
+          tabIndex={0}
+          onPaste={onPasteImage}
+          className="flex cursor-text flex-col items-center justify-center gap-1 rounded-md border-2
+            border-dashed border-gray-300 px-3 py-6 text-center text-sm text-gray-500
+            focus:border-black focus:text-gray-700 focus:outline-none"
+        >
+          {profileImage ? (
+            <p className="font-medium text-gray-700">
+              선택됨: {profileImage.name || "붙여넣은 이미지"}
+            </p>
+          ) : (
+            <p>여기를 클릭한 뒤 Ctrl+V로 캡쳐한 이미지를 붙여넣으세요</p>
+          )}
+        </div>
+
         <label className="flex flex-col gap-1 text-sm">
-          네이버 플레이스 화면 캡쳐 업로드 (선택)
+          또는 파일에서 선택
           <input
             type="file"
             accept="image/png,image/jpeg,image/webp"
@@ -220,14 +238,6 @@ export default function BusinessProfilePage() {
             onChange={(e) => setProfileImage(e.target.files?.[0] ?? null)}
           />
         </label>
-        <span className="text-xs text-gray-500">
-          네이버 플레이스 페이지를 직접 캡쳐해서 올리면, AI가 사진을 읽고 아래 항목들을 채워드려요.
-          이 박스를 클릭한 뒤 Ctrl+V로 캡쳐한 이미지를 바로 붙여넣을 수도 있어요. 확인하고 필요하면
-          고친 뒤 저장하세요.
-        </span>
-        {profileImage && (
-          <p className="text-xs text-gray-600">선택된 이미지: {profileImage.name || "붙여넣은 이미지"}</p>
-        )}
         {imageDraftError && <p className="text-sm text-red-600">{imageDraftError}</p>}
         <button
           type="button"
