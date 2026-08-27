@@ -504,6 +504,10 @@ export default function BusinessProfilePage() {
                 <span className="text-gray-500">네이버에서 확인되지 않았어요 — 직접 확인해주세요</span>
               )}
             </p>
+            <p className="mt-1 text-xs text-gray-500">
+              여기서 여는 건 위치가 맞는지 지도로 확인하는 용도예요(리뷰는 안 나와요) — 연결하기를
+              누르면, 손님에게는 리뷰·사진이 보이는 다른 링크가 연결돼요.
+            </p>
             <div className="mt-3 flex gap-2">
               <a
                 href={naverCandidate.map_url}
@@ -511,7 +515,7 @@ export default function BusinessProfilePage() {
                 rel="noreferrer"
                 className="rounded-md border border-black px-3 py-1.5"
               >
-                열어서 확인
+                지도에서 위치 확인
               </a>
               <button
                 onClick={onConfirmNaverLink}
