@@ -176,4 +176,49 @@ describe("BusinessProfilePage - 네이버 화면 캡쳐 업로드로 정보 채�
     expect(await screen.findByText("선택됨: clipboard.png")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "사진에서 정보 추출하기" })).toBeEnabled();
   });
+
+  it("'선택 지우기'를 누르면 다시 붙여넣기 안내로 돌아가고 추출 버튼이 비활성화된다", async () => {
+    getOwnerProfileMock.mockResolvedValueOnce(makeOwnerProfile());
+
+    const { container } = render(<BusinessProfilePage />);
+    await screen.findByText("Step 3 / 3 · AI 정보");
+
+    const file = new File(["fake-bytes"], "clipboard.png", { type: "image/png" });
+    const pasteArea = container.querySelector('div[tabindex="0"]');
+    fireEvent.paste(pasteArea as Element, {
+      clipboardData: { items: [{ type: "image/png", getAsFile: () => file }] },
+    });
+    await screen.findByText("선택됨: clipboard.png");
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "선택 지우기" }));
+
+    expect(screen.queryByText("선택됨: clipboard.png")).not.toBeInTheDocument();
+    expect(screen.getByText("여기를 클릭한 뒤 Ctrl+V로 캡쳐한 이미지를 붙여넣으세요")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "사진에서 정보 추출하기" })).toBeDisabled();
+  });
+
+  it("이미지를 붙여넣은 뒤 다른 이미지를 다시 붙여넣으면 새 이미지로 바뀐다", async () => {
+    getOwnerProfileMock.mockResolvedValueOnce(makeOwnerProfile());
+
+    const { container } = render(<BusinessProfilePage />);
+    await screen.findByText("Step 3 / 3 · AI 정보");
+    const pasteArea = container.querySelector('div[tabindex="0"]') as Element;
+
+    fireEvent.paste(pasteArea, {
+      clipboardData: {
+        items: [{ type: "image/png", getAsFile: () => new File(["a"], "first.png", { type: "image/png" }) }],
+      },
+    });
+    await screen.findByText("선택됨: first.png");
+
+    fireEvent.paste(pasteArea, {
+      clipboardData: {
+        items: [{ type: "image/png", getAsFile: () => new File(["b"], "second.png", { type: "image/png" }) }],
+      },
+    });
+
+    expect(await screen.findByText("선택됨: second.png")).toBeInTheDocument();
+    expect(screen.queryByText("선택됨: first.png")).not.toBeInTheDocument();
+  });
 });

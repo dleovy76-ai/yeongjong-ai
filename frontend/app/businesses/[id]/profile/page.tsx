@@ -256,9 +256,25 @@ export default function BusinessProfilePage() {
             focus:border-black focus:text-gray-700 focus:outline-none"
         >
           {profileImage ? (
-            <p className="font-medium text-gray-700">
-              선택됨: {profileImage.name || "붙여넣은 이미지"}
-            </p>
+            <>
+              <p className="font-medium text-gray-700">
+                선택됨: {profileImage.name || "붙여넣은 이미지"}
+              </p>
+              <p className="text-xs text-gray-500">
+                다른 이미지를 붙여넣거나 아래에서 다시 선택하면 바뀌어요.
+              </p>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setProfileImage(null);
+                  setImageDraftFilledCount(null);
+                }}
+                className="mt-1 text-xs text-gray-500 underline"
+              >
+                선택 지우기
+              </button>
+            </>
           ) : (
             <p>여기를 클릭한 뒤 Ctrl+V로 캡쳐한 이미지를 붙여넣으세요</p>
           )}
