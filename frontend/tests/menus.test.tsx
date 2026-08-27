@@ -140,6 +140,23 @@ describe("MenusPage (smoke)", () => {
     expect(screen.getByLabelText("알레르기 정보 (선택)")).toHaveValue("새우, 밀");
   });
 
+  it("재료에 알려진 알레르기 성분이 없으면 못 찾았다고 안내한다(조용히 아무 반응 없는 것처럼 보이지 않게)", async () => {
+    listMenusMock.mockResolvedValueOnce([]);
+
+    const user = userEvent.setup();
+    render(<MenusPage />);
+
+    await screen.findByText(/아직 등록된 메뉴가 없어요/);
+
+    await user.type(screen.getByLabelText(/재료\/원산지/), "국내산 흑염소");
+    await user.click(screen.getByRole("button", { name: "재료에서 채워줄게요" }));
+
+    expect(
+      await screen.findByText("재료/원산지에서 흔히 알려진 알레르기 성분을 찾지 못했어요 — 직접 입력해주세요.")
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("알레르기 정보 (선택)")).toHaveValue("");
+  });
+
   it("fills the description field with an AI draft based on the typed menu name", async () => {
     listMenusMock.mockResolvedValueOnce([]);
     draftMenuDescriptionMock.mockResolvedValueOnce({

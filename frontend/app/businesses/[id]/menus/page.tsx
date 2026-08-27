@@ -25,6 +25,7 @@ export default function MenusPage() {
   const [description, setDescription] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [allergyInfo, setAllergyInfo] = useState("");
+  const [allergySuggestEmpty, setAllergySuggestEmpty] = useState(false);
   const [originInfo, setOriginInfo] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -51,6 +52,7 @@ export default function MenusPage() {
   const [editImageUrl, setEditImageUrl] = useState("");
   const [editOriginInfo, setEditOriginInfo] = useState("");
   const [editAllergyInfo, setEditAllergyInfo] = useState("");
+  const [editAllergySuggestEmpty, setEditAllergySuggestEmpty] = useState(false);
   const [editDrafting, setEditDrafting] = useState(false);
   const [editDraftError, setEditDraftError] = useState<string | null>(null);
   const [editSaving, setEditSaving] = useState(false);
@@ -231,6 +233,7 @@ export default function MenusPage() {
     setEditImageUrl(menu.image_url ?? "");
     setEditOriginInfo(menu.origin_info ?? "");
     setEditAllergyInfo(menu.allergy_info ?? "");
+    setEditAllergySuggestEmpty(false);
     setEditDraftError(null);
     setEditSaveError(null);
   };
@@ -380,19 +383,31 @@ export default function MenusPage() {
                       <label htmlFor="edit-menu-allergy-info">알레르기 정보</label>
                       <button
                         type="button"
-                        onClick={() => setEditAllergyInfo(suggestAllergyInfo(editOriginInfo))}
+                        onClick={() => {
+                          const suggestion = suggestAllergyInfo(editOriginInfo);
+                          setEditAllergyInfo(suggestion);
+                          setEditAllergySuggestEmpty(suggestion === "");
+                        }}
                         disabled={!editOriginInfo.trim()}
                         className="rounded-md border border-black px-2 py-1 disabled:opacity-50"
                       >
                         재료에서 채워줄게요
                       </button>
                     </div>
+                    {editAllergySuggestEmpty && (
+                      <p className="text-xs text-gray-500">
+                        재료/원산지에서 흔히 알려진 알레르기 성분을 찾지 못했어요 — 직접 입력해주세요.
+                      </p>
+                    )}
                     <input
                       id="edit-menu-allergy-info"
                       className="rounded-md border border-gray-300 px-2 py-1 text-sm text-gray-900"
                       placeholder="예: 새우, 밀가루 함유"
                       value={editAllergyInfo}
-                      onChange={(e) => setEditAllergyInfo(e.target.value)}
+                      onChange={(e) => {
+                        setEditAllergyInfo(e.target.value);
+                        setEditAllergySuggestEmpty(false);
+                      }}
                     />
                   </div>
 
@@ -652,19 +667,31 @@ export default function MenusPage() {
             <label htmlFor="menu-allergy-info">알레르기 정보 (선택)</label>
             <button
               type="button"
-              onClick={() => setAllergyInfo(suggestAllergyInfo(originInfo))}
+              onClick={() => {
+                const suggestion = suggestAllergyInfo(originInfo);
+                setAllergyInfo(suggestion);
+                setAllergySuggestEmpty(suggestion === "");
+              }}
               disabled={!originInfo.trim()}
               className="rounded-md border border-black px-3 py-1 text-xs disabled:opacity-50"
             >
               재료에서 채워줄게요
             </button>
           </div>
+          {allergySuggestEmpty && (
+            <p className="text-xs text-gray-500">
+              재료/원산지에서 흔히 알려진 알레르기 성분을 찾지 못했어요 — 직접 입력해주세요.
+            </p>
+          )}
           <input
             id="menu-allergy-info"
             className="rounded-md border border-gray-300 px-3 py-2"
             placeholder="예: 새우, 밀가루 함유"
             value={allergyInfo}
-            onChange={(e) => setAllergyInfo(e.target.value)}
+            onChange={(e) => {
+              setAllergyInfo(e.target.value);
+              setAllergySuggestEmpty(false);
+            }}
           />
           <span className="text-xs text-gray-500">
             비워두면 Chef AI는 손님이 알레르기를 물어봤을 때 "확인이 필요합니다"라고 답해요.
