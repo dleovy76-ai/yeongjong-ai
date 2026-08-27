@@ -54,6 +54,7 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
 
     data_go_kr_api_key: str = ""
+    nts_biz_verify_api_key: str = ""
 
     naver_client_id: str = ""
     naver_client_secret: str = ""

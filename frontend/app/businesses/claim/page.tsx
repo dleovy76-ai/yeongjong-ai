@@ -27,6 +27,11 @@ function ClaimBusinessPageInner() {
   const [error, setError] = useState<string | null>(null);
   const [claimingId, setClaimingId] = useState<string | null>(null);
 
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [bizNo, setBizNo] = useState("");
+  const [repName, setRepName] = useState("");
+  const [startDate, setStartDate] = useState("");
+
   useEffect(() => {
     if (!authLoading && !token) router.push("/login");
   }, [authLoading, token, router]);
@@ -70,12 +75,24 @@ function ClaimBusinessPageInner() {
     }
   };
 
+  const onStartClaim = (businessId: string) => {
+    setExpandedId(businessId);
+    setError(null);
+    setBizNo("");
+    setRepName("");
+    setStartDate("");
+  };
+
   const onClaim = async (businessId: string) => {
     if (!token) return;
     setClaimingId(businessId);
     setError(null);
     try {
-      await api.claimBusiness(token, businessId);
+      await api.claimBusiness(token, businessId, {
+        business_registration_number: bizNo,
+        representative_name: repName,
+        start_date: startDate,
+      });
       router.push(`/businesses/${businessId}/menus`);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "가게 등록 중 오류가 발생했습니다.");
@@ -108,23 +125,75 @@ function ClaimBusinessPageInner() {
       {results !== null && (
         <ul className="mb-8 flex flex-col gap-2">
           {results.map((business) => (
-            <li
-              key={business.id}
-              className="flex items-center justify-between rounded-md border border-gray-200 p-3 text-sm"
-            >
-              <div>
-                <p className="font-semibold">{business.name_ko}</p>
-                <p className="text-gray-500">
-                  {CATEGORY_LABELS[business.category]} · {business.address}
-                </p>
+            <li key={business.id} className="rounded-md border border-gray-200 p-3 text-sm">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-semibold">{business.name_ko}</p>
+                  <p className="text-gray-500">
+                    {CATEGORY_LABELS[business.category]} · {business.address}
+                  </p>
+                </div>
+                {expandedId !== business.id && (
+                  <button
+                    onClick={() => onStartClaim(business.id)}
+                    className="rounded-md border border-black px-3 py-1.5"
+                  >
+                    내 가게예요
+                  </button>
+                )}
               </div>
-              <button
-                onClick={() => onClaim(business.id)}
-                disabled={claimingId === business.id}
-                className="rounded-md border border-black px-3 py-1.5 disabled:opacity-50"
-              >
-                {claimingId === business.id ? "등록 중..." : "내 가게예요"}
-              </button>
+
+              {expandedId === business.id && (
+                <div className="mt-3 flex flex-col gap-2 border-t border-gray-200 pt-3">
+                  <p className="text-xs text-gray-500">
+                    실제 사업자등록 정보를 국세청에서 확인한 뒤에만 등록돼요 — 타인이 무단으로
+                    다른 사람의 업체를 가져가는 것을 막기 위해서예요.
+                  </p>
+                  <label className="flex flex-col gap-1 text-xs">
+                    사업자등록번호
+                    <input
+                      className="rounded-md border border-gray-300 px-2 py-1 text-sm"
+                      placeholder="예: 123-45-67890"
+                      value={bizNo}
+                      onChange={(e) => setBizNo(e.target.value)}
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1 text-xs">
+                    대표자명
+                    <input
+                      className="rounded-md border border-gray-300 px-2 py-1 text-sm"
+                      value={repName}
+                      onChange={(e) => setRepName(e.target.value)}
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1 text-xs">
+                    개업일자
+                    <input
+                      className="rounded-md border border-gray-300 px-2 py-1 text-sm"
+                      placeholder="예: 2020-01-01"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                    />
+                  </label>
+                  <div className="mt-1 flex gap-2">
+                    <button
+                      onClick={() => onClaim(business.id)}
+                      disabled={
+                        claimingId === business.id || !bizNo.trim() || !repName.trim() || !startDate.trim()
+                      }
+                      className="rounded-md bg-black px-3 py-1.5 text-white disabled:opacity-50"
+                    >
+                      {claimingId === business.id ? "확인 중..." : "확인하고 등록하기"}
+                    </button>
+                    <button
+                      onClick={() => setExpandedId(null)}
+                      className="rounded-md border border-gray-300 px-3 py-1.5"
+                    >
+                      취소
+                    </button>
+                  </div>
+                </div>
+              )}
             </li>
           ))}
           {results.length === 0 && (

@@ -27,6 +27,12 @@ class BusinessUpdateRequest(BaseModel):
     status: BusinessStatus | None = None
 
 
+class BusinessClaimRequest(BaseModel):
+    business_registration_number: ValidatedText = Field(min_length=1, max_length=20)
+    representative_name: ValidatedText = Field(min_length=1, max_length=100)
+    start_date: ValidatedText = Field(min_length=1, max_length=20)
+
+
 class BusinessResponse(BaseModel):
     id: UUID
     owner_user_id: UUID | None

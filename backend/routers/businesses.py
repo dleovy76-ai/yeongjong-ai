@@ -25,6 +25,7 @@ from routers._business_common import get_business_or_404 as _get_business_or_404
 from routers._business_common import require_owner as _require_owner
 from routers.auth import get_current_user, get_current_user_optional
 from schemas.businesses import (
+    BusinessClaimRequest,
     BusinessCreateRequest,
     BusinessOwnerProfileResponse,
     BusinessProfileUpdateRequest,
@@ -47,6 +48,7 @@ from services.agents.menu_draft import MenuDraftAgent
 from services.agents.profile_bulk_draft import ProfileBulkDraftAgent
 from services.agents.profile_draft import ProfileDraftAgent
 from services.external.naver_local_api import NaverApiConfigurationError, NaverLocalApiClient
+from services.external.nts_biz_verify_api import NtsBizVerifyClient, NtsBizVerifyConfigurationError
 
 logger = logging.getLogger(__name__)
 
@@ -125,6 +127,7 @@ def list_unclaimed_businesses(query: str | None = None, db: Session = Depends(ge
 @router.post("/{business_id}/claim", response_model=BusinessResponse)
 def claim_business(
     business_id: UUID,
+    body: BusinessClaimRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> BusinessResponse:
@@ -134,6 +137,29 @@ def claim_business(
     business = _get_business_or_404(db, business_id)
     if business.owner_user_id is not None:
         raise HTTPException(status.HTTP_409_CONFLICT, "이미 다른 사장님이 등록한 업체입니다.")
+
+    # 실제 사업자등록 정보를 국세청 공식 API로 확인한 뒤에만 claim을 허용한다 -
+    # 이전엔 로그인만 하면 누구나 아무 미등록 업체나 가져갈 수 있었다(검증
+    # 자체가 없었음).
+    b_no = re.sub(r"[^\d]", "", body.business_registration_number)
+    start_date = re.sub(r"[^\d]", "", body.start_date)
+    try:
+        nts_client = NtsBizVerifyClient()
+    except NtsBizVerifyConfigurationError as exc:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "사업자 확인 기능이 아직 설정되지 않았습니다.") from exc
+    try:
+        verified = nts_client.verify(
+            business_registration_number=b_no,
+            representative_name=body.representative_name,
+            start_date=start_date,
+        )
+    except httpx.HTTPError as exc:
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, "사업자 확인 요청에 실패했습니다. 잠시 후 다시 시도해주세요.") from exc
+    if not verified:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "입력하신 사업자등록번호/대표자명/개업일자가 국세청 정보와 일치하지 않습니다. 다시 확인해주세요.",
+        )
 
     business.owner_user_id = current_user.id
     if business.profile is None:

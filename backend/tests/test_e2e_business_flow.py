@@ -11,6 +11,7 @@ import json
 from uuid import UUID
 
 import routers._ai_common as ai_common_module
+import routers.businesses as businesses_module
 from core.security import hash_password
 from models import Business, BusinessCategory, BusinessRelationship, CouponIssue, User, UserRole
 from services.llm.fake_provider import FakeLLMProvider
@@ -18,6 +19,14 @@ from services.llm.fake_provider import FakeLLMProvider
 
 def _fake_llm(monkeypatch, response: str) -> None:
     monkeypatch.setattr(ai_common_module, "get_llm_provider", lambda: FakeLLMProvider(response=response))
+
+
+def _fake_nts_verified(monkeypatch) -> None:
+    class _FakeNtsClient:
+        def verify(self, **kwargs):
+            return True
+
+    monkeypatch.setattr(businesses_module, "NtsBizVerifyClient", lambda: _FakeNtsClient())
 
 
 def test_full_pilot_business_flow_end_to_end(client, db_session, monkeypatch):
@@ -176,7 +185,16 @@ def test_full_pilot_business_flow_end_to_end(client, db_session, monkeypatch):
         json={"email": "e2e-new-owner@example.com", "password": "password123", "name": "새사장", "role": "BUSINESS_OWNER"},
     )
     new_owner_headers = {"Authorization": f"Bearer {new_owner_register.json()['access_token']}"}
-    claim = client.post(f"/api/v1/businesses/{candidate.id}/claim", headers=new_owner_headers)
+    _fake_nts_verified(monkeypatch)
+    claim = client.post(
+        f"/api/v1/businesses/{candidate.id}/claim",
+        headers=new_owner_headers,
+        json={
+            "business_registration_number": "123-45-67890",
+            "representative_name": "새사장",
+            "start_date": "20200101",
+        },
+    )
     assert claim.status_code == 200, claim.text
     assert claim.json()["owner_user_id"] is not None
 

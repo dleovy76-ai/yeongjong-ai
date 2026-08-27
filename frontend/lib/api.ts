@@ -253,8 +253,11 @@ export const api = {
   listUnclaimedBusinesses: (query: string) =>
     request<Business[]>(`/api/v1/businesses/unclaimed?query=${encodeURIComponent(query)}`),
 
-  claimBusiness: (token: string, id: string) =>
-    request<Business>(`/api/v1/businesses/${id}/claim`, { method: "POST", token }),
+  claimBusiness: (
+    token: string,
+    id: string,
+    body: { business_registration_number: string; representative_name: string; start_date: string }
+  ) => request<Business>(`/api/v1/businesses/${id}/claim`, { method: "POST", body, token }),
 
   getProfile: (id: string, token?: string | null) =>
     request<BusinessProfile>(`/api/v1/businesses/${id}/profile`, { token }),
