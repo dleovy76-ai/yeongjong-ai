@@ -10,7 +10,6 @@ interface MenuCandidate {
   name: string;
   price: string;
   include: boolean;
-  isSignature: boolean;
 }
 
 export default function MenusPage() {
@@ -104,7 +103,6 @@ export default function MenusPage() {
           name: item.name,
           price: item.price ?? "",
           include: true,
-          isSignature: false,
         }))
       );
     } catch (err) {
@@ -131,13 +129,7 @@ export default function MenusPage() {
         continue;
       }
       try {
-        added.push(
-          await api.createMenu(token, id, {
-            name: candidate.name.trim(),
-            price,
-            is_signature: candidate.isSignature,
-          })
-        );
+        added.push(await api.createMenu(token, id, { name: candidate.name.trim(), price }));
       } catch {
         remaining.push(candidate);
       }
@@ -288,14 +280,6 @@ export default function MenusPage() {
                     onChange={(e) => updateCandidate(index, { price: e.target.value })}
                   />
                   <span className="text-xs text-gray-500">원</span>
-                  <label className="flex items-center gap-1 whitespace-nowrap text-xs text-gray-500">
-                    <input
-                      type="checkbox"
-                      checked={candidate.isSignature}
-                      onChange={(e) => updateCandidate(index, { isSignature: e.target.checked })}
-                    />
-                    대표
-                  </label>
                 </div>
               ))}
               {bulkAddError && <p className="text-sm text-red-600">{bulkAddError}</p>}
