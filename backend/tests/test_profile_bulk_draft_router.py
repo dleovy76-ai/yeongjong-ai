@@ -59,6 +59,24 @@ def test_bulk_draft_returns_parsed_fields(client, monkeypatch):
     }
 
 
+def test_bulk_draft_prompt_has_opening_hours_formatting_rule(client, monkeypatch):
+    """실제 캡쳐 이미지에서 영업시간이 '영업 시작 목 11:00 - 21:00  브레이크타임
+    14:00 - 16:30 브레이크타임'처럼 끝에 의미 없는 단어가 중복되어 나온 사례가
+    있었다 - 요일/브레이크타임을 정해진 형식으로 정리하라는 규칙이 프롬프트에
+    실제로 포함되는지 확인한다."""
+    headers = _register(client, "profile-bulk-owner9@example.com")
+    business = _create_business(client, headers)
+
+    fake = FakeLLMProvider(response="{}")
+    monkeypatch.setattr(ai_common_module, "get_llm_provider", lambda: fake)
+
+    _post_image(client, business["id"], headers)
+
+    prompt = fake.calls[0]["system_prompt"]
+    assert "같은 단어를 문장 끝에 의미 없이 중복해서 쓰지 마세요" in prompt
+    assert "브레이크타임" in prompt
+
+
 def test_bulk_draft_sends_actual_image_bytes_to_the_llm(client, monkeypatch):
     headers = _register(client, "profile-bulk-owner2@example.com")
     business = _create_business(client, headers)
