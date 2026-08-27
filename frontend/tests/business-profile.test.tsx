@@ -121,6 +121,33 @@ describe("BusinessProfilePage - 네이버 화면 캡쳐 업로드로 정보 채�
     expect(screen.getByDisplayValue("카드, 현금")).toBeInTheDocument();
     // parking/pet_policy came back null - untouched, still empty
     expect(screen.getByLabelText("주차")).toHaveValue("");
+    expect(
+      screen.getByText("5개 항목을 채웠어요 — 아래에서 확인하고 저장하세요.")
+    ).toBeInTheDocument();
+  });
+
+  it("이미지에서 채울 항목을 하나도 못 찾으면 그렇게 안내한다", async () => {
+    getOwnerProfileMock.mockResolvedValueOnce(makeOwnerProfile());
+    draftProfileFromImageMock.mockResolvedValueOnce({
+      description: null,
+      opening_hours: null,
+      holiday: null,
+      parking: null,
+      pet_policy: null,
+      reservation_policy: null,
+      takeout_policy: null,
+      payment_methods: null,
+    });
+
+    const user = userEvent.setup();
+    render(<BusinessProfilePage />);
+
+    await screen.findByText("Step 3 / 3 · AI 정보");
+    const file = new File(["fake-bytes"], "blurry.png", { type: "image/png" });
+    await user.upload(screen.getByLabelText("또는 파일에서 선택"), file);
+    await user.click(screen.getByRole("button", { name: "사진에서 정보 추출하기" }));
+
+    expect(await screen.findByText("이미지에서 채울 수 있는 항목을 찾지 못했어요.")).toBeInTheDocument();
   });
 
   it("파일을 고르기 전엔 추출 버튼이 비활성화된다", async () => {

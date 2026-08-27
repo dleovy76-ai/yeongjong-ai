@@ -48,6 +48,7 @@ export default function BusinessProfilePage() {
   const [profileImage, setProfileImage] = useState<File | null>(null);
   const [imageDrafting, setImageDrafting] = useState(false);
   const [imageDraftError, setImageDraftError] = useState<string | null>(null);
+  const [imageDraftFilledCount, setImageDraftFilledCount] = useState<number | null>(null);
 
   useEffect(() => {
     if (!authLoading && !token) router.push("/login");
@@ -128,23 +129,53 @@ export default function BusinessProfilePage() {
   const onPasteImage = (e: React.ClipboardEvent) => {
     const item = Array.from(e.clipboardData.items).find((i) => i.type.startsWith("image/"));
     const file = item?.getAsFile();
-    if (file) setProfileImage(file);
+    if (file) {
+      setProfileImage(file);
+      setImageDraftFilledCount(null);
+    }
   };
 
   const onDraftFromImage = async () => {
     if (!token || !profileImage) return;
     setImageDraftError(null);
+    setImageDraftFilledCount(null);
     setImageDrafting(true);
     try {
       const draft = await api.draftProfileFromImage(token, id, profileImage);
-      if (draft.description) setDescription(draft.description);
-      if (draft.opening_hours) setOpeningHours(draft.opening_hours);
-      if (draft.holiday) setHoliday(draft.holiday);
-      if (draft.parking) setParking(draft.parking);
-      if (draft.pet_policy) setPetPolicy(draft.pet_policy);
-      if (draft.reservation_policy) setReservationPolicy(draft.reservation_policy);
-      if (draft.takeout_policy) setTakeoutPolicy(draft.takeout_policy);
-      if (draft.payment_methods) setPaymentMethods(draft.payment_methods);
+      let filled = 0;
+      if (draft.description) {
+        setDescription(draft.description);
+        filled++;
+      }
+      if (draft.opening_hours) {
+        setOpeningHours(draft.opening_hours);
+        filled++;
+      }
+      if (draft.holiday) {
+        setHoliday(draft.holiday);
+        filled++;
+      }
+      if (draft.parking) {
+        setParking(draft.parking);
+        filled++;
+      }
+      if (draft.pet_policy) {
+        setPetPolicy(draft.pet_policy);
+        filled++;
+      }
+      if (draft.reservation_policy) {
+        setReservationPolicy(draft.reservation_policy);
+        filled++;
+      }
+      if (draft.takeout_policy) {
+        setTakeoutPolicy(draft.takeout_policy);
+        filled++;
+      }
+      if (draft.payment_methods) {
+        setPaymentMethods(draft.payment_methods);
+        filled++;
+      }
+      setImageDraftFilledCount(filled);
     } catch (err) {
       setImageDraftError(err instanceof ApiError ? err.message : "이미지 인식 중 오류가 발생했습니다.");
     } finally {
@@ -235,10 +266,21 @@ export default function BusinessProfilePage() {
             type="file"
             accept="image/png,image/jpeg,image/webp"
             className="text-sm"
-            onChange={(e) => setProfileImage(e.target.files?.[0] ?? null)}
+            onChange={(e) => {
+              setProfileImage(e.target.files?.[0] ?? null);
+              setImageDraftFilledCount(null);
+            }}
           />
         </label>
         {imageDraftError && <p className="text-sm text-red-600">{imageDraftError}</p>}
+        {imageDraftFilledCount !== null &&
+          (imageDraftFilledCount > 0 ? (
+            <p className="text-sm text-green-700">
+              {imageDraftFilledCount}개 항목을 채웠어요 — 아래에서 확인하고 저장하세요.
+            </p>
+          ) : (
+            <p className="text-sm text-gray-500">이미지에서 채울 수 있는 항목을 찾지 못했어요.</p>
+          ))}
         <button
           type="button"
           onClick={onDraftFromImage}
