@@ -19,7 +19,8 @@ async function request<T>(
   path: string,
   options: { method?: string; body?: unknown; token?: string | null } = {}
 ): Promise<T> {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  const isFormData = options.body instanceof FormData;
+  const headers: Record<string, string> = isFormData ? {} : { "Content-Type": "application/json" };
   if (options.token) headers["Authorization"] = `Bearer ${options.token}`;
 
   const controller = new AbortController();
@@ -30,7 +31,7 @@ async function request<T>(
     response = await fetch(`${API_URL}${path}`, {
       method: options.method ?? "GET",
       headers,
-      body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+      body: isFormData ? (options.body as FormData) : options.body !== undefined ? JSON.stringify(options.body) : undefined,
       signal: controller.signal,
     });
   } catch (err) {
@@ -130,6 +131,17 @@ export interface BusinessOwnerProfile extends BusinessProfile {
 export interface ProfileDraft {
   description: string;
   brand_tone: string;
+}
+
+export interface ProfileBulkDraft {
+  description: string | null;
+  opening_hours: string | null;
+  holiday: string | null;
+  parking: string | null;
+  pet_policy: string | null;
+  reservation_policy: string | null;
+  takeout_policy: string | null;
+  payment_methods: string | null;
 }
 
 export interface NaverLookupCandidate {
@@ -261,6 +273,16 @@ export const api = {
 
   draftProfile: (token: string, id: string) =>
     request<ProfileDraft>(`/api/v1/businesses/${id}/profile/draft`, { method: "POST", token }),
+
+  draftProfileFromImage: (token: string, id: string, image: File) => {
+    const formData = new FormData();
+    formData.append("image", image);
+    return request<ProfileBulkDraft>(`/api/v1/businesses/${id}/profile/bulk-draft`, {
+      method: "POST",
+      body: formData,
+      token,
+    });
+  },
 
   listMenus: (id: string) => request<Menu[]>(`/api/v1/businesses/${id}/menus`),
 

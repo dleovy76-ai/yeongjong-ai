@@ -100,6 +100,17 @@ class ProfileDraftResponse(BaseModel):
     brand_tone: str
 
 
+class ProfileBulkDraftResponse(BaseModel):
+    description: str | None = None
+    opening_hours: str | None = None
+    holiday: str | None = None
+    parking: str | None = None
+    pet_policy: str | None = None
+    reservation_policy: str | None = None
+    takeout_policy: str | None = None
+    payment_methods: str | None = None
+
+
 class NaverLookupCandidate(BaseModel):
     title: str
     road_address: str

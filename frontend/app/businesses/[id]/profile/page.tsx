@@ -45,6 +45,10 @@ export default function BusinessProfilePage() {
   const [expansionSuggestions, setExpansionSuggestions] = useState<PartnerSuggestion[] | null>(null);
   const [expansionLoading, setExpansionLoading] = useState(false);
 
+  const [profileImage, setProfileImage] = useState<File | null>(null);
+  const [imageDrafting, setImageDrafting] = useState(false);
+  const [imageDraftError, setImageDraftError] = useState<string | null>(null);
+
   useEffect(() => {
     if (!authLoading && !token) router.push("/login");
   }, [authLoading, token, router]);
@@ -121,6 +125,27 @@ export default function BusinessProfilePage() {
     }
   };
 
+  const onDraftFromImage = async () => {
+    if (!token || !profileImage) return;
+    setImageDraftError(null);
+    setImageDrafting(true);
+    try {
+      const draft = await api.draftProfileFromImage(token, id, profileImage);
+      if (draft.description) setDescription(draft.description);
+      if (draft.opening_hours) setOpeningHours(draft.opening_hours);
+      if (draft.holiday) setHoliday(draft.holiday);
+      if (draft.parking) setParking(draft.parking);
+      if (draft.pet_policy) setPetPolicy(draft.pet_policy);
+      if (draft.reservation_policy) setReservationPolicy(draft.reservation_policy);
+      if (draft.takeout_policy) setTakeoutPolicy(draft.takeout_policy);
+      if (draft.payment_methods) setPaymentMethods(draft.payment_methods);
+    } catch (err) {
+      setImageDraftError(err instanceof ApiError ? err.message : "이미지 인식 중 오류가 발생했습니다.");
+    } finally {
+      setImageDrafting(false);
+    }
+  };
+
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!token) return;
@@ -174,6 +199,32 @@ export default function BusinessProfilePage() {
         여기 적은 내용만 AI가 답변에 사용해요. 비워두면 AI는 &quot;확인이 필요합니다&quot;라고
         답합니다 — 확실하지 않은 건 추측해서 알려주지 않아요.
       </p>
+
+      <div className="mb-8 flex flex-col gap-3 rounded-md border border-gray-200 p-4">
+        <label className="flex flex-col gap-1 text-sm">
+          네이버 플레이스 화면 캡쳐 업로드 (선택)
+          <input
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            className="text-sm"
+            onChange={(e) => setProfileImage(e.target.files?.[0] ?? null)}
+          />
+        </label>
+        <span className="text-xs text-gray-500">
+          네이버 플레이스 페이지를 직접 캡쳐해서 올리면, AI가 사진을 읽고 아래 항목들을 채워드려요.
+          확인하고 필요하면 고친 뒤 저장하세요.
+        </span>
+        {imageDraftError && <p className="text-sm text-red-600">{imageDraftError}</p>}
+        <button
+          type="button"
+          onClick={onDraftFromImage}
+          disabled={imageDrafting || !profileImage}
+          className="self-start rounded-md border border-black px-3 py-1.5 text-sm disabled:opacity-50"
+        >
+          {imageDrafting ? "읽는 중..." : "사진에서 정보 추출하기"}
+        </button>
+      </div>
+
       <form onSubmit={onSubmit} className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <p className="text-sm font-semibold">가게 소개 & AI 말투</p>

@@ -37,12 +37,24 @@ class BaseAgent(ABC):
         # "recommendation was clicked" event. None until log() runs once.
         self.last_interaction_id: uuid.UUID | None = None
 
-    def _call_llm(self, *, system_prompt: str, user_message: str, max_output_tokens: int = 1024) -> str:
+    def _call_llm(
+        self,
+        *,
+        system_prompt: str,
+        user_message: str,
+        max_output_tokens: int = 1024,
+        image_bytes: bytes | None = None,
+        image_mime_type: str | None = None,
+    ) -> str:
         """Every agent's execute() should call this instead of self.llm.generate()
         directly - same signature/return type (plain str), but also records
         token usage on self so log() can persist it (STEP14)."""
         response = self.llm.generate(
-            system_prompt=system_prompt, user_message=user_message, max_output_tokens=max_output_tokens
+            system_prompt=system_prompt,
+            user_message=user_message,
+            max_output_tokens=max_output_tokens,
+            image_bytes=image_bytes,
+            image_mime_type=image_mime_type,
         )
         self._last_usage = response
         return response.text

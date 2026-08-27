@@ -1,3 +1,4 @@
+import base64
 import logging
 
 import httpx
@@ -33,13 +34,32 @@ class GeminiProvider(LLMProvider):
         if not self.api_key:
             raise GeminiConfigurationError("GEMINI_API_KEY가 설정되지 않았습니다.")
 
-    def generate(self, *, system_prompt: str, user_message: str, max_output_tokens: int = 1024) -> LLMResponse:
+    def generate(
+        self,
+        *,
+        system_prompt: str,
+        user_message: str,
+        max_output_tokens: int = 1024,
+        image_bytes: bytes | None = None,
+        image_mime_type: str | None = None,
+    ) -> LLMResponse:
         # Key goes in a header, not the ?key= query string - httpx (and any proxy/log
         # in between) logs the request URL at INFO level, which would otherwise leak
         # the key into logs (confirmed live: it showed up in this app's own dev log).
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent"
+        parts: list[dict] = []
+        if image_bytes is not None:
+            parts.append(
+                {
+                    "inlineData": {
+                        "mimeType": image_mime_type or "image/jpeg",
+                        "data": base64.b64encode(image_bytes).decode("ascii"),
+                    }
+                }
+            )
+        parts.append({"text": user_message})
         payload = {
-            "contents": [{"parts": [{"text": user_message}]}],
+            "contents": [{"parts": parts}],
             "systemInstruction": {"parts": [{"text": system_prompt}]},
             "generationConfig": {"temperature": 0.3, "maxOutputTokens": max_output_tokens},
         }

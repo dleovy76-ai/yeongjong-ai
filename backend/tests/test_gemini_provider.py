@@ -1,3 +1,5 @@
+import base64
+
 import httpx
 import pytest
 
@@ -63,3 +65,51 @@ def test_generate_propagates_timeout_as_httpx_error(monkeypatch):
 
     with pytest.raises(httpx.HTTPError):
         _provider().generate(system_prompt="시스템", user_message="질문")
+
+
+def test_generate_without_image_sends_only_a_text_part(monkeypatch):
+    captured = {}
+
+    def fake_post(self, url, *, json, headers):
+        captured["payload"] = json
+        return httpx.Response(
+            200,
+            json={"candidates": [{"content": {"parts": [{"text": "답변"}]}}]},
+            request=httpx.Request("POST", url),
+        )
+
+    monkeypatch.setattr(httpx.Client, "post", fake_post)
+
+    _provider().generate(system_prompt="시스템", user_message="질문")
+
+    assert captured["payload"]["contents"] == [{"parts": [{"text": "질문"}]}]
+
+
+def test_generate_with_image_sends_inline_data_part_alongside_text(monkeypatch):
+    captured = {}
+
+    def fake_post(self, url, *, json, headers):
+        captured["payload"] = json
+        return httpx.Response(
+            200,
+            json={"candidates": [{"content": {"parts": [{"text": "답변"}]}}]},
+            request=httpx.Request("POST", url),
+        )
+
+    monkeypatch.setattr(httpx.Client, "post", fake_post)
+
+    _provider().generate(
+        system_prompt="시스템",
+        user_message="이미지에서 뽑아줘",
+        image_bytes=b"fake-image-bytes",
+        image_mime_type="image/png",
+    )
+
+    parts = captured["payload"]["contents"][0]["parts"]
+    assert parts[0] == {
+        "inlineData": {
+            "mimeType": "image/png",
+            "data": base64.b64encode(b"fake-image-bytes").decode("ascii"),
+        }
+    }
+    assert parts[1] == {"text": "이미지에서 뽑아줘"}

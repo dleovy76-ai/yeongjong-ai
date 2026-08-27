@@ -14,7 +14,15 @@ class LLMProvider(ABC):
     so no agent code is locked to one model."""
 
     @abstractmethod
-    def generate(self, *, system_prompt: str, user_message: str, max_output_tokens: int = 1024) -> LLMResponse:
+    def generate(
+        self,
+        *,
+        system_prompt: str,
+        user_message: str,
+        max_output_tokens: int = 1024,
+        image_bytes: bytes | None = None,
+        image_mime_type: str | None = None,
+    ) -> LLMResponse:
         """Return the model's reply plus token usage (STEP14 - so BaseAgent can log
         real cost, not just a response count). Callers are responsible for putting
         every fact the model is allowed to state into system_prompt (§29) - this
@@ -25,4 +33,8 @@ class LLMProvider(ABC):
         output (Expansion's JSON array) must pass a higher value - confirmed
         live that 1024 silently truncates a 5-item Korean-language response
         mid-JSON, which then fails to parse and looks like "the model
-        suggested nothing" instead of the token-limit problem it actually is."""
+        suggested nothing" instead of the token-limit problem it actually is.
+
+        image_bytes/image_mime_type: optional - the owner's own screenshot
+        (never fetched by us, see ProfileBulkDraftAgent), sent alongside the
+        text prompt for a multimodal read. None for every text-only agent."""

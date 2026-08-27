@@ -2,12 +2,14 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-const { routerMock, getOwnerProfileMock, updateProfileMock, analyzeExpansionMock } = vi.hoisted(() => ({
-  routerMock: { push: vi.fn() },
-  getOwnerProfileMock: vi.fn(),
-  updateProfileMock: vi.fn(),
-  analyzeExpansionMock: vi.fn(),
-}));
+const { routerMock, getOwnerProfileMock, updateProfileMock, analyzeExpansionMock, draftProfileFromImageMock } =
+  vi.hoisted(() => ({
+    routerMock: { push: vi.fn() },
+    getOwnerProfileMock: vi.fn(),
+    updateProfileMock: vi.fn(),
+    analyzeExpansionMock: vi.fn(),
+    draftProfileFromImageMock: vi.fn(),
+  }));
 
 vi.mock("next/navigation", () => ({
   useRouter: () => routerMock,
@@ -27,6 +29,7 @@ vi.mock("@/lib/api", async () => {
       getOwnerProfile: getOwnerProfileMock,
       updateProfile: updateProfileMock,
       analyzeExpansion: analyzeExpansionMock,
+      draftProfileFromImage: draftProfileFromImageMock,
     },
   };
 });
@@ -83,5 +86,49 @@ describe("BusinessProfilePage - P0-3 온보딩 완료 체감 순간", () => {
 
     const homeLink = screen.getByRole("link", { name: "Home에서 공개하기 →" });
     expect(homeLink).toHaveAttribute("href", "/dashboard");
+  });
+});
+
+describe("BusinessProfilePage - 네이버 화면 캡쳐 업로드로 정보 채우기", () => {
+  it("사진을 업로드하고 추출하면, 돌아온 항목만 폼에 채워진다", async () => {
+    getOwnerProfileMock.mockResolvedValueOnce(makeOwnerProfile());
+    draftProfileFromImageMock.mockResolvedValueOnce({
+      description: "영종식당은 바지락 칼국수를 대표 메뉴로 하는 식당입니다.",
+      opening_hours: "매일 10:00 - 21:00",
+      holiday: "매주 월요일",
+      parking: null,
+      pet_policy: null,
+      reservation_policy: "전화 또는 앱으로 예약",
+      takeout_policy: null,
+      payment_methods: "카드, 현금",
+    });
+
+    const user = userEvent.setup();
+    render(<BusinessProfilePage />);
+
+    await screen.findByText("Step 3 / 3 · AI 정보");
+
+    const file = new File(["fake-bytes"], "naver.png", { type: "image/png" });
+    const fileInput = screen.getByLabelText("네이버 플레이스 화면 캡쳐 업로드 (선택)");
+    await user.upload(fileInput, file);
+    await user.click(screen.getByRole("button", { name: "사진에서 정보 추출하기" }));
+
+    expect(draftProfileFromImageMock).toHaveBeenCalledWith("test-token", "biz-1", file);
+    expect(await screen.findByDisplayValue("영종식당은 바지락 칼국수를 대표 메뉴로 하는 식당입니다.")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("매일 10:00 - 21:00")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("매주 월요일")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("전화 또는 앱으로 예약")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("카드, 현금")).toBeInTheDocument();
+    // parking/pet_policy came back null - untouched, still empty
+    expect(screen.getByLabelText("주차")).toHaveValue("");
+  });
+
+  it("파일을 고르기 전엔 추출 버튼이 비활성화된다", async () => {
+    getOwnerProfileMock.mockResolvedValueOnce(makeOwnerProfile());
+
+    render(<BusinessProfilePage />);
+
+    await screen.findByText("Step 3 / 3 · AI 정보");
+    expect(screen.getByRole("button", { name: "사진에서 정보 추출하기" })).toBeDisabled();
   });
 });

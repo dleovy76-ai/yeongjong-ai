@@ -14,10 +14,25 @@ class FakeLLMProvider(LLMProvider):
     def __init__(self, response: str = "테스트 응답입니다.", responses: list[str] | None = None) -> None:
         self.response = response
         self._responses = list(responses) if responses is not None else None
-        self.calls: list[dict[str, str]] = []
+        self.calls: list[dict[str, object]] = []
 
-    def generate(self, *, system_prompt: str, user_message: str, max_output_tokens: int = 1024) -> LLMResponse:
-        self.calls.append({"system_prompt": system_prompt, "user_message": user_message})
+    def generate(
+        self,
+        *,
+        system_prompt: str,
+        user_message: str,
+        max_output_tokens: int = 1024,
+        image_bytes: bytes | None = None,
+        image_mime_type: str | None = None,
+    ) -> LLMResponse:
+        self.calls.append(
+            {
+                "system_prompt": system_prompt,
+                "user_message": user_message,
+                "image_bytes": image_bytes,
+                "image_mime_type": image_mime_type,
+            }
+        )
         if self._responses:
             text = self._responses.pop(0)
         else:
