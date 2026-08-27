@@ -3,6 +3,7 @@ import uuid
 import httpx
 
 import routers.businesses as businesses_module
+from core.security import hash_password
 from models import Business, BusinessCategory, BusinessRelationship, User, UserRole
 
 
@@ -12,6 +13,17 @@ def _register(client, email, role="BUSINESS_OWNER"):
         json={"email": email, "password": "password123", "name": "사장", "role": role},
     )
     assert response.status_code == 201, response.text
+    token = response.json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}
+
+
+def _seed_admin(client, db_session, email):
+    admin = User(email=email, password_hash=hash_password("password123"), role=UserRole.ADMIN, name="운영자")
+    db_session.add(admin)
+    db_session.commit()
+
+    response = client.post("/api/v1/auth/login", json={"email": email, "password": "password123"})
+    assert response.status_code == 200, response.text
     token = response.json()["access_token"]
     return {"Authorization": f"Bearer {token}"}
 
@@ -104,6 +116,28 @@ def test_owner_can_claim_unclaimed_business(client, db_session, monkeypatch):
     # (AUDIT P1 visibility).
     profile = client.get(f"/api/v1/businesses/{business.id}/profile", headers=headers)
     assert profile.status_code == 200
+
+
+def test_admin_can_claim_without_nts_verification(client, db_session, monkeypatch):
+    """관리자는 실제 사업자등록 데이터가 없는 테스트 업체로도 claim 흐름을
+    확인해야 하므로, 국세청 검증을 건너뛴다 - NtsBizVerifyClient를 아예
+    모킹하지 않고도(호출되면 실패하도록) 성공해야 진짜로 건너뛴 것이다."""
+
+    def _fail_if_called():
+        raise AssertionError("ADMIN claim should never call NtsBizVerifyClient")
+
+    monkeypatch.setattr(businesses_module, "NtsBizVerifyClient", _fail_if_called)
+
+    business = _seed_unclaimed_business(db_session)
+    headers = _seed_admin(client, db_session, "admin-claim-test@example.com")
+
+    response = client.post(
+        f"/api/v1/businesses/{business.id}/claim",
+        headers=headers,
+        json=_claim_body(business_registration_number="000-00-00000", representative_name="가짜"),
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["owner_user_id"] is not None
 
 
 def test_claim_sends_registration_number_stripped_of_hyphens(client, db_session, monkeypatch):
