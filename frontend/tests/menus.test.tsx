@@ -122,6 +122,24 @@ describe("MenusPage (smoke)", () => {
     });
   });
 
+  it("'재료에서 채워줄게요'를 누르면 재료/원산지에서 알레르기 정보를 채운다", async () => {
+    listMenusMock.mockResolvedValueOnce([]);
+
+    const user = userEvent.setup();
+    render(<MenusPage />);
+
+    await screen.findByText(/아직 등록된 메뉴가 없어요/);
+
+    const fillButton = screen.getByRole("button", { name: "재료에서 채워줄게요" });
+    expect(fillButton).toBeDisabled();
+
+    await user.type(screen.getByLabelText(/재료\/원산지/), "새우와 밀가루를 사용한 튀김");
+    expect(fillButton).toBeEnabled();
+    await user.click(fillButton);
+
+    expect(screen.getByLabelText("알레르기 정보 (선택)")).toHaveValue("새우, 밀");
+  });
+
   it("fills the description field with an AI draft based on the typed menu name", async () => {
     listMenusMock.mockResolvedValueOnce([]);
     draftMenuDescriptionMock.mockResolvedValueOnce({
@@ -322,6 +340,32 @@ describe("MenusPage (smoke)", () => {
     expect(await screen.findByText("진하게 우려낸 특대 염소탕이에요.")).toBeInTheDocument();
     expect(screen.getByText("재료/원산지: 인천 강화 흑염소 사용")).toBeInTheDocument();
     expect(textarea).not.toBeInTheDocument();
+  });
+
+  it("정보 편집 패널에서도 재료/원산지로 알레르기 정보를 채울 수 있다", async () => {
+    listMenusMock.mockResolvedValueOnce([
+      {
+        id: "m1",
+        business_id: "biz-1",
+        name: "새우튀김",
+        description: null,
+        price: "8000",
+        image_url: null,
+        is_signature: false,
+        allergy_info: null,
+        origin_info: null,
+        options: null,
+      },
+    ]);
+
+    const user = userEvent.setup();
+    render(<MenusPage />);
+
+    await user.click(await screen.findByRole("button", { name: "정보 편집" }));
+    await user.type(screen.getByLabelText("재료/원산지"), "새우와 밀가루를 사용한 튀김");
+    await user.click(screen.getAllByRole("button", { name: "재료에서 채워줄게요" })[0]);
+
+    expect(screen.getByLabelText("알레르기 정보")).toHaveValue("새우, 밀");
   });
 
   it("메뉴판 사진을 업로드해서 추출하면 후보 목록이 뜬다", async () => {

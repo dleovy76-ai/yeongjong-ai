@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import { api, type Menu, type MenuBulkDraftItem, ApiError } from "@/lib/api";
+import { suggestAllergyInfo } from "@/lib/allergySuggest";
 
 interface MenuCandidate {
   name: string;
@@ -374,15 +375,26 @@ export default function MenusPage() {
                       onChange={(e) => setEditOriginInfo(e.target.value)}
                     />
                   </label>
-                  <label className="flex flex-col gap-1 text-xs text-gray-500">
-                    알레르기 정보
+                  <div className="flex flex-col gap-1 text-xs text-gray-500">
+                    <div className="flex items-center justify-between">
+                      <label htmlFor="edit-menu-allergy-info">알레르기 정보</label>
+                      <button
+                        type="button"
+                        onClick={() => setEditAllergyInfo(suggestAllergyInfo(editOriginInfo))}
+                        disabled={!editOriginInfo.trim()}
+                        className="rounded-md border border-black px-2 py-1 disabled:opacity-50"
+                      >
+                        재료에서 채워줄게요
+                      </button>
+                    </div>
                     <input
+                      id="edit-menu-allergy-info"
                       className="rounded-md border border-gray-300 px-2 py-1 text-sm text-gray-900"
                       placeholder="예: 새우, 밀가루 함유"
                       value={editAllergyInfo}
                       onChange={(e) => setEditAllergyInfo(e.target.value)}
                     />
-                  </label>
+                  </div>
 
                   {editSaveError && <p className="text-xs text-red-600">{editSaveError}</p>}
                   <div className="flex gap-2">
@@ -635,9 +647,20 @@ export default function MenusPage() {
             활용돼서 신뢰도를 높여주고, 비워두면 AI는 재료·원산지를 절대 추측해서 말하지 않아요.
           </span>
         </label>
-        <label className="flex flex-col gap-1 text-sm">
-          알레르기 정보 (선택)
+        <div className="flex flex-col gap-1 text-sm">
+          <div className="flex items-center justify-between">
+            <label htmlFor="menu-allergy-info">알레르기 정보 (선택)</label>
+            <button
+              type="button"
+              onClick={() => setAllergyInfo(suggestAllergyInfo(originInfo))}
+              disabled={!originInfo.trim()}
+              className="rounded-md border border-black px-3 py-1 text-xs disabled:opacity-50"
+            >
+              재료에서 채워줄게요
+            </button>
+          </div>
           <input
+            id="menu-allergy-info"
             className="rounded-md border border-gray-300 px-3 py-2"
             placeholder="예: 새우, 밀가루 함유"
             value={allergyInfo}
@@ -645,8 +668,10 @@ export default function MenusPage() {
           />
           <span className="text-xs text-gray-500">
             비워두면 Chef AI는 손님이 알레르기를 물어봤을 때 "확인이 필요합니다"라고 답해요.
+            재료/원산지에 적은 내용에서 흔히 알려진 알레르기 성분을 참고로 뽑아드릴 수 있어요 —
+            실제 조리법과 다를 수 있으니 꼭 확인하고 저장하세요.
           </span>
-        </label>
+        </div>
         {error && <p className="text-sm text-red-600">{error}</p>}
         <button
           type="submit"
