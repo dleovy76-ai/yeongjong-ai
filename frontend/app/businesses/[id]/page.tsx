@@ -22,6 +22,25 @@ function textOf(value: Record<string, unknown> | null): string | null {
   return typeof text === "string" && text ? text : null;
 }
 
+function ParkingIcon() {
+  return (
+    <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-sky text-[10px] font-bold text-white">
+      P
+    </span>
+  );
+}
+
+function PawIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4 shrink-0 text-coral-dark">
+      <circle cx="7" cy="9" r="2" />
+      <circle cx="12" cy="6.5" r="2" />
+      <circle cx="17" cy="9" r="2" />
+      <path d="M12 12c-3 0-6 2.3-6 5.2 0 2.2 1.8 3.1 3.6 2.3.9-.4 1.4-.9 2.4-.9s1.5.5 2.4.9c1.8.8 3.6-.1 3.6-2.3 0-2.9-3-5.2-6-5.2z" />
+    </svg>
+  );
+}
+
 // P1-6 - 이름/연락처/날짜/시간/인원 전부 채워졌을 때만 [예약 확정]을 누를 수
 // 있다. Reservation 스키마 자체가 이 4개(연락처 포함)를 필수로 요구하므로
 // (backend/schemas/reservations.py), 여기서 막지 않으면 어차피 API가 막는다 -
@@ -164,13 +183,18 @@ export default function BusinessDetailPage() {
       {business.phone && <p className="mb-1 text-sm text-gray-600">{business.phone}</p>}
       <div className="mb-6">
         {profile?.naver_place_url && (
-          <a href={profile.naver_place_url} target="_blank" rel="noreferrer" className="text-sm underline">
-            네이버에서 리뷰·영업시간 더 보기
+          <a
+            href={profile.naver_place_url}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-block rounded-full bg-coral px-3 py-1.5 text-xs font-semibold text-white hover:bg-coral-dark"
+          >
+            네이버에서 리뷰 보기
           </a>
         )}
       </div>
 
-      <dl className="mb-8 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+      <dl className="mb-4 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
         {openingHours && (
           <>
             <dt className="text-gray-500">영업시간</dt>
@@ -183,19 +207,24 @@ export default function BusinessDetailPage() {
             <dd>{profile.holiday}</dd>
           </>
         )}
-        {profile?.parking && (
-          <>
-            <dt className="text-gray-500">주차</dt>
-            <dd>{profile.parking}</dd>
-          </>
-        )}
-        {profile?.pet_policy && (
-          <>
-            <dt className="text-gray-500">반려동물</dt>
-            <dd>{profile.pet_policy}</dd>
-          </>
-        )}
       </dl>
+
+      {(profile?.parking || profile?.pet_policy) && (
+        <div className="mb-8 flex flex-wrap gap-2">
+          {profile?.parking && (
+            <span className="flex items-center gap-1.5 rounded-full bg-sand px-3 py-1 text-xs text-ink">
+              <ParkingIcon />
+              {profile.parking}
+            </span>
+          )}
+          {profile?.pet_policy && (
+            <span className="flex items-center gap-1.5 rounded-full bg-sand px-3 py-1 text-xs text-ink">
+              <PawIcon />
+              {profile.pet_policy}
+            </span>
+          )}
+        </div>
+      )}
 
       {coupons.length > 0 && (
         <div className="mb-8">
@@ -229,14 +258,14 @@ export default function BusinessDetailPage() {
       {menus.length > 0 && (
         <div className="mb-8">
           <h2 className="mb-2 font-semibold">메뉴</h2>
-          <ul className="mb-4 flex flex-col gap-1 text-sm">
+          <ul className="flex flex-col gap-1 rounded-2xl bg-paper p-4 text-sm">
             {menus.map((m) => (
               <li key={m.id} className="flex justify-between">
                 <span>
                   {m.is_signature && "⭐ "}
                   {m.name}
                 </span>
-                <span>{Number(m.price).toLocaleString()}원</span>
+                <span className="tabular-nums">{Number(m.price).toLocaleString()}원</span>
               </li>
             ))}
           </ul>
