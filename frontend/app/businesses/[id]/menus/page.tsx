@@ -42,6 +42,9 @@ export default function MenusPage() {
 
   const [editingMenuId, setEditingMenuId] = useState<string | null>(null);
   const [editDescription, setEditDescription] = useState("");
+  const [editImageUrl, setEditImageUrl] = useState("");
+  const [editOriginInfo, setEditOriginInfo] = useState("");
+  const [editAllergyInfo, setEditAllergyInfo] = useState("");
   const [editDrafting, setEditDrafting] = useState(false);
   const [editDraftError, setEditDraftError] = useState<string | null>(null);
   const [editSaving, setEditSaving] = useState(false);
@@ -180,9 +183,12 @@ export default function MenusPage() {
     }
   };
 
-  const onStartEditDescription = (menu: Menu) => {
+  const onStartEdit = (menu: Menu) => {
     setEditingMenuId(menu.id);
     setEditDescription(menu.description ?? "");
+    setEditImageUrl(menu.image_url ?? "");
+    setEditOriginInfo(menu.origin_info ?? "");
+    setEditAllergyInfo(menu.allergy_info ?? "");
     setEditDraftError(null);
     setEditSaveError(null);
   };
@@ -197,7 +203,7 @@ export default function MenusPage() {
         id,
         menu.name,
         menu.is_signature,
-        menu.origin_info ?? ""
+        editOriginInfo.trim()
       );
       setEditDescription(draft.description);
     } catch (err) {
@@ -207,16 +213,21 @@ export default function MenusPage() {
     }
   };
 
-  const onSaveEditDescription = async (menu: Menu) => {
+  const onSaveEdit = async (menu: Menu) => {
     if (!token) return;
     setEditSaveError(null);
     setEditSaving(true);
     try {
-      const updated = await api.updateMenu(token, id, menu.id, { description: editDescription });
+      const updated = await api.updateMenu(token, id, menu.id, {
+        description: editDescription,
+        image_url: editImageUrl,
+        origin_info: editOriginInfo,
+        allergy_info: editAllergyInfo,
+      });
       setMenus((prev) => prev?.map((m) => (m.id === menu.id ? updated : m)) ?? null);
       setEditingMenuId(null);
     } catch (err) {
-      setEditSaveError(err instanceof ApiError ? err.message : "설명 저장 중 오류가 발생했습니다.");
+      setEditSaveError(err instanceof ApiError ? err.message : "저장 중 오류가 발생했습니다.");
     } finally {
       setEditSaving(false);
     }
@@ -264,8 +275,8 @@ export default function MenusPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <button onClick={() => onStartEditDescription(menu)} className="text-gray-500 underline">
-                    설명 편집
+                  <button onClick={() => onStartEdit(menu)} className="text-gray-500 underline">
+                    정보 편집
                   </button>
                   <button
                     onClick={() => onToggleSignature(menu)}
@@ -300,11 +311,40 @@ export default function MenusPage() {
                     value={editDescription}
                     onChange={(e) => setEditDescription(e.target.value)}
                   />
+
+                  <label className="flex flex-col gap-1 text-xs text-gray-500">
+                    사진 URL
+                    <input
+                      className="rounded-md border border-gray-300 px-2 py-1 text-sm text-gray-900"
+                      placeholder="예: 인스타그램·블로그에 이미 올려둔 사진 링크"
+                      value={editImageUrl}
+                      onChange={(e) => setEditImageUrl(e.target.value)}
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1 text-xs text-gray-500">
+                    재료/원산지
+                    <input
+                      className="rounded-md border border-gray-300 px-2 py-1 text-sm text-gray-900"
+                      placeholder="예: 인천 앞바다에서 직접 잡은 백합 사용"
+                      value={editOriginInfo}
+                      onChange={(e) => setEditOriginInfo(e.target.value)}
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1 text-xs text-gray-500">
+                    알레르기 정보
+                    <input
+                      className="rounded-md border border-gray-300 px-2 py-1 text-sm text-gray-900"
+                      placeholder="예: 새우, 밀가루 함유"
+                      value={editAllergyInfo}
+                      onChange={(e) => setEditAllergyInfo(e.target.value)}
+                    />
+                  </label>
+
                   {editSaveError && <p className="text-xs text-red-600">{editSaveError}</p>}
                   <div className="flex gap-2">
                     <button
                       type="button"
-                      onClick={() => onSaveEditDescription(menu)}
+                      onClick={() => onSaveEdit(menu)}
                       disabled={editSaving}
                       className="rounded-md bg-black px-3 py-1 text-xs text-white disabled:opacity-50"
                     >

@@ -259,7 +259,7 @@ describe("MenusPage (smoke)", () => {
     expect(await screen.findByDisplayValue("얼큰한 김치찌개예요.")).toBeInTheDocument();
   });
 
-  it("이미 등록된 메뉴의 설명을 편집·저장할 수 있다", async () => {
+  it("이미 등록된 메뉴의 설명/사진/원산지/알레르기 정보를 편집·저장할 수 있다", async () => {
     listMenusMock.mockResolvedValueOnce([
       {
         id: "m1",
@@ -281,28 +281,43 @@ describe("MenusPage (smoke)", () => {
       name: "염소탕(특)",
       description: "진하게 우려낸 특대 염소탕이에요.",
       price: "20000",
-      image_url: null,
+      image_url: "https://example.com/goat-soup.jpg",
       is_signature: false,
       allergy_info: null,
-      origin_info: null,
+      origin_info: "인천 강화 흑염소 사용",
       options: null,
     });
 
     const user = userEvent.setup();
     render(<MenusPage />);
 
-    await user.click(await screen.findByRole("button", { name: "설명 편집" }));
+    await user.click(await screen.findByRole("button", { name: "정보 편집" }));
+    await user.type(screen.getByLabelText("재료/원산지"), "인천 강화 흑염소 사용");
     await user.click(screen.getAllByRole("button", { name: "AI가 초안 써줄게요" })[0]);
 
-    expect(draftMenuDescriptionMock).toHaveBeenCalledWith("test-token", "biz-1", "염소탕(특)", false, "");
+    expect(draftMenuDescriptionMock).toHaveBeenCalledWith(
+      "test-token",
+      "biz-1",
+      "염소탕(특)",
+      false,
+      "인천 강화 흑염소 사용"
+    );
     const textarea = await screen.findByDisplayValue("진하게 우려낸 특대 염소탕이에요.");
+    await user.type(
+      screen.getByLabelText("사진 URL"),
+      "https://example.com/goat-soup.jpg"
+    );
 
     await user.click(screen.getByRole("button", { name: "저장" }));
 
     expect(updateMenuMock).toHaveBeenCalledWith("test-token", "biz-1", "m1", {
       description: "진하게 우려낸 특대 염소탕이에요.",
+      image_url: "https://example.com/goat-soup.jpg",
+      origin_info: "인천 강화 흑염소 사용",
+      allergy_info: "",
     });
     expect(await screen.findByText("진하게 우려낸 특대 염소탕이에요.")).toBeInTheDocument();
+    expect(screen.getByText("재료/원산지: 인천 강화 흑염소 사용")).toBeInTheDocument();
     expect(textarea).not.toBeInTheDocument();
   });
 });
