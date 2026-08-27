@@ -171,7 +171,7 @@ describe("MenusPage (smoke)", () => {
     await screen.findByText(/아직 등록된 메뉴가 없어요/);
 
     await user.type(
-      screen.getByLabelText("네이버 등에서 복사한 메뉴 붙여넣기 (선택)"),
+      screen.getByLabelText("또는 텍스트로 붙여넣기 (선택)"),
       "염소탕 15,000원\n염소탕(특) 20,000원"
     );
     await user.click(screen.getByRole("button", { name: "메뉴 추출하기" }));
@@ -202,7 +202,7 @@ describe("MenusPage (smoke)", () => {
 
     await screen.findByText(/아직 등록된 메뉴가 없어요/);
 
-    await user.type(screen.getByLabelText("네이버 등에서 복사한 메뉴 붙여넣기 (선택)"), "리뷰 137개");
+    await user.type(screen.getByLabelText("또는 텍스트로 붙여넣기 (선택)"), "리뷰 137개");
     await user.click(screen.getByRole("button", { name: "메뉴 추출하기" }));
 
     expect(await screen.findByText("추출할 수 있는 메뉴를 찾지 못했어요.")).toBeInTheDocument();

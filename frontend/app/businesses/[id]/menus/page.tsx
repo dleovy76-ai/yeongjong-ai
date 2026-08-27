@@ -416,33 +416,11 @@ export default function MenusPage() {
       {toggleError && <p className="mb-8 text-sm text-red-600">{toggleError}</p>}
 
       <div className="mb-8 flex flex-col gap-3 rounded-md border border-gray-200 p-4">
-        <label className="flex flex-col gap-1 text-sm">
-          네이버 등에서 복사한 메뉴 붙여넣기 (선택)
-          <textarea
-            className="rounded-md border border-gray-300 px-3 py-2"
-            placeholder={"예: 염소탕 15,000원\n염소탕(특) 20,000원"}
-            rows={4}
-            value={pasteText}
-            onChange={(e) => setPasteText(e.target.value)}
-          />
-        </label>
+        <p className="text-sm font-semibold">네이버 등에서 메뉴판 캡쳐 업로드 (선택)</p>
         <span className="text-xs text-gray-500">
-          네이버 플레이스 같은 곳에서 메뉴 목록을 복사해서 붙여넣으면, AI가 메뉴 이름과 가격을
-          뽑아드려요. 확인하고 필요하면 고친 뒤에만 실제로 등록돼요.
+          네이버 플레이스 등에서 메뉴판을 직접 캡쳐해서 올리면, AI가 메뉴 이름과 가격을 뽑아드려요.
+          확인하고 필요하면 고친 뒤에만 실제로 등록돼요.
         </span>
-        {bulkDraftError && <p className="text-sm text-red-600">{bulkDraftError}</p>}
-        <button
-          type="button"
-          onClick={onExtractMenus}
-          disabled={bulkDrafting || !pasteText.trim()}
-          className="self-start rounded-md border border-black px-3 py-1.5 text-sm disabled:opacity-50"
-        >
-          {bulkDrafting ? "추출 중..." : "메뉴 추출하기"}
-        </button>
-
-        <p className="border-t border-gray-200 pt-3 text-xs text-gray-500">
-          또는 메뉴판을 캡쳐해서 올려도 돼요.
-        </p>
         <div
           tabIndex={0}
           onPaste={onPasteMenuImage}
@@ -493,6 +471,30 @@ export default function MenusPage() {
           className="self-start rounded-md border border-black px-3 py-1.5 text-sm disabled:opacity-50"
         >
           {menuImageDrafting ? "추출 중..." : "사진에서 메뉴 추출하기"}
+        </button>
+
+        <label className="flex flex-col gap-1 border-t border-gray-200 pt-3 text-sm">
+          또는 텍스트로 붙여넣기 (선택)
+          <textarea
+            className="rounded-md border border-gray-300 px-3 py-2"
+            placeholder={"예: 염소탕 15,000원\n염소탕(특) 20,000원"}
+            rows={4}
+            value={pasteText}
+            onChange={(e) => setPasteText(e.target.value)}
+          />
+        </label>
+        <span className="text-xs text-gray-500">
+          네이버 플레이스 같은 곳에서 메뉴 목록을 복사해서 붙여넣으면, AI가 메뉴 이름과 가격을
+          뽑아드려요. 확인하고 필요하면 고친 뒤에만 실제로 등록돼요.
+        </span>
+        {bulkDraftError && <p className="text-sm text-red-600">{bulkDraftError}</p>}
+        <button
+          type="button"
+          onClick={onExtractMenus}
+          disabled={bulkDrafting || !pasteText.trim()}
+          className="self-start rounded-md border border-black px-3 py-1.5 text-sm disabled:opacity-50"
+        >
+          {bulkDrafting ? "추출 중..." : "메뉴 추출하기"}
         </button>
 
         {candidates !== null &&
