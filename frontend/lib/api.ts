@@ -311,6 +311,15 @@ export const api = {
       token,
     }),
 
+  draftMenusFromImage: (token: string, businessId: string, image: File) => {
+    const formData = new FormData();
+    formData.append("image", image);
+    return request<{ items: MenuBulkDraftItem[] }>(
+      `/api/v1/businesses/${businessId}/menus/bulk-draft-image`,
+      { method: "POST", body: formData, token }
+    );
+  },
+
   createMenu: (
     token: string,
     businessId: string,

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 const {
@@ -8,6 +8,7 @@ const {
   createMenuMock,
   draftMenuDescriptionMock,
   draftMenusFromTextMock,
+  draftMenusFromImageMock,
   updateMenuMock,
 } = vi.hoisted(() => ({
   routerMock: { push: vi.fn() },
@@ -15,6 +16,7 @@ const {
   createMenuMock: vi.fn(),
   draftMenuDescriptionMock: vi.fn(),
   draftMenusFromTextMock: vi.fn(),
+  draftMenusFromImageMock: vi.fn(),
   updateMenuMock: vi.fn(),
 }));
 
@@ -37,6 +39,7 @@ vi.mock("@/lib/api", async () => {
       createMenu: createMenuMock,
       draftMenuDescription: draftMenuDescriptionMock,
       draftMenusFromText: draftMenusFromTextMock,
+      draftMenusFromImage: draftMenusFromImageMock,
       updateMenu: updateMenuMock,
     },
   };
@@ -319,5 +322,53 @@ describe("MenusPage (smoke)", () => {
     expect(await screen.findByText("진하게 우려낸 특대 염소탕이에요.")).toBeInTheDocument();
     expect(screen.getByText("재료/원산지: 인천 강화 흑염소 사용")).toBeInTheDocument();
     expect(textarea).not.toBeInTheDocument();
+  });
+
+  it("메뉴판 사진을 업로드해서 추출하면 후보 목록이 뜬다", async () => {
+    listMenusMock.mockResolvedValueOnce([]);
+    draftMenusFromImageMock.mockResolvedValueOnce({
+      items: [
+        { name: "염소탕", price: "15000" },
+        { name: "염소탕(특)", price: "20000" },
+      ],
+    });
+
+    const user = userEvent.setup();
+    render(<MenusPage />);
+
+    await screen.findByText(/아직 등록된 메뉴가 없어요/);
+
+    const file = new File(["fake-bytes"], "menu.png", { type: "image/png" });
+    await user.upload(screen.getByLabelText("또는 파일에서 선택"), file);
+    await user.click(screen.getByRole("button", { name: "사진에서 메뉴 추출하기" }));
+
+    expect(draftMenusFromImageMock).toHaveBeenCalledWith("test-token", "biz-1", file);
+    expect(await screen.findByDisplayValue("염소탕")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("염소탕(특)")).toBeInTheDocument();
+  });
+
+  it("메뉴판 사진을 붙여넣기(Ctrl+V)로도 선택할 수 있고, 다시 선택할 수도 있다", async () => {
+    listMenusMock.mockResolvedValueOnce([]);
+
+    const { container } = render(<MenusPage />);
+    await screen.findByText(/아직 등록된 메뉴가 없어요/);
+
+    const pasteAreas = container.querySelectorAll('div[tabindex="0"]');
+    // 이 페이지엔 붙여넣기 영역이 메뉴판 이미지 하나뿐이다
+    expect(pasteAreas.length).toBe(1);
+
+    const file = new File(["fake-bytes"], "menu.png", { type: "image/png" });
+    fireEvent.paste(pasteAreas[0], {
+      clipboardData: { items: [{ type: "image/png", getAsFile: () => file }] },
+    });
+
+    expect(await screen.findByText("선택됨: menu.png")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "사진에서 메뉴 추출하기" })).toBeEnabled();
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "선택 지우기" }));
+
+    expect(screen.queryByText("선택됨: menu.png")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "사진에서 메뉴 추출하기" })).toBeDisabled();
   });
 });

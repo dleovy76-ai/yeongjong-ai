@@ -149,3 +149,78 @@ def test_bulk_draft_requires_auth(client):
         json={"raw_text": "염소탕 15,000원"},
     )
     assert response.status_code == 401
+
+
+_FAKE_PNG_BYTES = b"\x89PNG\r\n\x1a\nfake-png-bytes-for-tests"
+
+
+def _post_image(client, business_id, headers, *, content_type="image/png", content=None):
+    return client.post(
+        f"/api/v1/businesses/{business_id}/menus/bulk-draft-image",
+        headers=headers,
+        files={"image": ("menu.png", content or _FAKE_PNG_BYTES, content_type)},
+    )
+
+
+def test_bulk_draft_image_returns_parsed_items(client, monkeypatch):
+    headers = _register(client, "menu-bulk-image-owner1@example.com")
+    business = _create_business(client, headers)
+
+    reply = '{"items": [{"name": "염소탕", "price": "15000"}]}'
+    monkeypatch.setattr(ai_common_module, "get_llm_provider", lambda: FakeLLMProvider(response=reply))
+
+    response = _post_image(client, business["id"], headers)
+    assert response.status_code == 200
+    assert response.json()["items"] == [{"name": "염소탕", "price": "15000"}]
+
+
+def test_bulk_draft_image_sends_actual_image_bytes_to_the_llm(client, monkeypatch):
+    headers = _register(client, "menu-bulk-image-owner2@example.com")
+    business = _create_business(client, headers)
+
+    fake = FakeLLMProvider(response='{"items": []}')
+    monkeypatch.setattr(ai_common_module, "get_llm_provider", lambda: fake)
+
+    _post_image(client, business["id"], headers, content=b"specific-fake-bytes")
+
+    assert fake.calls[0]["image_bytes"] == b"specific-fake-bytes"
+    assert fake.calls[0]["image_mime_type"] == "image/png"
+
+
+def test_bulk_draft_image_rejects_non_image_content_type(client, monkeypatch):
+    headers = _register(client, "menu-bulk-image-owner3@example.com")
+    business = _create_business(client, headers)
+    monkeypatch.setattr(ai_common_module, "get_llm_provider", lambda: FakeLLMProvider(response="{}"))
+
+    response = _post_image(client, business["id"], headers, content_type="text/plain")
+    assert response.status_code == 400
+
+
+def test_bulk_draft_image_rejects_oversized_image(client, monkeypatch):
+    headers = _register(client, "menu-bulk-image-owner4@example.com")
+    business = _create_business(client, headers)
+    monkeypatch.setattr(ai_common_module, "get_llm_provider", lambda: FakeLLMProvider(response="{}"))
+
+    response = _post_image(client, business["id"], headers, content=b"0" * (8 * 1024 * 1024 + 1))
+    assert response.status_code == 400
+
+
+def test_bulk_draft_image_requires_owner(client, monkeypatch):
+    headers = _register(client, "menu-bulk-image-owner5@example.com")
+    business = _create_business(client, headers)
+    other_headers = _register(client, "menu-bulk-image-owner6@example.com")
+    monkeypatch.setattr(ai_common_module, "get_llm_provider", lambda: FakeLLMProvider(response="{}"))
+
+    response = _post_image(client, business["id"], other_headers)
+    assert response.status_code == 403
+
+
+def test_bulk_draft_image_requires_auth(client):
+    headers = _register(client, "menu-bulk-image-owner7@example.com")
+    business = _create_business(client, headers)
+
+    response = client.post(
+        f"/api/v1/businesses/{business['id']}/menus/bulk-draft-image",
+        files={"image": ("menu.png", _FAKE_PNG_BYTES, "image/png")},
+    )
+    assert response.status_code == 401

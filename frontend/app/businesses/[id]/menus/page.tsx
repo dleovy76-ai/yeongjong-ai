@@ -37,6 +37,11 @@ export default function MenusPage() {
   const [bulkAdding, setBulkAdding] = useState(false);
   const [bulkAddError, setBulkAddError] = useState<string | null>(null);
 
+  const [menuImage, setMenuImage] = useState<File | null>(null);
+  const [menuImagePreviewUrl, setMenuImagePreviewUrl] = useState<string | null>(null);
+  const [menuImageDrafting, setMenuImageDrafting] = useState(false);
+  const [menuImageDraftError, setMenuImageDraftError] = useState<string | null>(null);
+
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [toggleError, setToggleError] = useState<string | null>(null);
 
@@ -57,6 +62,16 @@ export default function MenusPage() {
   useEffect(() => {
     api.listMenus(id).then(setMenus).catch(() => setMenus([]));
   }, [id]);
+
+  useEffect(() => {
+    if (!menuImage) {
+      setMenuImagePreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(menuImage);
+    setMenuImagePreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [menuImage]);
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -127,6 +142,32 @@ export default function MenusPage() {
       setBulkDraftError(err instanceof ApiError ? err.message : "메뉴 추출 중 오류가 발생했습니다.");
     } finally {
       setBulkDrafting(false);
+    }
+  };
+
+  const onPasteMenuImage = (e: React.ClipboardEvent) => {
+    const item = Array.from(e.clipboardData.items).find((i) => i.type.startsWith("image/"));
+    const file = item?.getAsFile();
+    if (file) setMenuImage(file);
+  };
+
+  const onExtractMenusFromImage = async () => {
+    if (!token || !menuImage) return;
+    setMenuImageDraftError(null);
+    setMenuImageDrafting(true);
+    try {
+      const { items } = await api.draftMenusFromImage(token, id, menuImage);
+      setCandidates(
+        items.map((item: MenuBulkDraftItem) => ({
+          name: item.name,
+          price: item.price ?? "",
+          include: true,
+        }))
+      );
+    } catch (err) {
+      setMenuImageDraftError(err instanceof ApiError ? err.message : "이미지 인식 중 오류가 발생했습니다.");
+    } finally {
+      setMenuImageDrafting(false);
     }
   };
 
@@ -397,6 +438,61 @@ export default function MenusPage() {
           className="self-start rounded-md border border-black px-3 py-1.5 text-sm disabled:opacity-50"
         >
           {bulkDrafting ? "추출 중..." : "메뉴 추출하기"}
+        </button>
+
+        <p className="border-t border-gray-200 pt-3 text-xs text-gray-500">
+          또는 메뉴판을 캡쳐해서 올려도 돼요.
+        </p>
+        <div
+          tabIndex={0}
+          onPaste={onPasteMenuImage}
+          className="flex cursor-text flex-col items-center justify-center gap-1 rounded-md border-2
+            border-dashed border-gray-300 px-3 py-6 text-center text-sm text-gray-500
+            focus:border-black focus:text-gray-700 focus:outline-none"
+        >
+          {menuImage ? (
+            <>
+              {menuImagePreviewUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={menuImagePreviewUrl}
+                  alt="선택한 메뉴판 이미지 미리보기"
+                  className="h-24 w-24 rounded-md border border-gray-300 object-cover"
+                />
+              )}
+              <p className="font-medium text-gray-700">선택됨: {menuImage.name || "붙여넣은 이미지"}</p>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setMenuImage(null);
+                }}
+                className="mt-1 text-xs text-gray-500 underline"
+              >
+                선택 지우기
+              </button>
+            </>
+          ) : (
+            <p>여기를 클릭한 뒤 Ctrl+V로 캡쳐한 메뉴판 이미지를 붙여넣으세요</p>
+          )}
+        </div>
+        <label className="flex flex-col gap-1 text-sm">
+          또는 파일에서 선택
+          <input
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            className="text-sm"
+            onChange={(e) => setMenuImage(e.target.files?.[0] ?? null)}
+          />
+        </label>
+        {menuImageDraftError && <p className="text-sm text-red-600">{menuImageDraftError}</p>}
+        <button
+          type="button"
+          onClick={onExtractMenusFromImage}
+          disabled={menuImageDrafting || !menuImage}
+          className="self-start rounded-md border border-black px-3 py-1.5 text-sm disabled:opacity-50"
+        >
+          {menuImageDrafting ? "추출 중..." : "사진에서 메뉴 추출하기"}
         </button>
 
         {candidates !== null &&

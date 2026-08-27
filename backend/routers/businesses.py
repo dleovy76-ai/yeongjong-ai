@@ -565,6 +565,34 @@ def draft_menus_from_text(
     return _parse_menu_bulk_draft(raw_reply)
 
 
+@router.post("/{business_id}/menus/bulk-draft-image", response_model=MenuBulkDraftResponse)
+async def draft_menus_from_image(
+    business_id: UUID,
+    image: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> MenuBulkDraftResponse:
+    """사장님이 네이버 플레이스 등에서 직접 캡쳐해 올린 메뉴판 이미지에서 메뉴
+    이름+가격 후보 목록을 뽑아준다 - 자동 스크래핑이 아니라 사장님이 직접
+    가져온 이미지만 근거로 삼는다(§29, menus/bulk-draft·profile/bulk-draft와
+    같은 원칙). 목록은 사장님이 확인/수정 후 기존 POST /menus(create_menu)로
+    하나씩 등록해야 실제로 저장된다."""
+    business = _get_business_or_404(db, business_id)
+    _require_owner(business, current_user)
+
+    if image.content_type not in _ALLOWED_IMAGE_MIME_TYPES:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "jpg, png, webp 이미지만 업로드할 수 있습니다.")
+    image_bytes = await image.read()
+    if len(image_bytes) > _MAX_IMAGE_BYTES:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "이미지 용량이 너무 큽니다(최대 8MB).")
+
+    llm = resolve_llm_provider()
+    agent = MenuBulkDraftAgent(db=db, llm=llm)
+    context = {"business_id": business_id, "image_bytes": image_bytes, "image_mime_type": image.content_type}
+    raw_reply = run_agent(agent, context, "이미지에서 메뉴 추출")
+    return _parse_menu_bulk_draft(raw_reply)
+
+
 def _get_menu_or_404(db: Session, business_id: UUID, menu_id: UUID) -> Menu:
     menu = db.get(Menu, menu_id)
     if menu is None or menu.business_id != business_id:
