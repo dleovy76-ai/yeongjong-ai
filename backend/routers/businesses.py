@@ -335,6 +335,7 @@ def _parse_profile_bulk_draft(raw_reply: str) -> ProfileBulkDraftResponse:
     fields = (
         "description",
         "opening_hours",
+        "break_time",
         "holiday",
         "parking",
         "pet_policy",

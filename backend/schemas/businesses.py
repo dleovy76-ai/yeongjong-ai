@@ -54,6 +54,7 @@ class BusinessProfileUpdateRequest(BaseModel):
     description: ValidatedText | None = Field(default=None, max_length=2000)
     brand_tone: ValidatedText | None = Field(default=None, max_length=500)
     opening_hours: dict | None = None
+    break_time: ValidatedText | None = Field(default=None, max_length=200)
     holiday: ValidatedText | None = Field(default=None, max_length=200)
     parking: ValidatedText | None = Field(default=None, max_length=500)
     pet_policy: ValidatedText | None = Field(default=None, max_length=500)
@@ -81,6 +82,7 @@ class BusinessPublicProfileResponse(BaseModel):
     description: str | None
     brand_tone: str | None
     opening_hours: dict | None
+    break_time: str | None
     holiday: str | None
     parking: str | None
     pet_policy: str | None
@@ -109,6 +111,7 @@ class ProfileDraftResponse(BaseModel):
 class ProfileBulkDraftResponse(BaseModel):
     description: str | None = None
     opening_hours: str | None = None
+    break_time: str | None = None
     holiday: str | None = None
     parking: str | None = None
     pet_policy: str | None = None

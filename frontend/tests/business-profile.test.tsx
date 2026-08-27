@@ -43,6 +43,7 @@ function makeOwnerProfile(overrides: Partial<Record<string, unknown>> = {}) {
     description: null,
     brand_tone: null,
     opening_hours: null,
+    break_time: null,
     holiday: null,
     parking: null,
     pet_policy: null,
@@ -95,6 +96,7 @@ describe("BusinessProfilePage - 네이버 화면 캡쳐 업로드로 정보 채�
     draftProfileFromImageMock.mockResolvedValueOnce({
       description: "영종식당은 바지락 칼국수를 대표 메뉴로 하는 식당입니다.",
       opening_hours: "매일 10:00 - 21:00",
+      break_time: "14:00 - 16:30",
       holiday: "매주 월요일",
       parking: null,
       pet_policy: null,
@@ -116,13 +118,14 @@ describe("BusinessProfilePage - 네이버 화면 캡쳐 업로드로 정보 채�
     expect(draftProfileFromImageMock).toHaveBeenCalledWith("test-token", "biz-1", file);
     expect(await screen.findByDisplayValue("영종식당은 바지락 칼국수를 대표 메뉴로 하는 식당입니다.")).toBeInTheDocument();
     expect(screen.getByDisplayValue("매일 10:00 - 21:00")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("14:00 - 16:30")).toBeInTheDocument();
     expect(screen.getByDisplayValue("매주 월요일")).toBeInTheDocument();
     expect(screen.getByDisplayValue("전화 또는 앱으로 예약")).toBeInTheDocument();
     expect(screen.getByDisplayValue("카드, 현금")).toBeInTheDocument();
     // parking/pet_policy came back null - untouched, still empty
     expect(screen.getByLabelText("주차")).toHaveValue("");
     expect(
-      screen.getByText("5개 항목을 채웠어요 — 아래에서 확인하고 저장하세요.")
+      screen.getByText("6개 항목을 채웠어요 — 아래에서 확인하고 저장하세요.")
     ).toBeInTheDocument();
   });
 
@@ -131,6 +134,7 @@ describe("BusinessProfilePage - 네이버 화면 캡쳐 업로드로 정보 채�
     draftProfileFromImageMock.mockResolvedValueOnce({
       description: null,
       opening_hours: null,
+      break_time: null,
       holiday: null,
       parking: null,
       pet_policy: null,

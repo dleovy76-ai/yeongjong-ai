@@ -38,7 +38,8 @@ def test_bulk_draft_returns_parsed_fields(client, monkeypatch):
 
     reply = (
         '{"description": "영종식당은 바지락 칼국수를 대표 메뉴로 하는 식당입니다.", '
-        '"opening_hours": "매일 10:00 - 21:00", "holiday": "매주 월요일", "parking": null, '
+        '"opening_hours": "매일 10:00 - 21:00", "break_time": "14:00 - 16:30", '
+        '"holiday": "매주 월요일", "parking": null, '
         '"pet_policy": null, "reservation_policy": "전화 또는 앱으로 예약", "takeout_policy": null, '
         '"payment_methods": "카드, 현금"}'
     )
@@ -50,6 +51,7 @@ def test_bulk_draft_returns_parsed_fields(client, monkeypatch):
     assert response.json() == {
         "description": "영종식당은 바지락 칼국수를 대표 메뉴로 하는 식당입니다.",
         "opening_hours": "매일 10:00 - 21:00",
+        "break_time": "14:00 - 16:30",
         "holiday": "매주 월요일",
         "parking": None,
         "pet_policy": None,
@@ -62,8 +64,9 @@ def test_bulk_draft_returns_parsed_fields(client, monkeypatch):
 def test_bulk_draft_prompt_has_opening_hours_formatting_rule(client, monkeypatch):
     """실제 캡쳐 이미지에서 영업시간이 '영업 시작 목 11:00 - 21:00  브레이크타임
     14:00 - 16:30 브레이크타임'처럼 끝에 의미 없는 단어가 중복되어 나온 사례가
-    있었다 - 요일/브레이크타임을 정해진 형식으로 정리하라는 규칙이 프롬프트에
-    실제로 포함되는지 확인한다."""
+    있었다 - 요일 형식을 정리하라는 규칙과, 브레이크타임은 opening_hours에
+    섞지 말고 별도 break_time 항목으로 분리하라는 규칙이 실제로 프롬프트에
+    포함되는지 확인한다."""
     headers = _register(client, "profile-bulk-owner9@example.com")
     business = _create_business(client, headers)
 
@@ -74,7 +77,8 @@ def test_bulk_draft_prompt_has_opening_hours_formatting_rule(client, monkeypatch
 
     prompt = fake.calls[0]["system_prompt"]
     assert "같은 단어를 문장 끝에 의미 없이 중복해서 쓰지 마세요" in prompt
-    assert "브레이크타임" in prompt
+    assert "반드시 별도의 break_time 항목에 적으세요" in prompt
+    assert '"break_time": "..."' in prompt
 
 
 def test_bulk_draft_sends_actual_image_bytes_to_the_llm(client, monkeypatch):

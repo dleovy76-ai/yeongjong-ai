@@ -110,6 +110,7 @@ export interface BusinessProfile {
   description: string | null;
   brand_tone: string | null;
   opening_hours: Record<string, unknown> | null;
+  break_time: string | null;
   holiday: string | null;
   parking: string | null;
   pet_policy: string | null;
@@ -136,6 +137,7 @@ export interface ProfileDraft {
 export interface ProfileBulkDraft {
   description: string | null;
   opening_hours: string | null;
+  break_time: string | null;
   holiday: string | null;
   parking: string | null;
   pet_policy: string | null;

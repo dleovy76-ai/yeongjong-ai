@@ -85,6 +85,7 @@ class BusinessSearchTool:
             "description": profile.description,
             "brand_tone": profile.brand_tone,
             "opening_hours": profile.opening_hours,
+            "break_time": profile.break_time,
             "holiday": profile.holiday,
             "parking": profile.parking,
             "pet_policy": profile.pet_policy,

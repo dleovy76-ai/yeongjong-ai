@@ -200,6 +200,7 @@ class BusinessProfile(Base):
     brand_tone: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     opening_hours: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    break_time: Mapped[str | None] = mapped_column(String(200), nullable=True)
     holiday: Mapped[str | None] = mapped_column(String(200), nullable=True)
 
     parking: Mapped[str | None] = mapped_column(String(500), nullable=True)

@@ -23,6 +23,7 @@ export default function BusinessProfilePage() {
   const [drafting, setDrafting] = useState(false);
   const [draftError, setDraftError] = useState<string | null>(null);
   const [openingHours, setOpeningHours] = useState("");
+  const [breakTime, setBreakTime] = useState("");
   const [holiday, setHoliday] = useState("");
   const [parking, setParking] = useState("");
   const [petPolicy, setPetPolicy] = useState("");
@@ -73,6 +74,7 @@ export default function BusinessProfilePage() {
         setDescription(profile.description ?? "");
         setBrandTone(profile.brand_tone ?? "");
         setOpeningHours(textOf(profile.opening_hours));
+        setBreakTime(profile.break_time ?? "");
         setHoliday(profile.holiday ?? "");
         setParking(profile.parking ?? "");
         setPetPolicy(profile.pet_policy ?? "");
@@ -162,6 +164,10 @@ export default function BusinessProfilePage() {
         setOpeningHours(draft.opening_hours);
         filled++;
       }
+      if (draft.break_time) {
+        setBreakTime(draft.break_time);
+        filled++;
+      }
       if (draft.holiday) {
         setHoliday(draft.holiday);
         filled++;
@@ -205,6 +211,7 @@ export default function BusinessProfilePage() {
         description: description || undefined,
         brand_tone: brandTone || undefined,
         opening_hours: openingHours ? { text: openingHours } : undefined,
+        break_time: breakTime || undefined,
         holiday: holiday || undefined,
         parking: parking || undefined,
         pet_policy: petPolicy || undefined,
@@ -369,6 +376,15 @@ export default function BusinessProfilePage() {
             placeholder="예: 매일 10:00 - 21:00"
             value={openingHours}
             onChange={(e) => setOpeningHours(e.target.value)}
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          브레이크타임
+          <input
+            className="rounded-md border border-gray-300 px-3 py-2"
+            placeholder="예: 14:00 - 16:30"
+            value={breakTime}
+            onChange={(e) => setBreakTime(e.target.value)}
           />
         </label>
         <label className="flex flex-col gap-1 text-sm">
