@@ -31,6 +31,8 @@ from schemas.businesses import (
     BusinessPublicProfileResponse,
     BusinessResponse,
     BusinessUpdateRequest,
+    MenuBulkDraftRequest,
+    MenuBulkDraftResponse,
     MenuCreateRequest,
     MenuDraftRequest,
     MenuDraftResponse,
@@ -39,6 +41,7 @@ from schemas.businesses import (
     NaverLookupCandidate,
     ProfileDraftResponse,
 )
+from services.agents.menu_bulk_draft import MenuBulkDraftAgent
 from services.agents.menu_draft import MenuDraftAgent
 from services.agents.profile_draft import ProfileDraftAgent
 from services.external.naver_local_api import NaverApiConfigurationError, NaverLocalApiClient
@@ -417,6 +420,58 @@ def draft_menu_description(
     }
     raw_reply = run_agent(agent, context, "초안 작성")
     return _parse_menu_draft(raw_reply)
+
+
+def _normalize_price(raw: object) -> str | None:
+    if not isinstance(raw, (str, int, float)):
+        return None
+    digits = re.sub(r"[^\d]", "", str(raw))
+    return digits or None
+
+
+def _parse_menu_bulk_draft(raw_reply: str) -> MenuBulkDraftResponse:
+    cleaned = _JSON_FENCE_RE.sub("", raw_reply).strip()
+    try:
+        parsed = json.loads(cleaned)
+    except json.JSONDecodeError:
+        logger.warning("Menu bulk draft reply was not valid JSON after fence-stripping: %r", raw_reply[:500])
+        return MenuBulkDraftResponse(items=[])
+    if not isinstance(parsed, dict):
+        return MenuBulkDraftResponse(items=[])
+    raw_items = parsed.get("items")
+    if not isinstance(raw_items, list):
+        return MenuBulkDraftResponse(items=[])
+
+    items = []
+    for raw_item in raw_items[:50]:
+        if not isinstance(raw_item, dict):
+            continue
+        name = str(raw_item.get("name", "")).strip()[:200]
+        if not name:
+            continue
+        items.append({"name": name, "price": _normalize_price(raw_item.get("price"))})
+    return MenuBulkDraftResponse(items=items)
+
+
+@router.post("/{business_id}/menus/bulk-draft", response_model=MenuBulkDraftResponse)
+def draft_menus_from_text(
+    business_id: UUID,
+    body: MenuBulkDraftRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> MenuBulkDraftResponse:
+    """사장님이 다른 곳(예: 네이버 플레이스)에서 복사해 붙여넣은 텍스트에서 메뉴
+    이름+가격 후보 목록을 뽑아준다 - 자동 스크래핑이 아니라 사장님이 직접 가져온
+    텍스트만 근거로 삼는다(§29). 목록은 사장님이 확인/수정 후 기존
+    POST /menus(create_menu)로 하나씩 등록해야 실제로 저장된다."""
+    business = _get_business_or_404(db, business_id)
+    _require_owner(business, current_user)
+
+    llm = resolve_llm_provider()
+    agent = MenuBulkDraftAgent(db=db, llm=llm)
+    context = {"business_id": business_id, "raw_text": body.raw_text}
+    raw_reply = run_agent(agent, context, "메뉴 추출")
+    return _parse_menu_bulk_draft(raw_reply)
 
 
 def _get_menu_or_404(db: Session, business_id: UUID, menu_id: UUID) -> Menu:

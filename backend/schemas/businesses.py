@@ -154,3 +154,16 @@ class MenuDraftRequest(BaseModel):
 
 class MenuDraftResponse(BaseModel):
     description: str
+
+
+class MenuBulkDraftRequest(BaseModel):
+    raw_text: ValidatedText = Field(min_length=1, max_length=4000)
+
+
+class MenuBulkDraftItem(BaseModel):
+    name: str
+    price: str | None = None
+
+
+class MenuBulkDraftResponse(BaseModel):
+    items: list[MenuBulkDraftItem]

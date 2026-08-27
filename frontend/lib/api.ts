@@ -154,6 +154,11 @@ export interface Menu {
   options: Record<string, unknown> | null;
 }
 
+export interface MenuBulkDraftItem {
+  name: string;
+  price: string | null;
+}
+
 export type CouponDiscountType = "PERCENTAGE" | "FIXED_AMOUNT";
 export type CouponStatus = "DRAFT" | "ACTIVE" | "EXPIRED" | "DISABLED";
 export type CouponIssueStatus = "ISSUED" | "REDEEMED";
@@ -269,6 +274,13 @@ export const api = {
     request<{ description: string }>(`/api/v1/businesses/${businessId}/menus/draft-description`, {
       method: "POST",
       body: { name, is_signature: isSignature, origin_info: originInfo || undefined },
+      token,
+    }),
+
+  draftMenusFromText: (token: string, businessId: string, rawText: string) =>
+    request<{ items: MenuBulkDraftItem[] }>(`/api/v1/businesses/${businessId}/menus/bulk-draft`, {
+      method: "POST",
+      body: { raw_text: rawText },
       token,
     }),
 
