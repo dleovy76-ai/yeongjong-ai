@@ -487,7 +487,7 @@ export default function BusinessProfilePage() {
         {naverPlaceUrl && !naverCandidate && (
           <p className="mb-3">
             연결됨:{" "}
-            <a href={naverMapUrl ?? naverPlaceUrl} target="_blank" rel="noreferrer" className="underline">
+            <a href={naverPlaceUrl ?? naverMapUrl} target="_blank" rel="noreferrer" className="underline">
               네이버에서 열기
             </a>
           </p>

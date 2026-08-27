@@ -227,3 +227,22 @@ describe("BusinessProfilePage - 네이버 화면 캡쳐 업로드로 정보 채�
     expect(screen.queryByText("선택됨: first.png")).not.toBeInTheDocument();
   });
 });
+
+describe("BusinessProfilePage - 네이버 연결됨 링크", () => {
+  it("'네이버에서 열기'는 리뷰가 보이는 naver_place_url을 여는 것이지, 지도 핀(naver_map_url)이 아니다", async () => {
+    getOwnerProfileMock.mockResolvedValueOnce(
+      makeOwnerProfile({
+        naver_place_url: "https://search.naver.com/search.naver?where=nexearch&query=%EA%B8%B4%EB%A7%88%EB%A3%A8",
+        naver_map_url: "https://map.naver.com/?lng=126&lat=37&title=%EA%B8%B4%EB%A7%88%EB%A3%A8",
+      })
+    );
+
+    render(<BusinessProfilePage />);
+
+    const link = await screen.findByRole("link", { name: "네이버에서 열기" });
+    expect(link).toHaveAttribute(
+      "href",
+      "https://search.naver.com/search.naver?where=nexearch&query=%EA%B8%B4%EB%A7%88%EB%A3%A8"
+    );
+  });
+});
